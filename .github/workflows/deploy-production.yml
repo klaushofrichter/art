@@ -1,0 +1,177 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [production]
+
+permissions:
+  contents: write   # create the release tag
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, k3s]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # release notes are computed from history and tags
+
+      - name: Install kubectl and configure in-cluster access
+        run: |
+          set -euo pipefail
+          if ! command -v kubectl >/dev/null 2>&1; then
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin/kubectl
+          fi
+          kubectl version --client
+          SA_DIR=/var/run/secrets/kubernetes.io/serviceaccount
+          kubectl config set-cluster in-cluster \
+            --server=https://kubernetes.default.svc \
+            --certificate-authority="${SA_DIR}/ca.crt"
+          kubectl config set-credentials deploy-sa --token="$(cat "${SA_DIR}/token")"
+          kubectl config set-context in-cluster --cluster=in-cluster --user=deploy-sa --namespace=art
+          kubectl config use-context in-cluster
+
+      - name: Generate the version
+        id: ver
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Calendar versioning, generated here rather than carried in the
+          # sources: nothing to remember to bump, and the number says when the
+          # build shipped. Dated in Central time so an evening deploy is not
+          # filed under tomorrow.
+          DATE=$(TZ=America/Chicago date +%Y.%m.%d)
+          # Same-day counter, derived from the releases that already exist -
+          # the tags are the state, so nothing needs storing.
+          TODAY=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 \
+                    --json tagName -q '.[].tagName' | grep -c "^v${DATE}\." || true)
+          VERSION="${DATE}.$((TODAY + 1))"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$VERSION"
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          # The version is baked into the image, so the running container can
+          # report it on /health and in the page footer.
+          build-args: |
+            APP_VERSION=${{ steps.ver.outputs.version }}
+          tags: |
+            ghcr.io/klaushofrichter/art:${{ github.sha }}
+            ghcr.io/klaushofrichter/art:v${{ steps.ver.outputs.version }}
+
+      - name: Prune old Docker images
+        run: docker system prune -af --filter "until=168h" || true
+
+      - name: Update kube-setup manifest and deploy
+        env:
+          KUBE_SETUP_DEPLOY_TOKEN: ${{ secrets.KUBE_SETUP_DEPLOY_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kube-setup-deploy
+          git clone "https://x-access-token:${KUBE_SETUP_DEPLOY_TOKEN}@github.com/klaushofrichter/kube-setup.git" /tmp/kube-setup-deploy
+          cd /tmp/kube-setup-deploy
+          sed -i "s|image: ghcr.io/klaushofrichter/art:.*|image: ghcr.io/klaushofrichter/art:${SHA}|" manifests/art/art-ksvc.yaml
+          grep -q "image: ghcr.io/klaushofrichter/art:${SHA}$" manifests/art/art-ksvc.yaml \
+            || { echo "::error::manifest image line did not update to ${SHA}"; exit 1; }
+          git config user.name "art-deploy-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add manifests/art/art-ksvc.yaml
+          if git diff --cached --quiet; then
+            echo "No manifest change (image tag already up to date) — skipping commit/push."
+          else
+            git commit -m "Deploy art ${SHA}"
+            git push
+          fi
+          kubectl apply -f manifests/art/art-ksvc.yaml
+          rm -rf /tmp/kube-setup-deploy
+
+      - name: Verify rollout
+        run: |
+          set -euo pipefail
+          kubectl wait --for=condition=Ready ksvc/art -n art --timeout=120s
+          kubectl get ksvc art -n art
+
+      # Deliberately curl and not Playwright: installing a browser here
+      # OOM-killed the runner (512Mi limit), which GitHub reports as "the
+      # self-hosted runner lost communication with the server" and which cost
+      # the release step below. The full Playwright suite runs on GitHub's own
+      # runners in production-checks.yml, before the merge that gets here.
+      - name: Smoke-test the public endpoints
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          BASE=https://art.klaushofrichter.net
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /tmp/health.json -w "%{http_code}" "$BASE/health" || true)
+            [ "$code" = "200" ] && echo "health ok" && break
+            echo "health not ready (HTTP ${code}), retry ${i}/10"; sleep 6
+          done
+          [ "$code" = "200" ] || { echo "::error::/health did not return 200"; exit 1; }
+          # The deployed build must be the one this run just stamped.
+          # sed, not jq: the self-hosted runner has no jq installed.
+          served=$(sed -n 's/.*"version":"\([^"]*\)".*/\1/p' /tmp/health.json)
+          [ "$served" = "$VERSION" ] \
+            || { echo "::error::/health reports ${served}, expected ${VERSION}"; exit 1; }
+          echo "version ok: $served"
+          page=$(curl -s -o /tmp/page.html -w "%{http_code}" "$BASE/")
+          [ "$page" = "200" ] || { echo "::error::public page returned ${page}"; exit 1; }
+          grep -q 'id="app-version"' /tmp/page.html \
+            || { echo "::error::page footer is missing the version label"; exit 1; }
+          echo "public page ok"
+
+      - name: Tag the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "$TAG already released - skipping."
+            exit 0
+          fi
+          # Notes: whatever was curated under Unreleased, then the commits
+          # since the previous release. Neither needs maintaining for a
+          # release to be readable.
+          : > /tmp/notes.md
+          awk '
+            /^## \[Unreleased\]/ { grab = 1; next }
+            grab && /^## / { exit }
+            grab { print }
+          ' CHANGELOG.md | sed '/^[[:space:]]*$/d' > /tmp/curated.md
+          if [ -s /tmp/curated.md ]; then
+            cat /tmp/curated.md >> /tmp/notes.md
+            printf '\n' >> /tmp/notes.md
+          fi
+          PREV=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1 \
+                   --json tagName -q '.[0].tagName' 2>/dev/null || true)
+          printf '### Changes\n\n' >> /tmp/notes.md
+          if [ -n "$PREV" ] && git rev-parse "$PREV" >/dev/null 2>&1; then
+            git log --no-merges --pretty='- %s' "${PREV}..HEAD" >> /tmp/notes.md
+            printf '\n**Full diff**: %s/compare/%s...%s\n' \
+              "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$PREV" "$TAG" >> /tmp/notes.md
+          else
+            git log --no-merges --pretty='- %s' -20 >> /tmp/notes.md
+          fi
+          printf '\nImage: `ghcr.io/klaushofrichter/art:%s`\n' "$TAG" >> /tmp/notes.md
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --notes-file /tmp/notes.md
+          echo "Released $TAG"

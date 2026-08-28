@@ -1,0 +1,84 @@
+name: Production PR checks
+
+on:
+  pull_request:
+    branches: [production]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - run: npm ci
+
+      - run: npm test
+
+  e2e:
+    # The Playwright suite runs here, on GitHub's runners, rather than in the
+    # deploy: installing a browser on the in-cluster self-hosted runner
+    # OOM-kills it. Against a locally started server, so a broken build is
+    # caught before it is merged rather than after it is live.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run build
+
+      - name: Start the server and run the smoke test
+        run: |
+          set -euo pipefail
+          npm start &
+          echo $! > /tmp/server.pid
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:8080/health >/dev/null && break
+            echo "waiting for server (${i}/20)"; sleep 2
+          done
+          curl -sf http://localhost:8080/health >/dev/null \
+            || { echo "::error::server did not come up"; exit 1; }
+          npm run test:e2e
+          kill "$(cat /tmp/server.pid)" || true
+
+  codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          output: sarif-results
+          upload: never
+
+      - name: Fail if CodeQL found any results
+        run: |
+          set -euo pipefail
+          total=0
+          for f in sarif-results/*.sarif; do
+            count=$(jq '[.runs[].results[]] | length' "$f")
+            total=$((total + count))
+          done
+          echo "CodeQL findings: $total"
+          if [ "$total" -gt 0 ]; then
+            echo "::error::CodeQL found $total finding(s) — blocking merge"
+            exit 1
+          fi
