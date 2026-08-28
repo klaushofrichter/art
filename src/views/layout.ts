@@ -8,6 +8,7 @@ export function pageShell(title: string, bodyHtml: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${title}</title>
   <meta name="description" content="An art gallery by Klaus Hofrichter." />
+  <link rel="icon" type="image/png" href="/assets/palette.png" />
   <style>
     :root {
       --bg: #0b0b10;

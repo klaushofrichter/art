@@ -12,6 +12,14 @@ describe('GET /', () => {
     expect(response.text).toContain('An art gallery by Klaus Hofrichter');
   });
 
+  it('links the favicon', async () => {
+    const app = createApp();
+    const response = await request(app).get('/');
+
+    expect(response.text).toContain('rel="icon"');
+    expect(response.text).toContain('/assets/palette.png');
+  });
+
   // The production deploy's curl smoke test greps for this exact id to
   // confirm the live page is the build it just stamped.
   it('carries the version label the deploy smoke test looks for', async () => {

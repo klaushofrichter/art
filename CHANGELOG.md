@@ -13,5 +13,4 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
-- Initial scaffold: Express/TypeScript server, placeholder gallery page,
-  CI/CD onto the k3s cluster at art.klaushofrichter.net.
+- Added a favicon (`assets/palette.png`).
