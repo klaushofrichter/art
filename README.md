@@ -7,8 +7,9 @@ Express/TypeScript app that server-renders the gallery page and runs as a
 [Knative](https://knative.dev/) Service on a self-hosted single-node k3s
 cluster (see [`klaushofrichter/kube-setup`](https://github.com/klaushofrichter/kube-setup)).
 
-**Status:** infrastructure is complete and live; the page itself is a
-placeholder. The gallery's actual content and design are still to come.
+**Status:** the infrastructure is complete and the site is live over HTTPS;
+the page itself is a placeholder. The gallery's actual content and design are
+still to come.
 
 ## Running it locally
 
