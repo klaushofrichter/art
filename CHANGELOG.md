@@ -13,6 +13,9 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- The content directory is now configurable with `ASSETS_DIR`, and the tests
+  run against fixtures of their own rather than the gallery's real content.
+
 - The enquiry email now names the picture, asks for a 48-hour hold and carries
   the permalink. Sending one marks the picture **Sale pending** in that
   visitor's own browser, which lapses after the same 48 hours.

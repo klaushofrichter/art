@@ -5,7 +5,10 @@ import { healthRouter } from './routes/health';
 import { indexRouter } from './routes/index';
 import { buyRouter } from './routes/buy';
 
-export function createApp(rooms: Room[] = loadRooms()): Express {
+export function createApp(
+  rooms: Room[] = loadRooms(),
+  assetsDir: string = ASSETS_DIR,
+): Express {
   const app = express();
   app.disable('x-powered-by');
 
@@ -19,7 +22,7 @@ export function createApp(rooms: Room[] = loadRooms()): Express {
   const oneYear = process.env.NODE_ENV === 'production'
     ? ({ maxAge: '365d', immutable: true } as const)
     : ({ maxAge: 0, etag: true } as const);
-  app.use('/assets', express.static(ASSETS_DIR, oneYear));
+  app.use('/assets', express.static(assetsDir, oneYear));
   app.use(express.static(PUBLIC_DIR, oneYear));
 
   // A page carries the fingerprinted URLs of the assets it needs, so it must

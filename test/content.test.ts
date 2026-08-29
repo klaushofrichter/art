@@ -7,11 +7,11 @@ import { ASSETS, rooms } from './setup';
 
 describe('loadRooms', () => {
   it('finds every room folder that has an index.json', () => {
-    expect(rooms.map((r) => r.id).sort()).toEqual(['about', 'colors', 'dogs', 'food']);
+    expect(rooms.map((r) => r.id).sort()).toEqual(['about', 'prints', 'shapes']);
   });
 
   it('orders rooms by the collection order field', () => {
-    expect(rooms.map((r) => r.id)).toEqual(['colors', 'dogs', 'food', 'about']);
+    expect(rooms.map((r) => r.id)).toEqual(['shapes', 'prints', 'about']);
   });
 
   it('keeps the About room even though it has no works', () => {
@@ -22,10 +22,10 @@ describe('loadRooms', () => {
   });
 
   it('builds a URL and a slug for each work', () => {
-    const undertow = rooms.find((r) => r.id === 'colors')?.works[0];
-    expect(undertow?.slug).toBe('undertow');
-    expect(undertow?.src).toBe('/assets/colors/IMG_7281.jpg');
-    expect(undertow?.purchaseUrl).toBe('/buy/colors/undertow');
+    const wide = rooms.find((r) => r.id === 'shapes')?.works[0];
+    expect(wide?.slug).toBe('wide');
+    expect(wide?.src).toBe('/assets/shapes/wide.jpg');
+    expect(wide?.purchaseUrl).toBe('/buy/shapes/wide');
   });
 
   it('defaults currency and status', () => {
@@ -75,11 +75,11 @@ describe('slug collisions', () => {
 
 describe('findWork', () => {
   it('finds a work by room and slug', () => {
-    expect(findWork(rooms, 'colors', 'undertow')?.work.title).toBe('Undertow');
+    expect(findWork(rooms, 'shapes', 'wide')?.work.title).toBe('Wide');
   });
   it('returns null for an unknown room or slug', () => {
-    expect(findWork(rooms, 'nope', 'undertow')).toBeNull();
-    expect(findWork(rooms, 'colors', 'nope')).toBeNull();
+    expect(findWork(rooms, 'nope', 'wide')).toBeNull();
+    expect(findWork(rooms, 'shapes', 'nope')).toBeNull();
   });
 });
 
@@ -88,7 +88,7 @@ describe('the assets fixture itself', () => {
     const sold = rooms.flatMap((r) => r.works).filter((w) => w.status === 'sold');
     expect(sold.length).toBeGreaterThan(0);
   });
-  it('reads from the real assets directory', () => {
-    expect(ASSETS.endsWith('assets')).toBe(true);
+  it('reads from the fixtures, never the gallery content', () => {
+    expect(ASSETS).toContain(path.join('test', 'fixtures', 'assets'));
   });
 });

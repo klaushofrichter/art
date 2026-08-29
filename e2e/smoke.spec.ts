@@ -1,9 +1,13 @@
 import { test, expect } from '@playwright/test';
+import { statSync } from 'fs';
+import { join } from 'path';
+
+const FIXTURES = join(__dirname, '..', 'test', 'fixtures', 'assets');
 
 test('the lobby opens on the first room', async ({ page }) => {
   const response = await page.goto('/');
   expect(response?.status()).toBe(200);
-  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Colors');
+  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Shapes');
   await expect(page.locator('.enter').first()).toBeVisible();
 });
 
@@ -15,11 +19,11 @@ test('a room opens from the Enter button, and only from it', async ({ page }) =>
 
   await page.locator('.enter').first().click();
   await expect(page.locator('.room')).toBeVisible();
-  await expect(page.locator('.info h2')).toHaveText('Undertow');
+  await expect(page.locator('.info h2')).toHaveText('Wide');
 });
 
 test('a click clears the label and another brings it back', async ({ page }) => {
-  await page.goto('/#colors');
+  await page.goto('/#shapes');
   await page.locator('.enter').first().click();
   const room = page.locator('.room');
   await expect(room).not.toHaveClass(/bare/);
@@ -41,7 +45,7 @@ test('Space does nothing while the full label is up, and works in full screen', 
   await expect(page.locator('.room')).toHaveClass(/bare/);
   await page.keyboard.press('Space');
   await expect(page.locator('.mini')).toHaveClass(/on/);
-  await expect(page.locator('.mini')).toContainText('Undertow');
+  await expect(page.locator('.mini')).toContainText('Wide');
   await page.keyboard.press('Space');
   await expect(page.locator('.mini')).not.toHaveClass(/on/);
 });
@@ -83,11 +87,11 @@ test('the keyboard still works after entering by clicking the button', async ({ 
 });
 
 test('Return in the lobby enters the room you are looking at', async ({ page }) => {
-  await page.goto('/#dogs');
+  await page.goto('/#prints');
   await expect(page.locator('.room')).toHaveCount(0);
   await page.keyboard.press('Enter');
   await expect(page.locator('.room')).toBeVisible();
-  await expect(page.locator('.info h2')).toHaveText('Made in Texas');
+  await expect(page.locator('.info h2')).toHaveText('First Print');
 });
 
 test('both navigation controls sit on the left, one under the other', async ({ page }) => {
@@ -120,7 +124,7 @@ test('Escape unwinds one level at a time', async ({ page }) => {
 test('the side menu lists rooms in the lobby and pictures in a room', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Rooms' }).click();
-  await expect(page.locator('.menu.on .mitem')).toHaveCount(4);
+  await expect(page.locator('.menu.on .mitem')).toHaveCount(3);
   await page.keyboard.press('Escape');
 
   await page.locator('.enter').first().click();
@@ -130,14 +134,14 @@ test('the side menu lists rooms in the lobby and pictures in a room', async ({ p
 });
 
 test('a deep link opens straight to one picture', async ({ page }) => {
-  await page.goto('/#dogs/close');
+  await page.goto('/#shapes/square');
   await expect(page.locator('.room')).toBeVisible();
-  await expect(page.locator('.info h2')).toHaveText('Close');
+  await expect(page.locator('.info h2')).toHaveText('Square');
 });
 
 test('a sold picture shows no price, and still hangs', async ({ page }) => {
-  await page.goto('/#colors/ember');
-  await expect(page.locator('.info h2')).toHaveText('Ember');
+  await page.goto('/#shapes/tall');
+  await expect(page.locator('.info h2')).toHaveText('Tall');
   await expect(page.locator('.info .status')).toHaveText('Sold');
   await expect(page.locator('.info .price')).toHaveCount(0);
   await expect(page.locator('.room .rail > .slide').nth(2).locator('.art')).toBeVisible();
@@ -151,8 +155,8 @@ test('the About room opens onto its hero, with nothing to page through', async (
 
   const pane = page.locator('.aboutroom');
   await expect(pane).toBeVisible();
-  await expect(page.locator('.abody .n')).toHaveText('Klaus Hofrichter');
-  await expect(page.locator('.abody strong')).toHaveText('the dog');
+  await expect(page.locator('.abody .n')).toHaveText('A Fixture');
+  await expect(page.locator('.abody strong')).toHaveText('no works');
 
   // One picture, so there is nothing to navigate: no rail, no counter, no
   // dots, no Content menu, and no full screen.
@@ -168,10 +172,10 @@ test('the About hero is shown, and is not one of the works', async ({ page }) =>
   await page.goto('/#about');
   await page.locator('.enter').last().click();
   const bg = await page.locator('.aboutroom .bg').evaluate((n) => getComputedStyle(n).backgroundImage);
-  expect(bg).toContain('/assets/about/IMG_2731.jpg');
+  expect(bg).toContain('/assets/about/hero.jpg');
   // It is a hero, not stock: /health still counts 15 works across the rooms.
   const health = await (await page.request.get('/health')).json();
-  expect(health.works).toBe(15);
+  expect(health.works).toBe(5);
 });
 
 test('Escape leaves the About room for the lobby', async ({ page }) => {
@@ -205,7 +209,7 @@ async function plateGeometry(page: import('@playwright/test').Page) {
 test('a picture with space above and below sits clear of the navigation', async ({ page }) => {
   // Narrower than the picture's 4:3, so contain leaves a bar top and bottom.
   await page.setViewportSize({ width: 900, height: 1000 });
-  await page.goto('/#colors/undertow');
+  await page.goto('/#shapes/wide');
   await expect(page.locator('.room .plate .art').first()).toBeVisible();
   await expect.poll(async () => (await plateGeometry(page)).slack).toBeGreaterThan(0);
   const g = await plateGeometry(page);
@@ -215,7 +219,7 @@ test('a picture with space above and below sits clear of the navigation', async 
 test('a picture that fills the height is left centred', async ({ page }) => {
   // Wider than 4:3: the bars are at the sides, so there is nothing to spend.
   await page.setViewportSize({ width: 1600, height: 800 });
-  await page.goto('/#colors/undertow');
+  await page.goto('/#shapes/wide');
   await expect(page.locator('.room .plate .art').first()).toBeVisible();
   const g = await plateGeometry(page);
   expect(g.slack).toBeLessThanOrEqual(1);
@@ -224,7 +228,7 @@ test('a picture that fills the height is left centred', async ({ page }) => {
 
 test('full screen re-centres the picture, with the buttons gone', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 1000 });
-  await page.goto('/#colors/undertow');
+  await page.goto('/#shapes/wide');
   await expect.poll(async () => (await plateGeometry(page)).objectPosition).not.toBe('');
   await page.keyboard.press('Enter');
   await expect(page.locator('.room')).toHaveClass(/bare/);
@@ -234,7 +238,7 @@ test('full screen re-centres the picture, with the buttons gone', async ({ page 
 test('full screen really hides the navigation', async ({ page }) => {
   // The idle-dim rule carries an id, so it used to outrank the rule that
   // hides these — they stayed faintly visible with the pointer outside.
-  await page.goto('/#colors/undertow');
+  await page.goto('/#shapes/wide');
   await page.keyboard.press('Enter');
   await expect(page.locator('.room')).toHaveClass(/bare/);
   for (const name of ['← Lobby', 'Content']) {
@@ -266,7 +270,7 @@ test('the About hero is pinned by its top right and does not react', async ({ pa
 
 test('the About text has something to be read against', async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 800 });
-  await page.goto('/?id=rib3oeuf');
+  await page.goto('/?id=fixabout');
   const scrim = page.locator('.aboutroom .scrim');
   const bg = await scrim.evaluate((n) => getComputedStyle(n).backgroundImage);
   expect(bg).toContain('linear-gradient');
@@ -276,47 +280,47 @@ test('the About text has something to be read against', async ({ page }) => {
 });
 
 test('a permalink opens the picture it names', async ({ page }) => {
-  await page.goto('/?id=bab5q6e3');            // Dogs / Waiting
+  await page.goto('/?id=fixone01');            // Prints / First Print
   await expect(page.locator('.room')).toBeVisible();
-  await expect(page.locator('.info h2')).toHaveText('Waiting');
+  await expect(page.locator('.info h2')).toHaveText('First Print');
 });
 
 test('a permalink to a room opens that room', async ({ page }) => {
-  await page.goto('/?id=dyzhyy87');            // Food
+  await page.goto('/?id=fixprint');            // Prints
   await expect(page.locator('.room')).toBeVisible();
-  await expect(page.locator('.info h2')).toHaveText('Romanesco');
+  await expect(page.locator('.info h2')).toHaveText('First Print');
 });
 
 test('an unknown permalink lands in the lobby without complaint', async ({ page }) => {
   const errs: string[] = [];
   page.on('pageerror', (e) => errs.push(String(e)));
   await page.goto('/?id=zzzzzzzz');
-  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Colors');
+  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Shapes');
   await expect(page.locator('.room')).toHaveCount(0);
   expect(errs).toEqual([]);
   await expect(page.locator('body')).not.toContainText('not found', { ignoreCase: true });
 });
 
 test('the label carries a permalink icon pointing at the id', async ({ page }) => {
-  await page.goto('/#colors/undertow');
+  await page.goto('/#shapes/wide');
   const link = page.locator('.info .permalink');
   await expect(link).toBeVisible();
-  await expect(link).toHaveAttribute('href', /\?id=leyb1brb$/);
+  await expect(link).toHaveAttribute('href', /\?id=fixwide1$/);
 });
 
 test('the ?id= does not linger and hijack a later share', async ({ page }) => {
-  await page.goto('/?id=leyb1brb');                 // Colors / Undertow
-  await expect(page.locator('.info h2')).toHaveText('Undertow');
+  await page.goto('/?id=fixwide1');                 // Shapes / Wide
+  await expect(page.locator('.info h2')).toHaveText('Wide');
   await page.keyboard.press('ArrowDown');
-  await expect(page.locator('.info h2')).toHaveText('Shallows');
+  await expect(page.locator('.info h2')).toHaveText('Tall');
   // Whatever is in the address bar now must reopen what is on screen.
   expect(page.url()).not.toContain('id=');
   await page.goto(page.url());
-  await expect(page.locator('.info h2')).toHaveText('Shallows');
+  await expect(page.locator('.info h2')).toHaveText('Tall');
 });
 
 test('a permalink to the About room opens it', async ({ page }) => {
-  await page.goto('/?id=rib3oeuf');
+  await page.goto('/?id=fixabout');
   await expect(page.locator('.aboutroom')).toBeVisible();
 });
 
@@ -325,66 +329,63 @@ test('a malformed hash does not blank the page', async ({ page }) => {
   page.on('pageerror', (e) => errs.push(String(e)));
   await page.goto('/#100%');
   await expect(page.locator('.lpanel').first()).toBeAttached();
-  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Colors');
+  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Shapes');
   expect(errs).toEqual([]);
 });
 
 test('the label offers the picture on screen at full resolution', async ({ page }) => {
-  await page.goto('/#colors/undertow');
+  await page.goto('/#shapes/wide');
   const dl = page.locator('.info .download');
   await expect(dl).toBeVisible();
-  await expect(dl).toHaveAttribute('href', '/assets/colors/IMG_7281.jpg');
-  await expect(dl).toHaveAttribute('download', 'undertow.jpg');
+  await expect(dl).toHaveAttribute('href', '/assets/shapes/wide.jpg');
+  await expect(dl).toHaveAttribute('download', 'wide.jpg');
 
   // it follows the picture, and there is only ever one
   await page.keyboard.press('ArrowDown');
-  await expect(page.locator('.info h2')).toHaveText('Shallows');
+  await expect(page.locator('.info h2')).toHaveText('Tall');
   await expect(page.locator('.info .download')).toHaveCount(1);
-  await expect(page.locator('.info .download')).toHaveAttribute('download', 'shallows.jpg');
+  await expect(page.locator('.info .download')).toHaveAttribute('download', 'tall.jpg');
 });
 
 test('the download really serves the full-resolution original', async ({ page }) => {
-  await page.goto('/#colors/undertow');
+  await page.goto('/#shapes/wide');
   const href = await page.locator('.info .download').getAttribute('href');
   const res = await page.request.get(href as string);
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toContain('image/jpeg');
-  // the original on disk is ~1.2MB; the room view does not downscale
-  expect(Number(res.headers()['content-length'])).toBeGreaterThan(1_000_000);
+  // byte-for-byte the file on disk: the room view never downscales what it
+  // offers for download
+  const onDisk = statSync(join(FIXTURES, 'shapes', 'wide.jpg')).size;
+  expect(Number(res.headers()['content-length'])).toBe(onDisk);
 });
 
 test('the About room offers no download', async ({ page }) => {
-  await page.goto('/?id=rib3oeuf');
+  await page.goto('/?id=fixabout');
   await expect(page.locator('.aboutroom')).toBeVisible();
   await expect(page.locator('.download')).toHaveCount(0);
 });
 
 test('a print says what a buyer gets that a download does not', async ({ page }) => {
-  await page.goto('/#food/romanesco');
+  await page.goto('/#prints/first-print');
   const inc = page.locator('.info dd.includes');
-  await expect(inc).toContainText('Personally signed by the artist');
-  await expect(inc).toContainText('Comes with the recipe and cooking instructions');
+  await expect(inc).toContainText('Signed by the artist');
+  await expect(inc).toContainText('Comes with a note');
 
-  // dogs are signed but come with no recipe
-  await page.goto('/?n=2#dogs/waiting');
-  await expect(page.locator('.info dd.includes')).toContainText('Personally signed');
-  await expect(page.locator('.info dd.includes')).not.toContainText('recipe');
-
-  // the originals are one of one; there is nothing to add
-  await page.goto('/?n=3#colors/undertow');
-  await expect(page.locator('.info h2')).toHaveText('Undertow');
+  // a room that promises nothing shows nothing
+  await page.goto('/?n=3#shapes/wide');
+  await expect(page.locator('.info h2')).toHaveText('Wide');
   await expect(page.locator('.info dd.includes')).toHaveCount(0);
 });
 
 test('an original that is gone shows no price and nothing to promise', async ({ page }) => {
-  await page.goto('/#colors/ember');
+  await page.goto('/#shapes/tall');
   await expect(page.locator('.info .status')).toHaveText('Sold');
   await expect(page.locator('.info .price')).toHaveCount(0);
   await expect(page.locator('.info dd.includes')).toHaveCount(0);
 });
 
 test('the prints are all still available, because they can be run again', async ({ page }) => {
-  for (const room of ['dogs', 'food']) {
+  for (const room of ['prints']) {
     await page.goto(`/?room=${room}#${room}`);
     const statuses = await page.evaluate((id) => {
       const manifest = JSON.parse(document.getElementById('manifest')!.textContent!);
@@ -428,13 +429,13 @@ test('the lobby offers full screen, opposite the navigation', async ({ page }) =
 });
 
 test('a room has nothing in the top right', async ({ page }) => {
-  await page.goto('/#colors/undertow');
+  await page.goto('/#shapes/wide');
   await expect(page.locator('.room .chrome.c-tr')).toHaveCount(0);
 });
 
 test('the menu closes from the foot of its own list', async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 800 });
-  await page.goto('/#dogs/made-in-texas');
+  await page.goto('/#shapes/wide');
   await page.getByRole('button', { name: 'Content' }).click();
   const menu = page.locator('.menu.on');
   await expect.poll(async () => menu.evaluate((m) => {
@@ -461,7 +462,7 @@ test('the menu closes from the foot of its own list', async ({ page }) => {
 });
 
 test('the full-screen hint suits the keyboard it is talking to', async ({ page }) => {
-  await page.goto('/#colors/undertow');
+  await page.goto('/#shapes/wide');
   await page.keyboard.press('Enter');
   const hint = page.locator('.room .backhint');
   await expect(hint.locator('.by-key')).toBeVisible();
@@ -496,7 +497,7 @@ test('a key sends the greeting away at once', async ({ page }) => {
 });
 
 test('someone who already knows where they are going is not greeted', async ({ page }) => {
-  for (const url of ['/#dogs', '/#colors/undertow', '/?id=leyb1brb']) {
+  for (const url of ['/#prints', '/#shapes/wide', '/?id=fixwide1']) {
     await page.goto(url);
     await page.waitForTimeout(400);
     await expect(page.locator('.welcome')).toHaveCount(0);
@@ -505,8 +506,8 @@ test('someone who already knows where they are going is not greeted', async ({ p
 
 test('the rooms menu is titled Lobby and leads back to it', async ({ page }) => {
   // start somewhere that is neither the lobby nor the first room
-  await page.goto('/#food/late');
-  await expect(page.locator('.info h2')).toHaveText('Late');
+  await page.goto('/#prints/second-print');
+  await expect(page.locator('.info h2')).toHaveText('Second Print');
   await page.keyboard.press('Escape');                 // back to the lobby
   await page.getByRole('button', { name: 'Rooms' }).click();
 
@@ -520,11 +521,11 @@ test('the rooms menu is titled Lobby and leads back to it', async ({ page }) => 
   await expect(page.locator('.welcome')).toContainText('art.klaushofrichter.net');
   await expect.poll(async () => page.evaluate(() => location.hash + location.search)).toBe('');
   await expect(page.locator('.room')).toHaveCount(0);
-  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Colors');
+  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Shapes');
 });
 
 test('going home from inside a room leaves the room', async ({ page }) => {
-  await page.goto('/#dogs/waiting');
+  await page.goto('/#prints/first-print');
   await expect(page.locator('.room')).toBeVisible();
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Rooms' }).click();
@@ -534,9 +535,9 @@ test('going home from inside a room leaves the room', async ({ page }) => {
 });
 
 test('a room menu keeps its own name and is not a link', async ({ page }) => {
-  await page.goto('/#dogs/waiting');
+  await page.goto('/#prints/first-print');
   await page.getByRole('button', { name: 'Content' }).click();
-  await expect(page.locator('.menu.on')).toContainText('Dogs');
+  await expect(page.locator('.menu.on')).toContainText('Prints');
   await expect(page.locator('.menu.on .mtitle')).toHaveCount(0);
 });
 
@@ -552,17 +553,17 @@ async function stopMailto(page: import('@playwright/test').Page) {
 
 test('sending an enquiry marks the picture pending for that visitor', async ({ page }) => {
   await stopMailto(page);
-  await page.goto('/buy/colors/undertow');
+  await page.goto('/buy/shapes/wide');
   await expect(page.locator('.pending-note')).toBeHidden();
   await page.locator('[data-enquire-uid]').click();
   await expect(page.locator('.pending-note')).toBeVisible();
 
   // and the room says so, with the status itself leading back
-  await page.goto('/#colors/undertow');
+  await page.goto('/#shapes/wide');
   const pill = page.locator('.info .status.pending');
   await expect(pill).toHaveText('Sale pending');
-  await expect(pill).toHaveAttribute('href', '/buy/colors/undertow');
-  await expect(page.locator('.info .price')).toHaveText('$340');
+  await expect(pill).toHaveAttribute('href', '/buy/shapes/wide');
+  await expect(page.locator('.info .price')).toHaveText('$100');
   await expect(page.locator('.info .buy')).toHaveCount(0);
 });
 
@@ -575,15 +576,15 @@ test('the mark is only in that browser, never for anyone else', async ({ browser
       if (a) e.preventDefault();
     }, true);
   });
-  await minePage.goto('/buy/colors/undertow');
+  await minePage.goto('/buy/shapes/wide');
   await minePage.locator('[data-enquire-uid]').click();
-  await minePage.goto('/#colors/undertow');
+  await minePage.goto('/#shapes/wide');
   await expect(minePage.locator('.info .status.pending')).toBeVisible();
 
   // someone arriving fresh sees the picture as it really is
   const theirs = await browser.newContext();
   const theirPage = await theirs.newPage();
-  await theirPage.goto('/#colors/undertow');
+  await theirPage.goto('/#shapes/wide');
   await expect(theirPage.locator('.info .status.pending')).toHaveCount(0);
   await expect(theirPage.locator('.info .buy')).toBeVisible();
   await mine.close();
@@ -594,9 +595,9 @@ test('a pending mark lapses after its window', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
     // one that expired a minute ago
-    localStorage.setItem('art:enquired', JSON.stringify({ leyb1brb: Date.now() - 60000 }));
+    localStorage.setItem('art:enquired', JSON.stringify({ fixwide1: Date.now() - 60000 }));
   });
-  await page.goto('/?x=1#colors/undertow');
+  await page.goto('/?x=1#shapes/wide');
   await expect(page.locator('.info .buy')).toBeVisible();
   await expect(page.locator('.info .status.pending')).toHaveCount(0);
   // and the lapsed entry is cleared out rather than left to accumulate
@@ -607,22 +608,22 @@ test('a pending mark lapses after its window', async ({ page }) => {
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.
-  await page.goto('/#colors/undertow');
+  await page.goto('/#shapes/wide');
   const art = page.locator('.plate .art').first();
   await expect(art).toBeVisible();
   await expect.poll(() => art.evaluate((n: HTMLImageElement) => n.naturalWidth)).toBeGreaterThan(0);
-  await expect(art).toHaveAttribute('src', '/assets/colors/IMG_7281.jpg');
+  await expect(art).toHaveAttribute('src', '/assets/shapes/wide.jpg');
 });
 
 test('the buy link points at the canonical purchase page', async ({ page }) => {
-  await page.goto('/#colors/undertow');
-  await expect(page.locator('.info .buy')).toHaveAttribute('href', '/buy/colors/undertow');
+  await page.goto('/#shapes/wide');
+  await expect(page.locator('.info .buy')).toHaveAttribute('href', '/buy/shapes/wide');
 });
 
 test('the purchase page is reachable and priced', async ({ page }) => {
-  await page.goto('/buy/colors/undertow');
-  await expect(page.locator('h1')).toHaveText('Undertow');
-  await expect(page.locator('.price')).toHaveText('$340');
+  await page.goto('/buy/shapes/wide');
+  await expect(page.locator('h1')).toHaveText('Wide');
+  await expect(page.locator('.price')).toHaveText('$100');
   await expect(page.locator('.buyside .by')).toContainText('March 2024');
 });
 
@@ -632,6 +633,6 @@ test('/health reports the content it loaded', async ({ request }) => {
   const body = await response.json();
   expect(body.status).toBe('ok');
   expect(body.service).toBe('art');
-  expect(body.rooms).toBe(4);
-  expect(body.works).toBe(15);
+  expect(body.rooms).toBe(3);
+  expect(body.works).toBe(5);
 });

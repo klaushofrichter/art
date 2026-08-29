@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
-import { rooms } from './setup';
+import { ASSETS, rooms } from './setup';
 
-const app = () => createApp(rooms);
+const app = () => createApp(rooms, ASSETS);
 
 describe('GET /health', () => {
   it('reports ok with the content it loaded', async () => {
@@ -12,7 +12,7 @@ describe('GET /health', () => {
     expect(res.body.status).toBe('ok');
     expect(res.body.service).toBe('art');
     expect(res.body.version).toBe('dev');
-    expect(res.body.rooms).toBe(4);
+    expect(res.body.rooms).toBe(3);
     expect(res.body.works).toBeGreaterThan(0);
   });
 });
@@ -32,8 +32,8 @@ describe('GET /', () => {
     const match = res.text.match(/<script type="application\/json" id="manifest">([\s\S]*?)<\/script>/);
     expect(match).toBeTruthy();
     const data = JSON.parse((match as RegExpMatchArray)[1].replace(/\\u003c/g, '<'));
-    expect(data).toHaveLength(4);
-    expect(data.map((r: any) => r.id)).toEqual(['colors', 'dogs', 'food', 'about']);
+    expect(data).toHaveLength(3);
+    expect(data.map((r: any) => r.id)).toEqual(['shapes', 'prints', 'about']);
   });
 
   it('never ships a price for a sold picture', async () => {
@@ -50,7 +50,7 @@ describe('GET /', () => {
   it('is readable without JavaScript', async () => {
     const res = await request(app()).get('/');
     expect(res.text).toContain('<noscript>');
-    expect(res.text).toContain('Undertow');
+    expect(res.text).toContain('Wide');
   });
 
   it('keeps the fallback inside <noscript> so a browser never fetches it', async () => {
@@ -73,35 +73,34 @@ describe('GET /', () => {
 
 describe('GET /buy/:room/:slug', () => {
   it('serves a purchase page for an available work', async () => {
-    const res = await request(app()).get('/buy/colors/undertow');
+    const res = await request(app()).get('/buy/shapes/wide');
     expect(res.status).toBe(200);
-    expect(res.text).toContain('Undertow');
-    expect(res.text).toContain('$340');
+    expect(res.text).toContain('Wide');
+    expect(res.text).toContain('$100');
     expect(res.text).toContain('Enquire by email');
   });
 
   it('shows no price for a sold work', async () => {
-    const res = await request(app()).get('/buy/colors/ember');
+    const res = await request(app()).get('/buy/shapes/tall');
     expect(res.status).toBe(200);
     expect(res.text).toContain('Sold');
-    expect(res.text).not.toContain('$420');
+    expect(res.text).not.toContain('$150');
     expect(res.text).not.toContain('Enquire by email');
   });
 
   it('404s on an unknown picture', async () => {
-    expect((await request(app()).get('/buy/colors/nope')).status).toBe(404);
-    expect((await request(app()).get('/buy/nope/undertow')).status).toBe(404);
+    expect((await request(app()).get('/buy/shapes/nope')).status).toBe(404);
+    expect((await request(app()).get('/buy/nope/wide')).status).toBe(404);
   });
 });
 
 describe('static files', () => {
   it('serves a picture', async () => {
-    const res = await request(app()).get('/assets/colors/IMG_7281.jpg');
+    const res = await request(app()).get('/assets/shapes/wide.jpg');
     expect(res.status).toBe(200);
     expect(res.type).toBe('image/jpeg');
   });
   it('serves the favicon, the stylesheet and the script', async () => {
-    expect((await request(app()).get('/assets/palette.png')).status).toBe(200);
     expect((await request(app()).get('/app.css')).status).toBe(200);
     expect((await request(app()).get('/app.js')).status).toBe(200);
   });
@@ -109,7 +108,7 @@ describe('static files', () => {
 
 describe('date formatting on the purchase page', () => {
   it('renders a human month rather than the raw ISO value', async () => {
-    const res = await request(app()).get('/buy/colors/undertow');
+    const res = await request(app()).get('/buy/shapes/wide');
     expect(res.text).toContain('March 2024');
     expect(res.text).not.toContain('2024-03');
   });
@@ -120,7 +119,7 @@ describe('caching', () => {
   // it points at stale assets, and those are immutable for a year — the
   // visitor is stuck on an old build with no way to reload out of it.
   it('makes pages revalidate', async () => {
-    for (const path of ['/', '/buy/colors/undertow']) {
+    for (const path of ['/', '/buy/shapes/wide']) {
       const res = await request(app()).get(path);
       expect(res.headers['cache-control']).toBe('no-cache');
       expect(res.headers.etag).toBeTruthy();
@@ -135,7 +134,7 @@ describe('caching', () => {
   });
 
   it('does not put no-cache on the assets', async () => {
-    const res = await request(app()).get('/assets/colors/IMG_7281.jpg');
+    const res = await request(app()).get('/assets/shapes/wide.jpg');
     expect(res.headers['cache-control']).not.toContain('no-cache');
   });
 });
@@ -178,22 +177,22 @@ describe('the enquiry email', () => {
   }
 
   it('says what is wanted, asks for the hold, and links to the picture', async () => {
-    const res = await request(app()).get('/buy/colors/undertow');
+    const res = await request(app()).get('/buy/shapes/wide');
     const { subject, body } = mailto(res.text);
-    expect(subject).toBe('Interested in "Undertow"');
-    expect(body).toContain('I am interested in "Undertow" (Colors).');
+    expect(subject).toBe('Interested in "Wide"');
+    expect(body).toContain('I am interested in "Wide" (Shapes).');
     expect(body).toContain('Can you reserve it for 48 hours and connect with me?');
     // the permalink, so a reply can be about this picture and no other
-    expect(body).toContain('https://art.klaushofrichter.net/?id=leyb1brb');
+    expect(body).toContain('https://art.klaushofrichter.net/?id=fixwide1');
   });
 
   it('carries the id of the work it is on, for the pending mark', async () => {
-    const res = await request(app()).get('/buy/dogs/waiting');
-    expect(res.text).toContain('data-enquire-uid="bab5q6e3"');
+    const res = await request(app()).get('/buy/prints/first-print');
+    expect(res.text).toContain('data-enquire-uid="fixone01"');
   });
 
   it('offers no enquiry for work that cannot be bought', async () => {
-    const res = await request(app()).get('/buy/colors/ember');
+    const res = await request(app()).get('/buy/shapes/tall');
     expect(res.text).not.toContain('mailto:');
     expect(res.text).toContain('Sold');
   });
@@ -201,34 +200,34 @@ describe('the enquiry email', () => {
 
 describe('what a purchase includes', () => {
   it('lists it on the purchase page for work that can be bought', async () => {
-    const res = await request(app()).get('/buy/food/romanesco');
-    expect(res.text).toContain('Personally signed by the artist');
-    expect(res.text).toContain('Comes with the recipe and cooking instructions');
+    const res = await request(app()).get('/buy/prints/first-print');
+    expect(res.text).toContain('Signed by the artist');
+    expect(res.text).toContain('Comes with a note');
   });
 
   it('promises nothing for work that is sold', async () => {
     const sold = rooms.map((r) =>
-      r.id !== 'food' ? r : {
+      r.id !== 'prints' ? r : {
         ...r,
         works: r.works.map((w) =>
-          w.slug === 'romanesco' ? { ...w, status: 'sold' as const } : w
+          w.slug === 'first-print' ? { ...w, status: 'sold' as const } : w
         ),
       }
     );
-    const res = await request(createApp(sold)).get('/buy/food/romanesco');
+    const res = await request(createApp(sold, ASSETS)).get('/buy/prints/first-print');
     expect(res.text).toContain('Sold');
-    expect(res.text).not.toContain('Personally signed');
+    expect(res.text).not.toContain('Signed by the artist');
     expect(res.text).not.toContain('recipe and cooking instructions');
   });
 
   it('merges the room list with anything a work adds', async () => {
-    const room = rooms.find((r) => r.id === 'food');
+    const room = rooms.find((r) => r.id === 'prints');
     expect(room?.includes).toEqual([
-      'Personally signed by the artist',
-      'Comes with the recipe and cooking instructions',
+      'Signed by the artist',
+      'Comes with a note',
     ]);
     for (const w of room!.works) expect(w.includes).toEqual(room!.includes);
-    expect(rooms.find((r) => r.id === 'colors')?.works[0].includes).toEqual([]);
+    expect(rooms.find((r) => r.id === 'shapes')?.works[0].includes).toEqual([]);
   });
 });
 
@@ -237,41 +236,41 @@ describe('the no-JavaScript fallback derives its URLs too', () => {
     // purchase_url is copied verbatim out of index.json, so interpolating it
     // would let a hand-edited file put "javascript:" behind a link.
     const poisoned = rooms.map((r) =>
-      r.id !== 'colors' ? r : {
+      r.id !== 'shapes' ? r : {
         ...r,
         works: r.works.map((w) =>
-          w.slug === 'undertow'
+          w.slug === 'wide'
             ? { ...w, purchaseUrl: 'javascript:alert(1)', src: '" onerror="alert(1)' }
             : w
         ),
       }
     );
-    const res = await request(createApp(poisoned)).get('/');
+    const res = await request(createApp(poisoned, ASSETS)).get('/');
     expect(res.text).not.toContain('javascript:alert(1)');
     expect(res.text).not.toContain('onerror=');
     // and it still links to the right place
-    expect(res.text).toContain('href="/buy/colors/undertow"');
-    expect(res.text).toContain('src="/assets/colors/IMG_7281.jpg"');
+    expect(res.text).toContain('href="/buy/shapes/wide"');
+    expect(res.text).toContain('src="/assets/shapes/wide.jpg"');
   });
 });
 
 describe('a custom purchase_url is honoured server-side', () => {
   it('redirects the canonical page to wherever the JSON points', async () => {
     const custom = rooms.map((r) =>
-      r.id !== 'colors' ? r : {
+      r.id !== 'shapes' ? r : {
         ...r,
         works: r.works.map((w) =>
-          w.slug === 'undertow' ? { ...w, purchaseUrl: 'https://example.com/shop/undertow' } : w
+          w.slug === 'wide' ? { ...w, purchaseUrl: 'https://example.com/shop/wide' } : w
         ),
       }
     );
-    const res = await request(createApp(custom)).get('/buy/colors/undertow');
+    const res = await request(createApp(custom, ASSETS)).get('/buy/shapes/wide');
     expect(res.status).toBe(302);
-    expect(res.headers.location).toBe('https://example.com/shop/undertow');
+    expect(res.headers.location).toBe('https://example.com/shop/wide');
   });
 
   it('serves the page directly when the URL is the canonical one', async () => {
-    const res = await request(app()).get('/buy/colors/undertow');
+    const res = await request(app()).get('/buy/shapes/wide');
     expect(res.status).toBe(200);
   });
 });
