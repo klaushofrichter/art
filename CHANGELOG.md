@@ -13,6 +13,10 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- The server now notices changed content and reloads it without a restart. A
+  change that will not load is refused and the running gallery keeps what it
+  has.
+
 - The content directory is now configurable with `ASSETS_DIR`, and the tests
   run against fixtures of their own rather than the gallery's real content.
 

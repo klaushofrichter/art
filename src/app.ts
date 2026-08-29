@@ -1,19 +1,46 @@
 import express, { Express } from 'express';
 import { ASSETS_DIR, Room, loadRooms } from './content';
 import { PUBLIC_DIR } from './fingerprint';
+import { renderGallery } from './views/gallery';
 import { healthRouter } from './routes/health';
 import { indexRouter } from './routes/index';
 import { buyRouter } from './routes/buy';
 
+export type GalleryApp = Express & {
+  /** Re-read the content from disk. Returns false and keeps what it has if
+   *  the new content will not load — a bad edit must never blank a gallery
+   *  that is already serving. Unlike at boot, where throwing is right because
+   *  there is nothing to fall back to. */
+  reloadContent(): boolean;
+};
+
 export function createApp(
   rooms: Room[] = loadRooms(),
   assetsDir: string = ASSETS_DIR,
-): Express {
-  const app = express();
+): GalleryApp {
+  let current = rooms;
+  let html = renderGallery(current);
+
+  const app = express() as GalleryApp;
   app.disable('x-powered-by');
 
-  const works = rooms.reduce((n, r) => n + r.works.length, 0);
-  app.use(healthRouter({ rooms: rooms.length, works }));
+  app.reloadContent = () => {
+    try {
+      const next = loadRooms(assetsDir);
+      if (!next.length) {
+        console.warn('content: reload found no rooms — keeping what is loaded');
+        return false;
+      }
+      current = next;
+      html = renderGallery(current);
+      return true;
+    } catch (err) {
+      console.warn(`content: reload failed, keeping what is loaded — ${err}`);
+      return false;
+    }
+  };
+
+  app.use(healthRouter(() => current));
 
   // The pictures and the client bundle are immutable for the life of an
   // image — a new deploy is a new container, so caching them hard is safe.
@@ -35,7 +62,7 @@ export function createApp(
     next();
   });
 
-  app.use(buyRouter(rooms));
-  app.use(indexRouter(rooms));
+  app.use(buyRouter(() => current));
+  app.use(indexRouter(() => html));
   return app;
 }
