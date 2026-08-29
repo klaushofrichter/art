@@ -372,6 +372,16 @@ test('a sold picture promises nothing', async ({ page }) => {
   await expect(page.locator('.info dd.includes')).toHaveCount(0);
 });
 
+test('the About cover holds its right edge, the rooms stay centred', async ({ page }) => {
+  // Only matters when the panel is narrower than the picture's 4:3, which is
+  // when cover crops left and right rather than top and bottom.
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.goto('/#about');
+  await expect(page.locator('.lpanel.about .bg')).toHaveCSS('background-position', '100% 50%');
+  await expect(page.locator('.lpanel:not(.about) .bg').first())
+    .toHaveCSS('background-position', '50% 50%');
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.

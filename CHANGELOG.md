@@ -13,6 +13,10 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- The About panel's cover is anchored to its right edge in the lobby, so the
+  subject stays in frame when the panel is too narrow to show the full width.
+  The picture rooms stay centred.
+
 - Prints now say what a buyer gets beyond the file: signed by the artist, and
   for the food pictures, the recipe and cooking instructions. Shown in the
   room label and on the purchase page, and only while the work can be bought.

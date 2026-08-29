@@ -51,6 +51,7 @@ body {
   padding:.9em 1.6em; cursor:pointer; transition:background .25s, border-color .25s, color .25s; }
 .enter:hover, .enter:focus-visible { background:var(--brass); border-color:var(--brass); color:#17120A; }
 /* the About room has no photograph, so it gets its own ground */
+.lpanel.about .bg { background-position:100% 50%; }
 .lpanel.nocover .bg { background:radial-gradient(120% 90% at 78% 30%, #1B2635, #0A0E15 70%); filter:none; transform:none; }
 .lpanel.nocover .scrim { background:radial-gradient(44% 56% at var(--mx) var(--my), rgba(255,251,244,.10), rgba(255,251,244,0) 60%); }
 

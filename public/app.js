@@ -373,7 +373,8 @@
   ROOMS.forEach(function (room) {
     var slide = el('div', 'slide');
     var coverUrl = room.coverFile ? pictureUrl(room.id, room.coverFile) : null;
-    var p = el('div', 'lpanel' + (coverUrl ? '' : ' nocover'));
+    var p = el('div', 'lpanel' + (room.type === 'about' ? ' about' : '') +
+      (coverUrl ? '' : ' nocover'));
     var bg = el('div', 'bg');
     /* the picture itself is fetched by showCover(), nearest first */
     coverUrls.push(coverUrl);
