@@ -70,6 +70,22 @@
   }
   var STATUS = { available: '', sold: 'Sold', reserved: 'Reserved', nfs: 'Not for sale' };
 
+  /* A permalink is the picture's own id, not its position or its title, so it
+     survives renaming and reordering. */
+  function permalink(uid) { return location.origin + '/?id=' + encodeURIComponent(uid); }
+  function linkIcon(uid, label) {
+    var a = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    a.setAttribute('viewBox', '0 0 24 24');
+    a.innerHTML = '<path d="M10 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.2 1.2"/>' +
+                  '<path d="M14 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.2-1.2"/>';
+    var link = el('a', 'permalink no-drag');
+    link.href = permalink(uid);
+    link.title = label;
+    link.setAttribute('aria-label', label);
+    link.append(a);
+    return link;
+  }
+
   /* Every URL the page uses is built from a literal prefix plus encoded
      identifiers. Nothing that arrives as content is ever assigned to a src
      or an href, so no index.json can put "javascript:" behind a link. */
@@ -187,7 +203,7 @@
       var b = el('button', 'mitem no-drag');
       b.type = 'button';
       var th = el('img', it.src ? 'th' : 'th blank');
-      if (it.src) { th.src = it.src; th.alt = ''; th.loading = 'lazy'; }
+      if (it.src) { th.dataset.src = it.src; th.alt = ''; th.loading = 'lazy'; }
       var label = el('div');
       var meta = el('div', 'm', it.meta);
       if (it.badge) { meta.append(document.createTextNode(' \u00b7 '), el('span', 's', it.badge)); }
@@ -200,7 +216,14 @@
     m.append(head, list);
     var api = {
       veil: veil, menu: m,
-      open: function () { veil.classList.add('on'); m.classList.add('on'); },
+      open: function () {
+        /* thumbnails are only worth fetching once the drawer is asked for */
+        Array.prototype.forEach.call(list.querySelectorAll('img[data-src]'), function (t) {
+          t.src = t.dataset.src;
+          t.removeAttribute('data-src');
+        });
+        veil.classList.add('on'); m.classList.add('on');
+      },
       close: function () { veil.classList.remove('on'); m.classList.remove('on'); },
       toggle: function () { m.classList.contains('on') ? api.close() : api.open(); },
       isOpen: function () { return m.classList.contains('on'); },
@@ -277,6 +300,24 @@
     });
   }
 
+  /* Load one picture at a time, nearest first. Everything starting at once is
+     why the lobby was slow: the cover on screen shared the connection with
+     three you could not see. The gallery is small by design (tens of
+     pictures, not thousands), so a queue is enough — no windowing needed. */
+  function loadOneByOne(order, show) {
+    var k = 0;
+    (function step() {
+      while (k < order.length) {
+        if (show(order[k++], step)) return;   /* started one; wait for it */
+      }
+    })();
+  }
+  function byDistance(count, from) {
+    var out = [];
+    for (var i = 0; i < count; i++) out.push(i);
+    return out.sort(function (a, b) { return Math.abs(a - from) - Math.abs(b - from); });
+  }
+
   function aboutBody(room) {
     var a = room.about || {};
     var body = el('div', 'abody');
@@ -292,24 +333,34 @@
       body.append(mail);
       if (a.contact.note) body.append(el('div', 'fine', a.contact.note));
     }
+    /* which build you are looking at, and where it came from */
+    var version = app.dataset.version, repo = app.dataset.repo;
+    if (version && repo) {
+      var ver = el('a', 'ver no-drag', 'Version ' + version);
+      ver.href = repo;
+      ver.target = '_blank';
+      ver.rel = 'noopener noreferrer';
+      body.append(ver);
+    }
     return body;
   }
 
   var app = document.getElementById('app');
-  var fallback = document.getElementById('fallback');
-  if (fallback) fallback.remove();
   var keyHandler = null;
 
   /* ================= LOBBY ================= */
   var lobby = el('div', 'screen');
   var rail = el('div', 'rail');
+  var coverUrls = [], covers = [];
 
   ROOMS.forEach(function (room) {
     var slide = el('div', 'slide');
-    var p = el('div', 'lpanel' + (room.type === 'about' ? ' about' : ''));
-    var bg = el('div', 'bg');
     var coverUrl = room.coverFile ? pictureUrl(room.id, room.coverFile) : null;
-    if (coverUrl) bg.style.backgroundImage = 'url("' + coverUrl + '")';
+    var p = el('div', 'lpanel' + (coverUrl ? '' : ' nocover'));
+    var bg = el('div', 'bg');
+    /* the picture itself is fetched by showCover(), nearest first */
+    coverUrls.push(coverUrl);
+    covers.push(bg);
     var scrim = el('div', 'scrim');
     p.append(bg, scrim);
 
@@ -364,7 +415,21 @@
   roomsBtn.onclick = function (ev) { ev.stopPropagation(); lobbyMenu.toggle(); };
   lobby.tabIndex = -1;
   app.append(lobby);
-  lobbyRail = Rail(rail, syncLobby);
+  function showCover(i, done) {
+    var bg = covers[i], url = coverUrls[i];
+    if (!bg || !url || bg.dataset.on) return false;
+    bg.dataset.on = '1';
+    var probe = new Image();
+    probe.onload = probe.onerror = function () {
+      bg.style.backgroundImage = 'url("' + url + '")';
+      bg.classList.add('in');
+      if (done) done();
+    };
+    probe.src = url;
+    return true;
+  }
+
+  lobbyRail = Rail(rail, function (i) { syncLobby(i); showCover(i); });
   syncLobby(0);
 
   function lobbyKeys(e) {
@@ -395,17 +460,19 @@
 
     var view = el('div', 'screen room');
     var rrail = el('div', 'rail');
+    var urls = [], plates = [];
     room.works.forEach(function (w) {
       var slide = el('div', 'slide');
       var plate = el('div', 'plate');
       var url = pictureUrl(room.id, w.file);
       var amb = el('div', 'ambient');
-      amb.style.backgroundImage = 'url("' + url + '")';
       var img = el('img', 'art');
-      img.src = url;
       img.alt = w.title;
       img.draggable = false;
       img.addEventListener('load', function () { alignArt(view, img); });
+      /* src is set by show() below, so the picture on screen is not competing
+         with every other picture in the room for the connection */
+      urls.push(url); plates.push({ img: img, amb: amb });
       plate.append(amb, img);
       slide.append(plate);
       rrail.append(slide);
@@ -488,11 +555,29 @@
         /* sold and not-for-sale never show a price */
         line.append(el('span', 'status sold', STATUS[w.status] || 'Not for sale'));
       }
+      if (w.uid) line.append(linkIcon(w.uid, 'Permanent link to ' + w.title));
       right.append(line);
       clear(sheet).append(left, right);
     }
 
-    var roomRail = Rail(rrail, paint);
+    function showPicture(i, done) {
+      var slot = plates[i];
+      if (!slot || slot.on) return false;
+      slot.on = true;
+      slot.img.addEventListener('load', function () { done && done(); }, { once: true });
+      slot.img.addEventListener('error', function () { done && done(); }, { once: true });
+      slot.img.src = urls[i];
+      slot.amb.style.backgroundImage = 'url("' + urls[i] + '")';
+      return true;
+    }
+
+    var roomRail = Rail(rrail, function (i) {
+      paint(i);
+      /* jumping somewhere new: fetch that one now, and its neighbours next */
+      showPicture(i);
+      showPicture(i + 1);
+      showPicture(i - 1);
+    });
     paint(0);
 
     /* a click anywhere clears the text; another brings it back */
@@ -535,6 +620,9 @@
     view.focus({ preventScroll: true });
     liveRoom = view;
     alignAll(view);
+    showPicture(0, function () {
+      loadOneByOne(byDistance(room.works.length, roomRail.index()), showPicture);
+    });
     return roomRail;
   }
 
@@ -605,7 +693,33 @@
   });
 
   /* Deep links: #room, or #room/slug to land on a picture. */
+  /* ?id=<uid> — a permalink to a room or one picture. An id that no longer
+     exists just leaves you in the lobby; there is nothing useful to say
+     about it and an error page would be worse than the gallery. */
+  function openFromId() {
+    var uid = new URLSearchParams(location.search).get('id');
+    if (!uid) return false;
+    for (var i = 0; i < ROOMS.length; i++) {
+      var room = ROOMS[i];
+      if (room.uid === uid) {
+        lobbyRail.go(i, true); syncLobby(i);
+        if (room.type !== 'about') enterRoom(room);
+        return true;
+      }
+      for (var j = 0; j < room.works.length; j++) {
+        if (room.works[j].uid === uid) {
+          lobbyRail.go(i, true); syncLobby(i);
+          var rail = enterRoom(room);
+          if (rail) rail.go(j);
+          return true;
+        }
+      }
+    }
+    return false;   /* unknown id: stay in the lobby, say nothing */
+  }
+
   (function openFromHash() {
+    if (openFromId()) return;
     var h = INITIAL_HASH;
     if (!h) return;
     var parts = h.split('/');
@@ -619,5 +733,13 @@
       var w = ROOMS[idx].works.findIndex(function (x) { return x.slug === parts[1]; });
       if (r && w > -1) r.go(w);
     }
+  })();
+
+  /* The cover you land on downloads by itself; the others queue behind it. */
+  (function loadCovers() {
+    var start = lobbyRail.index();
+    showCover(start, function () {
+      loadOneByOne(byDistance(ROOMS.length, start), showCover);
+    });
   })();
 })();

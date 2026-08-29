@@ -1,6 +1,7 @@
 {
   "collection": {
     "id": "dogs",
+    "uid": "wiuzqt0o",
     "title": "Dogs",
     "subtitle": "Photographs",
     "description": "One dog, at rest, over several years. Printed to order on archival paper.",
@@ -10,6 +11,7 @@
   "works": [
     {
       "file": "IMG_3689.jpg",
+      "uid": "an9v40o1",
       "title": "Made in Texas",
       "date": "2023-11",
       "artist": "Klaus Hofrichter",
@@ -23,6 +25,7 @@
     },
     {
       "file": "IMG_0030.jpg",
+      "uid": "ji3si9wz",
       "title": "Afternoon",
       "date": "2022-06",
       "artist": "Klaus Hofrichter",
@@ -36,6 +39,7 @@
     },
     {
       "file": "IMG_1700.jpg",
+      "uid": "bab5q6e3",
       "title": "Waiting",
       "date": "2023-02",
       "artist": "Klaus Hofrichter",
@@ -49,6 +53,7 @@
     },
     {
       "file": "IMG_4257.jpg",
+      "uid": "qwqroslc",
       "title": "Sun Patch",
       "date": "2024-04",
       "artist": "Klaus Hofrichter",
@@ -62,6 +67,7 @@
     },
     {
       "file": "IMG_8677.jpg",
+      "uid": "6jb8uzqd",
       "title": "Ears Up",
       "date": "2024-09",
       "artist": "Klaus Hofrichter",
@@ -75,6 +81,7 @@
     },
     {
       "file": "IMG_9201.jpg",
+      "uid": "53e4ftg9",
       "title": "Close",
       "date": "2025-03",
       "artist": "Klaus Hofrichter",
@@ -88,6 +95,7 @@
     },
     {
       "file": "IMG_9398.jpg",
+      "uid": "47jpzrbg",
       "title": "Still",
       "date": "2025-05",
       "artist": "Klaus Hofrichter",

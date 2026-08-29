@@ -49,8 +49,18 @@ describe('GET /', () => {
 
   it('is readable without JavaScript', async () => {
     const res = await request(app()).get('/');
-    expect(res.text).toContain('id="fallback"');
+    expect(res.text).toContain('<noscript>');
     expect(res.text).toContain('Undertow');
+  });
+
+  it('keeps the fallback inside <noscript> so a browser never fetches it', async () => {
+    // It used to sit in the document, which meant a first visit requested
+    // every picture in the gallery before the script could remove it.
+    const res = await request(app()).get('/');
+    const noscript = res.text.match(/<noscript>([\s\S]*?)<\/noscript>/);
+    expect(noscript).toBeTruthy();
+    const outside = res.text.replace((noscript as RegExpMatchArray)[0], '');
+    expect(outside).not.toContain('<img');
   });
 
   it('closes the manifest script tag safely', async () => {

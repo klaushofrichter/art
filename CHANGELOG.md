@@ -13,6 +13,18 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- Permalinks: every room and picture now carries a stable 8-character id, and
+  `?id=<uid>` opens it. A picture's label shows the link as an icon. An id that
+  no longer exists lands quietly in the lobby.
+- The full-screen caption is anchored to the corner of the window and reaches
+  under the whole title, instead of floating with a gap around it.
+- The About room shows which build is running, linked to the repository.
+- The room label's gradient is shorter again.
+- First load is much lighter: the no-JavaScript fallback moved into a
+  `<noscript>`, so a normal visit no longer requests every picture in the
+  gallery, and pictures now load one at a time, nearest first. On a 5 Mbps
+  connection the first cover appears in ~2.6s rather than ~6.8s.
+
 - The label's gradient in a room is about a third shorter, so it no longer
   reaches the middle of the picture.
 - In full screen the short caption gets a pool of shade sized to itself

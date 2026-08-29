@@ -265,6 +265,35 @@ test('the About hero pans to its own corners and never past them', async ({ page
   expect(y).toBeLessThanOrEqual(100);
 });
 
+test('a permalink opens the picture it names', async ({ page }) => {
+  await page.goto('/?id=bab5q6e3');            // Dogs / Waiting
+  await expect(page.locator('.room')).toBeVisible();
+  await expect(page.locator('.info h2')).toHaveText('Waiting');
+});
+
+test('a permalink to a room opens that room', async ({ page }) => {
+  await page.goto('/?id=dyzhyy87');            // Food
+  await expect(page.locator('.room')).toBeVisible();
+  await expect(page.locator('.info h2')).toHaveText('Romanesco');
+});
+
+test('an unknown permalink lands in the lobby without complaint', async ({ page }) => {
+  const errs: string[] = [];
+  page.on('pageerror', (e) => errs.push(String(e)));
+  await page.goto('/?id=zzzzzzzz');
+  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Colors');
+  await expect(page.locator('.room')).toHaveCount(0);
+  expect(errs).toEqual([]);
+  await expect(page.locator('body')).not.toContainText('not found', { ignoreCase: true });
+});
+
+test('the label carries a permalink icon pointing at the id', async ({ page }) => {
+  await page.goto('/#colors/undertow');
+  const link = page.locator('.info .permalink');
+  await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute('href', /\?id=leyb1brb$/);
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.

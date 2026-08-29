@@ -1,6 +1,7 @@
 {
   "collection": {
     "id": "colors",
+    "uid": "8ul97ls7",
     "title": "Colors",
     "subtitle": "Acrylic on canvas",
     "description": "Small framed abstracts, painted and hung at home. Each is **one of one** — there are no prints of these.",
@@ -10,6 +11,7 @@
   "works": [
     {
       "file": "IMG_7281.jpg",
+      "uid": "leyb1brb",
       "title": "Undertow",
       "date": "2024-03",
       "artist": "Klaus Hofrichter",
@@ -23,6 +25,7 @@
     },
     {
       "file": "IMG_7282.jpg",
+      "uid": "4rvmxxkb",
       "title": "Shallows",
       "date": "2024-07",
       "artist": "Klaus Hofrichter",
@@ -36,6 +39,7 @@
     },
     {
       "file": "IMG_7283.jpg",
+      "uid": "sw5oewfw",
       "title": "Ember",
       "date": "2025-01",
       "artist": "Klaus Hofrichter",
