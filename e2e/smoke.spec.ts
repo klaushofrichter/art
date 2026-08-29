@@ -101,7 +101,7 @@ test('both navigation controls sit on the left, one under the other', async ({ p
   const lobbyBtn = await roomNav.locator('.chrome').first().boundingBox();
   const picsBtn = await roomNav.locator('.chrome').last().boundingBox();
   expect(lobbyBtn!.x).toBeCloseTo(picsBtn!.x, 0);      // same left edge
-  expect(picsBtn!.y).toBeGreaterThan(lobbyBtn!.y);      // Pictures underneath
+  expect(picsBtn!.y).toBeGreaterThan(lobbyBtn!.y);      // Content underneath
 });
 
 test('Escape unwinds one level at a time', async ({ page }) => {
@@ -124,7 +124,7 @@ test('the side menu lists rooms in the lobby and pictures in a room', async ({ p
   await page.keyboard.press('Escape');
 
   await page.locator('.enter').first().click();
-  await page.getByRole('button', { name: 'Pictures' }).click();
+  await page.getByRole('button', { name: 'Content' }).click();
   // Strict tree: this room's three pictures, and no way sideways.
   await expect(page.locator('.menu.on .mitem')).toHaveCount(3);
 });
@@ -155,7 +155,7 @@ test('the About room opens onto its hero, with nothing to page through', async (
   await expect(page.locator('.abody strong')).toHaveText('the dog');
 
   // One picture, so there is nothing to navigate: no rail, no counter, no
-  // dots, no Pictures menu, and no full screen.
+  // dots, no Content menu, and no full screen.
   await expect(page.locator('.room .rail')).toHaveCount(0);
   await expect(page.locator('.room .dots')).toHaveCount(0);
   await expect(page.locator('.room .count')).toHaveCount(0);
@@ -237,7 +237,7 @@ test('full screen really hides the navigation', async ({ page }) => {
   await page.goto('/#colors/undertow');
   await page.keyboard.press('Enter');
   await expect(page.locator('.room')).toHaveClass(/bare/);
-  for (const name of ['← Lobby', 'Pictures']) {
+  for (const name of ['← Lobby', 'Content']) {
     await expect(page.getByRole('button', { name })).toHaveCSS('opacity', '0');
   }
 });
@@ -366,10 +366,22 @@ test('a print says what a buyer gets that a download does not', async ({ page })
   await expect(page.locator('.info dd.includes')).toHaveCount(0);
 });
 
-test('a sold picture promises nothing', async ({ page }) => {
-  await page.goto('/#food/second-helping');
+test('an original that is gone shows no price and nothing to promise', async ({ page }) => {
+  await page.goto('/#colors/ember');
   await expect(page.locator('.info .status')).toHaveText('Sold');
+  await expect(page.locator('.info .price')).toHaveCount(0);
   await expect(page.locator('.info dd.includes')).toHaveCount(0);
+});
+
+test('the prints are all still available, because they can be run again', async ({ page }) => {
+  for (const room of ['dogs', 'food']) {
+    await page.goto(`/?room=${room}#${room}`);
+    const statuses = await page.evaluate((id) => {
+      const manifest = JSON.parse(document.getElementById('manifest')!.textContent!);
+      return manifest.find((r: any) => r.id === id).works.map((w: any) => w.status);
+    }, room);
+    expect(statuses).not.toContain('sold');
+  }
 });
 
 test('the About cover holds its right edge, the rooms stay centred', async ({ page }) => {
@@ -413,7 +425,7 @@ test('a room has nothing in the top right', async ({ page }) => {
 test('the menu closes from the foot of its own list', async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 800 });
   await page.goto('/#dogs/made-in-texas');
-  await page.getByRole('button', { name: 'Pictures' }).click();
+  await page.getByRole('button', { name: 'Content' }).click();
   const menu = page.locator('.menu.on');
   await expect.poll(async () => menu.evaluate((m) => {
     const rows = Array.from(m.querySelectorAll('.mitem'));

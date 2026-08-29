@@ -13,6 +13,10 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- No print is marked sold any more — a print can be run again, so the word
+  was wrong for them. Only the original paintings can be gone.
+- The side menu in a room is now **Content** rather than **Pictures**.
+
 - Pages are now `Cache-Control: no-cache`, so a browser always checks for a
   new build instead of deciding for itself. The assets keep their immutable
   year.

@@ -79,7 +79,7 @@
       "description": "Something outside, briefly worth the effort.",
       "price": 80,
       "currency": "USD",
-      "status": "sold",
+      "status": "available",
       "purchase_url": "/buy/dogs/ears-up"
     },
     {

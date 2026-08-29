@@ -557,7 +557,7 @@
     );
     var back = el('button', 'chrome fade-idle no-drag', '← Lobby');
     back.type = 'button';
-    var picsBtn = el('button', 'chrome fade-idle no-drag', 'Pictures');
+    var picsBtn = el('button', 'chrome fade-idle no-drag', 'Content');
     var roomNav = el('div', 'navstack');
     roomNav.append(back, picsBtn);
     picsBtn.type = 'button';

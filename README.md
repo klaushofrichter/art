@@ -33,7 +33,7 @@ The full label shows by default; a click anywhere — or `Return` — clears it 
 an unobstructed picture, and a click, `Return` or `Esc` brings it back.
 
 Navigation always sits in the same place: a stack at the top left. In the lobby
-that is **Rooms**; in a room it is **← Lobby** with **Pictures** underneath.
+that is **Rooms**; in a room it is **← Lobby** with **Content** underneath.
 The tree is strict — a room's menu lists that room's pictures and offers no way
 sideways to another room.
 
@@ -57,7 +57,7 @@ paging, no thumbnails, no full screen. The only navigation is leaving it.
 | `Return` | in the lobby, enter the room you are looking at; in a room, in and out of full screen |
 | `Space` | short label — title and date. Full screen only, where there is no full label for it to collide with |
 | `R` | rooms (in the lobby) |
-| `P` | pictures (in a room) |
+| `P` | content of the room you are in |
 | `Esc` | back one level: menu → full screen → room → lobby |
 
 ### Links

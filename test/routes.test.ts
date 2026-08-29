@@ -177,9 +177,18 @@ describe('what a purchase includes', () => {
   });
 
   it('promises nothing for work that is sold', async () => {
-    const res = await request(app()).get('/buy/food/second-helping');
+    const sold = rooms.map((r) =>
+      r.id !== 'food' ? r : {
+        ...r,
+        works: r.works.map((w) =>
+          w.slug === 'romanesco' ? { ...w, status: 'sold' as const } : w
+        ),
+      }
+    );
+    const res = await request(createApp(sold)).get('/buy/food/romanesco');
     expect(res.text).toContain('Sold');
     expect(res.text).not.toContain('Personally signed');
+    expect(res.text).not.toContain('recipe and cooking instructions');
   });
 
   it('merges the room list with anything a work adds', async () => {
