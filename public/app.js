@@ -33,12 +33,13 @@
     };
   }
 
-  function el(tag, cls, html) {
+  function el(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
-    if (html != null) n.innerHTML = html;
+    if (text != null) n.textContent = String(text);
     return n;
   }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); return n; }
   var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   function niceDate(d) {
     if (!d) return '';
@@ -48,16 +49,24 @@
   function money(n, cur) {
     return (cur === 'USD' || !cur ? '$' : '') + n.toLocaleString('en-US') + (cur && cur !== 'USD' ? ' ' + cur : '');
   }
-  function esc(s) {
-    if (s == null) return '';
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-  function markup(s) {
-    if (!s) return '';
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  /* Content is built as DOM nodes and text, never as an HTML string. The
+     manifest reaches this file through the DOM, so anything concatenated into
+     innerHTML would be text reinterpreted as markup — the exact shape of bug
+     that escaping is only a patch for. There is no HTML sink here to escape
+     against. */
+  function markupNodes(source) {
+    var f = document.createDocumentFragment();
+    if (!source) return f;
+    var text = String(source);
+    var re = /\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+    var last = 0, m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) f.append(document.createTextNode(text.slice(last, m.index)));
+      f.append(el(m[1] ? 'strong' : 'em', null, m[1] || m[2]));
+      last = re.lastIndex;
+    }
+    if (last < text.length) f.append(document.createTextNode(text.slice(last)));
+    return f;
   }
   var STATUS = { available: '', sold: 'Sold', reserved: 'Reserved', nfs: 'Not for sale' };
 
@@ -160,7 +169,7 @@
     var veil = el('div', 'veil');
     var m = el('div', 'menu');
     var head = el('div', 'mhead');
-    head.append(el('span', null, esc(title)));
+    head.append(el('span', null, title));
     var close = el('button', null, 'Close');
     head.append(close);
     var list = el('div', 'mlist');
@@ -169,9 +178,11 @@
       b.type = 'button';
       var th = el('img', it.src ? 'th' : 'th blank');
       if (it.src) { th.src = it.src; th.alt = ''; th.loading = 'lazy'; }
-      var txt = el('div');
-      txt.append(el('div', 't', esc(it.title)), el('div', 'm', it.meta));
-      b.append(th, txt);
+      var label = el('div');
+      var meta = el('div', 'm', it.meta);
+      if (it.badge) { meta.append(document.createTextNode(' \u00b7 '), el('span', 's', it.badge)); }
+      label.append(el('div', 't', it.title), meta);
+      b.append(th, label);
       b.style.transitionDelay = (0.03 + i * 0.035) + 's, ' + (0.03 + i * 0.035) + 's, 0s, 0s';
       b.onclick = function (ev) { ev.stopPropagation(); api.close(); onPick(i); };
       list.append(b);
@@ -212,17 +223,28 @@
     if (room.type === 'about' && room.about) {
       var a = room.about;
       var body = el('div', 'abody');
-      body.innerHTML = '<div class="n">' + esc(a.name || room.title) + '</div>' +
-        '<div class="r">' + esc(a.role || '') + '</div>' +
-        (a.body || []).map(function (t) { return '<p>' + markup(t) + '</p>'; }).join('') +
-        (a.contact ? '<a class="mail no-drag" href="mailto:' + encodeURIComponent(a.contact.email) + '">' + esc(a.contact.email) + '</a>' +
-          (a.contact.note ? '<div class="fine">' + esc(a.contact.note) + '</div>' : '') : '');
+      body.append(el('div', 'n', a.name || room.title), el('div', 'r', a.role || ''));
+      (a.body || []).forEach(function (t) {
+        var para = el('p');
+        para.append(markupNodes(t));
+        body.append(para);
+      });
+      if (a.contact && a.contact.email) {
+        var mail = el('a', 'mail no-drag', a.contact.email);
+        mail.href = 'mailto:' + a.contact.email;
+        body.append(mail);
+        if (a.contact.note) body.append(el('div', 'fine', a.contact.note));
+      }
       p.append(body);
     } else {
       var cap = el('div', 'cap');
-      cap.innerHTML = '<span class="s">' + esc(room.subtitle) + ' &middot; ' + room.works.length + ' works</span>' +
-        '<div class="n">' + esc(room.title) + '</div>' +
-        '<p class="b">' + markup(room.description) + '</p>';
+      var blurb = el('p', 'b');
+      blurb.append(markupNodes(room.description));
+      cap.append(
+        el('span', 's', room.subtitle + ' \u00b7 ' + room.works.length + ' works'),
+        el('div', 'n', room.title),
+        blurb
+      );
       var btn = el('button', 'enter no-drag', 'Enter the room →');
       btn.type = 'button';
       btn.onclick = function (ev) { ev.stopPropagation(); enterRoom(room); };
@@ -264,7 +286,7 @@
     return {
       src: r.cover,
       title: r.title,
-      meta: r.type === 'about' ? 'Information' : r.works.length + ' works &middot; ' + r.subtitle
+      meta: r.type === 'about' ? 'Information' : r.works.length + ' works \u00b7 ' + r.subtitle
     };
   }), function (i) {
     if (ROOMS[i].type === 'about') lobbyRail.go(i); else enterRoom(ROOMS[i]);
@@ -351,7 +373,8 @@
       return {
         src: w.src,
         title: w.title,
-        meta: niceDate(w.date) + (w.status !== 'available' ? ' &middot; <span class="s">' + STATUS[w.status] + '</span>' : '')
+        meta: niceDate(w.date),
+        badge: w.status !== 'available' ? STATUS[w.status] : null
       };
     }), function (i) { roomRail.go(i); });
     view.append(picsMenu.veil, picsMenu.menu);
@@ -364,18 +387,24 @@
       var w = room.works[i];
       picsMenu.mark(i);
       Array.prototype.forEach.call(dots.children, function (d, j) { d.classList.toggle('on', j === i); });
-      count.innerHTML = '<b>' + String(i + 1).padStart(2, '0') + '</b> / ' + String(room.works.length).padStart(2, '0');
-      mini.innerHTML = '<b>' + esc(w.title) + '</b>' + esc(niceDate(w.date));
+      clear(count).append(
+        el('b', null, String(i + 1).padStart(2, '0')),
+        document.createTextNode(' / ' + String(room.works.length).padStart(2, '0'))
+      );
+      clear(mini).append(el('b', null, w.title), document.createTextNode(niceDate(w.date)));
       history.replaceState(null, '', '#' + room.id + '/' + w.slug);
 
+      var byline = w.artist || '';
+      if (w.date) byline += (byline ? ' \u00b7 ' : '') + niceDate(w.date);
+      var desc = el('p', 'desc');
+      desc.append(markupNodes(w.description));
       var left = el('div');
-      left.innerHTML = '<h2>' + esc(w.title) + '</h2>' +
-        '<p class="by">' + esc(w.artist || '') + (w.date ? ' &middot; ' + esc(niceDate(w.date)) : '') + '</p>' +
-        '<p class="desc">' + markup(w.description) + '</p>';
+      left.append(el('h2', null, w.title), el('p', 'by', byline), desc);
+
       var right = el('div');
       var dl = el('dl');
-      dl.innerHTML = (w.medium ? '<dt>Medium</dt><dd>' + esc(w.medium) + '</dd>' : '') +
-        (w.dimensions ? '<dt>Size</dt><dd>' + esc(w.dimensions) + '</dd>' : '');
+      if (w.medium) dl.append(el('dt', null, 'Medium'), el('dd', null, w.medium));
+      if (w.dimensions) dl.append(el('dt', null, 'Size'), el('dd', null, w.dimensions));
       right.append(dl);
       var line = el('div', 'buyline');
       if (w.status === 'available' && w.price != null) {
@@ -391,8 +420,7 @@
         line.append(el('span', 'status sold', STATUS[w.status] || 'Not for sale'));
       }
       right.append(line);
-      sheet.innerHTML = '';
-      sheet.append(left, right);
+      clear(sheet).append(left, right);
     }
 
     var roomRail = Rail(rrail, paint);
