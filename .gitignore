@@ -6,3 +6,4 @@ test-results/
 playwright-report/
 .superpowers/
 .claude/
+.DS_Store

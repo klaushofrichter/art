@@ -1,0 +1,74 @@
+{
+  "collection": {
+    "id": "food",
+    "title": "Food",
+    "subtitle": "Photographs",
+    "description": "Dinners, photographed before they were eaten. Mostly *available light*, mostly in a hurry.",
+    "cover": "IMG_6985.jpg",
+    "order": 3
+  },
+  "works": [
+    {
+      "file": "IMG_6985.jpg",
+      "title": "Romanesco",
+      "date": "2024-02",
+      "artist": "Klaus Hofrichter",
+      "medium": "Archival pigment print",
+      "dimensions": "10 × 8 in",
+      "description": "Chicken, potatoes, mushrooms and romanesco. The green is the **only** thing on the plate that was not browned.",
+      "price": 75,
+      "currency": "USD",
+      "status": "available",
+      "purchase_url": "/buy/food/romanesco"
+    },
+    {
+      "file": "IMG_6143.jpg",
+      "title": "Weeknight",
+      "date": "2024-05",
+      "artist": "Klaus Hofrichter",
+      "medium": "Archival pigment print",
+      "dimensions": "10 × 8 in",
+      "description": "Thirty minutes, one pan.",
+      "price": 60,
+      "currency": "USD",
+      "status": "available",
+      "purchase_url": "/buy/food/weeknight"
+    },
+    {
+      "file": "IMG_8264.jpg",
+      "title": "Second Helping",
+      "date": "2025-01",
+      "artist": "Klaus Hofrichter",
+      "medium": "Archival pigment print",
+      "dimensions": "10 × 8 in",
+      "description": "Photographed quickly, because it was getting cold.",
+      "price": 60,
+      "currency": "USD",
+      "status": "sold",
+      "purchase_url": "/buy/food/second-helping"
+    },
+    {
+      "file": "IMG_8285.jpg",
+      "title": "Late",
+      "date": "2025-04",
+      "artist": "Klaus Hofrichter",
+      "medium": "Archival pigment print",
+      "dimensions": "10 × 8 in",
+      "description": "Well past a reasonable hour, under the kitchen light.",
+      "price": 75,
+      "currency": "USD",
+      "status": "available",
+      "purchase_url": "/buy/food/late"
+    },
+    {
+      "file": "IMG_8275.jpg",
+      "title": "Sketch",
+      "date": "2025-04",
+      "artist": "Klaus Hofrichter",
+      "medium": "Digital photograph",
+      "dimensions": "269 × 202 px",
+      "description": "The only surviving copy of this one is a thumbnail, so it is shown at its true size rather than blown up. *Not for sale until the original turns up.*",
+      "status": "nfs"
+    }
+  ]
+}

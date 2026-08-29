@@ -5,19 +5,59 @@ Operational context for working in this repo.
 ## What this is
 
 An art gallery site served at `art.klaushofrichter.net` — an
-Express/TypeScript app that server-renders the page, deployed as a Knative
-Service on the `kube-setup`-managed k3s cluster (see
-`../kube-setup/CLAUDE.md` for cluster-wide context).
+Express/TypeScript app deployed as a Knative Service on the
+`kube-setup`-managed k3s cluster (see `../kube-setup/CLAUDE.md` for
+cluster-wide context).
 
-**The page is a placeholder.** The gallery's real content and design are
-still to be specified; what exists is the infrastructure around it. Don't
-treat the current `src/views/` markup as a design to preserve.
+A **lobby** of room panels, and **rooms** of full-screen pictures. Design
+direction and the reasoning behind it are in the mockups linked from the
+project history; `README.md` documents the behaviour and the content schema.
+
+## Motion: springs, not transitions
+
+Everything the pointer or a drag moves — the lobby light, the cover drift,
+the rail that carries panels and pictures — is a spring stepped once per
+`requestAnimationFrame` in `public/app.js`. **Do not put a CSS `transition`
+on any of those properties.** An earlier version did, and a transition
+smoothing a value that pointer events already rewrite every frame is exactly
+what made it feel choppy; the two fight each other.
+
+The tuning constants sit together at the top of `public/app.js`
+(`RAIL_K`/`RAIL_D`, `LIGHT_K`/`LIGHT_D`). For a spring stepped this way,
+`omega = sqrt(K)` and the damping ratio is `(1 - D) / (2 * sqrt(K))`. Lower
+`K` is slower; higher `D` is looser and overshoots more. The rail is tuned to
+~0.3s to 90% with almost no overshoot (heavy, not bouncy); the light lags
+about 0.2s and overshoots ~17%, which is the drift-on-after-you-stop effect.
+Change them by reasoning about those two numbers, not by trial and error.
+
+CSS transitions are still correct for discrete state changes — a drawer
+sliding, a label fading, the picture growing when the text is cleared.
 
 The site is **fully public** — deliberately no OAuth, no sessions, no
 secrets. It needs no `.env`; the only configuration it reads is `PORT`.
 Keep it that way unless there's a reason not to: the sibling
 `../www-klaushofrichter` carries a Google OAuth login and is the repo to
 copy from if authentication is ever wanted here.
+
+## Content lives in assets/, not in code
+
+`src/content.ts` reads `assets/*/index.json` once at boot. The schema and the
+`status` rules are documented in `README.md`. Two things worth keeping:
+
+- A **sold** or **not-for-sale** picture's price is never serialised into the
+  manifest at all (`src/views/gallery.ts`), rather than being sent and hidden
+  by the client. There is a test for this.
+- A malformed `index.json` **throws**, so the container fails its readiness
+  probe instead of serving a partial gallery. A picture listed but missing on
+  disk only warns and is skipped — a missing file shouldn't take the site down.
+
+## Client assets are fingerprinted for a reason
+
+`public/app.css` and `public/app.js` are served `immutable` for a year in
+production, so their URLs carry a content hash (`src/fingerprint.ts`).
+Without it a deploy would never reach anyone who had visited before. The
+hard caching is disabled outside production, or local edits would be
+invisible behind the same cache.
 
 ## Branches
 
@@ -42,10 +82,11 @@ only state, so nothing is stored and nothing needs bumping; `package.json`
 deliberately carries no `version` field.
 
 The version is passed to the image build as `ARG APP_VERSION` and read back
-by `src/version.ts`, which feeds `GET /health` and the `#app-version` label
-in the page footer. The deploy's curl smoke test greps for that exact id, so
-don't drop it from the markup without updating the workflow. Local builds and
-tests see `dev`.
+by `src/version.ts`, which feeds `GET /health`. Local builds and tests see `dev`.
+
+`/health` also reports the number of rooms and works it loaded, which is what
+the deploy's smoke test checks — a deploy that shipped a broken `index.json`
+would show the wrong counts rather than passing quietly.
 
 Release notes come from the commits since the previous release, preceded by
 anything under `## [Unreleased]` in `CHANGELOG.md`. The release step runs last
