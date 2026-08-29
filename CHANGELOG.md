@@ -13,6 +13,10 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- Pages are now `Cache-Control: no-cache`, so a browser always checks for a
+  new build instead of deciding for itself. The assets keep their immutable
+  year.
+
 - The side menu's Close moved to the foot of its list, aligned with the rows.
 - The full-screen hint no longer offers a phone keys it does not have, and
   no longer wraps into something that reads like placeholder text.

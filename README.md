@@ -212,6 +212,12 @@ link.
 URLs carry a content hash; without it a deploy would never reach a returning
 visitor.
 
+The pages themselves are `Cache-Control: no-cache` — cached, but revalidated
+every time, which the ETag makes a 304 with no body. A page names the
+fingerprinted assets it needs, so serving a stale one would point at stale
+immutable assets and strand the visitor on an old build with no way to reload
+out of it. Safari on iOS is the browser most likely to try.
+
 ### Motion
 
 Everything the pointer or a drag moves is a spring stepped once per
