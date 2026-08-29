@@ -96,8 +96,24 @@ there is no way to pull a whole room, by design.
 
 ## Content
 
-Everything lives in `assets/`. One folder per room, each with an `index.json`
-beside its pictures.
+**The pictures are not in this repository.** It is public and the artwork is
+not; the gallery reads its content from a directory given by `ASSETS_DIR`,
+which in production is a Kubernetes volume. `assets/` is git-ignored, so a
+fresh clone has no content until you fetch some:
+
+```bash
+scripts/pull-assets.sh          # copy what is live down into ./assets
+# …edit…
+scripts/sync-assets.sh          # push it back; the site follows within ~10s
+```
+
+`sync-assets.sh` validates before it touches the cluster, swaps the new tree
+in atomically, and keeps the previous one as `assets.old` for a one-command
+rollback. Content ships this way rather than through CI: code goes through
+pull requests and checks, content does not.
+
+The layout is one folder per room, each with an `index.json` beside its
+pictures.
 
 ```jsonc
 {
@@ -200,9 +216,12 @@ npm run dev          # http://localhost:8080
 
 | `npm run dev:fixtures` | the same, against the test fixtures |
 
-Configuration is an optional `PORT` (default `8080`) and an optional
-`ASSETS_DIR` (default `./assets`). Content is read once at boot, so restart
-after changing anything under it.
+Configuration is an optional `PORT` (default `8080`), an optional
+`ASSETS_DIR` (default `./assets`), and `CONTENT_WATCH_MS` (default `10000`,
+`0` to switch it off). The server re-reads its content when the directory
+changes, so editing a title or dropping in a picture needs no restart — and
+if the new content will not parse, it logs why and keeps serving what it
+already had.
 
 ### Tests own their content
 
@@ -227,7 +246,7 @@ or a title can never fail a build, and the fixtures are safe to publish.
 ## How it is built
 
 ```
-assets/<room>/index.json   content, read once at boot
+$ASSETS_DIR/<room>/        content, from a volume — not from the image
 public/app.css, app.js     the gallery itself, served as static files
 src/content.ts             loads and validates the folders
 src/views/                 server-rendered shell, purchase page

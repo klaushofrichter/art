@@ -13,6 +13,15 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- **The pictures have moved out of this repository.** The gallery reads its
+  content from a Kubernetes volume, the image no longer carries a copy, and
+  `assets/` is git-ignored. Use `scripts/pull-assets.sh` to fetch a working
+  copy and `scripts/sync-assets.sh` to publish one; a content change is now a
+  sync, not a deploy.
+
+- The favicon moved to `public/palette.png` so that syncing content cannot
+  take the site's own icon away.
+
 - The server now notices changed content and reloads it without a restart. A
   change that will not load is refused and the running gallery keeps what it
   has.

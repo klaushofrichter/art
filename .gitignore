@@ -7,3 +7,8 @@ playwright-report/
 .superpowers/
 .claude/
 .DS_Store
+
+# The artwork. This repo is public; the pictures are not in it.
+# Content lives on the cluster volume — see scripts/sync-assets.sh.
+# test/fixtures/assets is generated stand-in content and stays tracked.
+/assets/
