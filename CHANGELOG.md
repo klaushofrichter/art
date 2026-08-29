@@ -13,6 +13,13 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- The side menu's Close moved to the foot of its list, aligned with the rows.
+- The full-screen hint no longer offers a phone keys it does not have, and
+  no longer wraps into something that reads like placeholder text.
+
+- The lobby has a full-screen control at the top right, opposite the
+  navigation.
+
 - The About panel's cover is anchored to its right edge in the lobby, so the
   subject stays in frame when the panel is too narrow to show the full width.
   The picture rooms stay centred.

@@ -76,10 +76,19 @@
   /* A permalink is the picture's own id, not its position or its title, so it
      survives renaming and reordering. */
   function permalink(uid) { return location.origin + '/?id=' + encodeURIComponent(uid); }
-  function iconLink(cls, href, label, paths) {
+  /* The path data is literal, never content — nothing from the manifest is
+     ever parsed as markup. */
+  function svgIcon(paths) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.innerHTML = paths;
+    return svg;
+  }
+  var FS_ENTER = '<path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/>';
+  var FS_EXIT  = '<path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M9 20v-5H4"/><path d="M15 20v-5h5"/>';
+
+  function iconLink(cls, href, label, paths) {
+    var svg = svgIcon(paths);
     var link = el('a', 'iconlink ' + cls + ' no-drag');
     link.href = href;
     link.title = label;
@@ -213,9 +222,11 @@
     var m = el('div', 'menu');
     var head = el('div', 'mhead');
     head.append(el('span', null, title));
-    var close = el('button', null, 'Close');
-    head.append(close);
     var list = el('div', 'mlist');
+    var foot = el('div', 'mfoot');
+    var close = el('button', 'mclose', 'Close');
+    close.type = 'button';
+    foot.append(close);
     items.forEach(function (it, i) {
       var b = el('button', 'mitem no-drag');
       b.type = 'button';
@@ -230,7 +241,7 @@
       b.onclick = function (ev) { ev.stopPropagation(); api.close(); onPick(i); };
       list.append(b);
     });
-    m.append(head, list);
+    m.append(head, list, foot);
     var api = {
       veil: veil, menu: m,
       open: function () {
@@ -429,7 +440,38 @@
     var r = ROOMS[i];
     history.replaceState(null, '', r ? '#' + r.id : '#');
   }
+  /* Fill the screen. The browser's own full screen, not the room's — it makes
+     the gallery the whole window and stays on as you move through it. */
+  var fsBtn = el('button', 'chrome c-tr icon fade-idle no-drag');
+  fsBtn.type = 'button';
+  function syncFs() {
+    var on = !!document.fullscreenElement;
+    var label = on ? 'Leave full screen' : 'Fill the screen';
+    clear(fsBtn).append(svgIcon(on ? FS_EXIT : FS_ENTER));
+    fsBtn.title = label;
+    fsBtn.setAttribute('aria-label', label);
+  }
+  fsBtn.onclick = function (ev) {
+    ev.stopPropagation();
+    if (document.fullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      return;
+    }
+    var root = document.documentElement;
+    var request = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (!request) return;
+    /* rejects if the gesture is not trusted, or the browser simply refuses */
+    var p = request.call(root);
+    if (p && p.catch) p.catch(function () {});
+  };
+  document.addEventListener('fullscreenchange', syncFs);
+  syncFs();
+
   lobby.append(lobbyNav, ldots, lobbyMenu.veil, lobbyMenu.menu);
+  /* only where the browser can actually do it */
+  if (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen) {
+    lobby.append(fsBtn);
+  }
   roomsBtn.onclick = function (ev) { ev.stopPropagation(); lobbyMenu.toggle(); };
   lobby.tabIndex = -1;
   app.append(lobby);
@@ -508,7 +550,11 @@
       dots.append(d);
     });
     var count = el('div', 'count');
-    var backhint = el('div', 'backhint', 'Space for the title \u00b7 Return or Esc to go back');
+    var backhint = el('div', 'backhint');
+    backhint.append(
+      el('span', 'by-key', 'Space for the title \u00b7 Return or Esc to go back'),
+      el('span', 'by-touch', 'Tap to bring the room back')
+    );
     var back = el('button', 'chrome fade-idle no-drag', '← Lobby');
     back.type = 'button';
     var picsBtn = el('button', 'chrome fade-idle no-drag', 'Pictures');

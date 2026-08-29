@@ -382,6 +382,70 @@ test('the About cover holds its right edge, the rooms stay centred', async ({ pa
     .toHaveCSS('background-position', '50% 50%');
 });
 
+test('the lobby offers full screen, opposite the navigation', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.goto('/');
+  const fs = page.locator('.chrome.c-tr.icon');
+  await expect(fs).toBeVisible();
+  await expect(fs).toHaveAttribute('aria-label', 'Fill the screen');
+
+  // opposite the nav stack: right half, top of the window
+  const box = (await fs.boundingBox())!;
+  const nav = (await page.locator('.navstack').boundingBox())!;
+  expect(box.x).toBeGreaterThan(600);
+  expect(box.y).toBeLessThan(120);
+  expect(box.x).toBeGreaterThan(nav.x);
+
+  // it really asks the browser, and the icon follows the browser's answer
+  await fs.click();
+  await expect.poll(async () => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+  await expect(fs).toHaveAttribute('aria-label', 'Leave full screen');
+  await fs.click();
+  await expect.poll(async () => page.evaluate(() => !!document.fullscreenElement)).toBe(false);
+  await expect(fs).toHaveAttribute('aria-label', 'Fill the screen');
+});
+
+test('a room has nothing in the top right', async ({ page }) => {
+  await page.goto('/#colors/undertow');
+  await expect(page.locator('.room .chrome.c-tr')).toHaveCount(0);
+});
+
+test('the menu closes from the foot of its own list', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.goto('/#dogs/made-in-texas');
+  await page.getByRole('button', { name: 'Pictures' }).click();
+  const menu = page.locator('.menu.on');
+  await expect.poll(async () => menu.evaluate((m) => {
+    const rows = Array.from(m.querySelectorAll('.mitem'));
+    return rows.every((r) => {
+      const t = getComputedStyle(r).transform;
+      return t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)';
+    });
+  })).toBe(true);
+  const geom = await menu.evaluate((m) => {
+    const box = (e: Element) => (e as HTMLElement).getBoundingClientRect();
+    const rows = m.querySelectorAll('.mitem');
+    return {
+      closeX: Math.round(box(m.querySelector('.mclose')!).x),
+      closeY: Math.round(box(m.querySelector('.mclose')!).y),
+      rowX: Math.round(box(rows[0]).x),
+      lastRowBottom: Math.round(box(rows[rows.length - 1]).bottom),
+    };
+  });
+  expect(geom.closeX).toBe(geom.rowX);                     // same left edge as the rows
+  expect(geom.closeY).toBeGreaterThan(geom.lastRowBottom); // under the list, not above it
+  await menu.locator('.mclose').click();
+  await expect(page.locator('.menu.on')).toHaveCount(0);
+});
+
+test('the full-screen hint suits the keyboard it is talking to', async ({ page }) => {
+  await page.goto('/#colors/undertow');
+  await page.keyboard.press('Enter');
+  const hint = page.locator('.room .backhint');
+  await expect(hint.locator('.by-key')).toBeVisible();
+  await expect(hint.locator('.by-touch')).toBeHidden();
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.
