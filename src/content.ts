@@ -34,6 +34,7 @@ export interface Room {
   subtitle: string;
   description: string;
   cover: string | null;
+  coverFile: string | null;
   order: number;
   about?: AboutInfo;
   works: Work[];
@@ -104,6 +105,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     subtitle: c.subtitle || '',
     description: c.description || '',
     cover: coverOk ? `/assets/${c.id}/${encodeURIComponent(coverFile as string)}` : null,
+    coverFile: coverOk ? (coverFile as string) : null,
     order: typeof c.order === 'number' ? c.order : 50,
     about: raw.about,
     works,

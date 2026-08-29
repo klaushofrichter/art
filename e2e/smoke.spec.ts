@@ -86,6 +86,21 @@ test('the About room reads in place instead of opening', async ({ page }) => {
   await expect(page.locator('.room')).toHaveCount(0);
 });
 
+test('the pictures actually load at the URLs the client builds', async ({ page }) => {
+  // The browser derives every src from a prefix plus encoded ids rather than
+  // taking a URL from the manifest — this is the guard on that construction.
+  await page.goto('/#colors/undertow');
+  const art = page.locator('.plate .art').first();
+  await expect(art).toBeVisible();
+  await expect.poll(() => art.evaluate((n: HTMLImageElement) => n.naturalWidth)).toBeGreaterThan(0);
+  await expect(art).toHaveAttribute('src', '/assets/colors/IMG_7281.jpg');
+});
+
+test('the buy link points at the canonical purchase page', async ({ page }) => {
+  await page.goto('/#colors/undertow');
+  await expect(page.locator('.info .buy')).toHaveAttribute('href', '/buy/colors/undertow');
+});
+
 test('the purchase page is reachable and priced', async ({ page }) => {
   await page.goto('/buy/colors/undertow');
   await expect(page.locator('h1')).toHaveText('Undertow');

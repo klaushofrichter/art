@@ -70,6 +70,16 @@
   }
   var STATUS = { available: '', sold: 'Sold', reserved: 'Reserved', nfs: 'Not for sale' };
 
+  /* Every URL the page uses is built from a literal prefix plus encoded
+     identifiers. Nothing that arrives as content is ever assigned to a src
+     or an href, so no index.json can put "javascript:" behind a link. */
+  function pictureUrl(roomId, file) {
+    return '/assets/' + encodeURIComponent(roomId) + '/' + encodeURIComponent(file);
+  }
+  function buyUrl(roomId, slug) {
+    return '/buy/' + encodeURIComponent(roomId) + '/' + encodeURIComponent(slug);
+  }
+
   /* -----------------------------------------------------------------
      Rail — slides stacked in place and moved by transform on a spring.
      Wheel, keys and drag all write the same target; no native scrolling
@@ -216,7 +226,8 @@
     var slide = el('div', 'slide');
     var p = el('div', 'lpanel' + (room.type === 'about' ? ' about' : ''));
     var bg = el('div', 'bg');
-    if (room.cover) bg.style.backgroundImage = 'url("' + room.cover + '")';
+    var coverUrl = room.coverFile ? pictureUrl(room.id, room.coverFile) : null;
+    if (coverUrl) bg.style.backgroundImage = 'url("' + coverUrl + '")';
     var scrim = el('div', 'scrim');
     p.append(bg, scrim);
 
@@ -259,7 +270,7 @@
         sx.step(); sy.step();
         p.style.setProperty('--mx', (50 + sx.x * 58) + '%');
         p.style.setProperty('--my', (50 + sy.x * 58) + '%');
-        if (room.cover) {
+        if (coverUrl) {
           bg.style.transform = 'scale(1.14) translate3d(' + (-sx.x * 3.8) + '%,' + (-sy.x * 3.8) + '%,0)';
         }
         if (sx.rest() && sy.rest()) { raf = 0; return; }
@@ -284,7 +295,7 @@
   roomsBtn.type = 'button';
   var lobbyMenu = Menu('The Gallery', ROOMS.map(function (r) {
     return {
-      src: r.cover,
+      src: r.coverFile ? pictureUrl(r.id, r.coverFile) : null,
       title: r.title,
       meta: r.type === 'about' ? 'Information' : r.works.length + ' works \u00b7 ' + r.subtitle
     };
@@ -338,10 +349,11 @@
     room.works.forEach(function (w) {
       var slide = el('div', 'slide');
       var plate = el('div', 'plate');
+      var url = pictureUrl(room.id, w.file);
       var amb = el('div', 'ambient');
-      amb.style.backgroundImage = 'url("' + w.src + '")';
+      amb.style.backgroundImage = 'url("' + url + '")';
       var img = el('img', 'art');
-      img.src = w.src;
+      img.src = url;
       img.alt = w.title;
       img.draggable = false;
       plate.append(amb, img);
@@ -371,7 +383,7 @@
     /* strict tree: no way sideways to another room from in here */
     var picsMenu = Menu(room.title, room.works.map(function (w) {
       return {
-        src: w.src,
+        src: pictureUrl(room.id, w.file),
         title: w.title,
         meta: niceDate(w.date),
         badge: w.status !== 'available' ? STATUS[w.status] : null
@@ -410,7 +422,7 @@
       if (w.status === 'available' && w.price != null) {
         line.append(el('div', 'price', money(w.price, w.currency)));
         var a = el('a', 'buy no-drag', 'Buy this picture');
-        a.href = w.purchaseUrl;
+        a.href = buyUrl(room.id, w.slug);
         line.append(a);
       } else if (w.status === 'reserved' && w.price != null) {
         /* price still shown, but it cannot be bought */

@@ -10,11 +10,14 @@ function manifest(rooms: Room[]) {
     title: r.title,
     subtitle: r.subtitle,
     description: r.description,
-    cover: r.cover,
+    coverFile: r.coverFile,
     about: r.about,
+    // Identifiers, not URLs. The browser builds every src and href from a
+    // constant prefix plus an encoded id, so a hand-edited index.json cannot
+    // put "javascript:" behind a link or an image.
     works: r.works.map((w) => ({
       slug: w.slug,
-      src: w.src,
+      file: w.file,
       title: w.title,
       date: w.date,
       artist: w.artist,
@@ -26,7 +29,6 @@ function manifest(rooms: Room[]) {
       price: w.status === 'available' || w.status === 'reserved' ? w.price : undefined,
       currency: w.currency,
       status: w.status,
-      purchaseUrl: w.purchaseUrl,
     })),
   }));
 }

@@ -114,3 +114,43 @@ describe('client assets are cacheable and versioned', () => {
     expect(res.text).toMatch(/\/app\.js\?v=[a-f0-9]{10}/);
   });
 });
+
+describe('the manifest ships identifiers, not URLs', () => {
+  // The browser builds every src and href from a literal prefix plus an
+  // encoded id. If a URL from content reached the page, a hand-edited
+  // index.json could put "javascript:" behind a link.
+  it('sends a bare filename and no URL fields', async () => {
+    const res = await request(app()).get('/');
+    const inner = (res.text.match(/id="manifest">([\s\S]*?)<\/script>/) as RegExpMatchArray)[1];
+    const data = JSON.parse(inner.replace(/\\u003c/g, '<'));
+    const works = data.flatMap((r: any) => r.works);
+    expect(works.length).toBeGreaterThan(0);
+    for (const w of works) {
+      expect(w.file).toBeTruthy();
+      expect(w.src).toBeUndefined();
+      expect(w.purchaseUrl).toBeUndefined();
+    }
+    for (const r of data) expect(r.cover).toBeUndefined();
+  });
+});
+
+describe('a custom purchase_url is honoured server-side', () => {
+  it('redirects the canonical page to wherever the JSON points', async () => {
+    const custom = rooms.map((r) =>
+      r.id !== 'colors' ? r : {
+        ...r,
+        works: r.works.map((w) =>
+          w.slug === 'undertow' ? { ...w, purchaseUrl: 'https://example.com/shop/undertow' } : w
+        ),
+      }
+    );
+    const res = await request(createApp(custom)).get('/buy/colors/undertow');
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe('https://example.com/shop/undertow');
+  });
+
+  it('serves the page directly when the URL is the canonical one', async () => {
+    const res = await request(app()).get('/buy/colors/undertow');
+    expect(res.status).toBe(200);
+  });
+});

@@ -62,7 +62,7 @@ Everything lives in `assets/`. One folder per room, each with an
       "price": 340,
       "currency": "USD",
       "status": "available",
-      "purchase_url": "/buy/colors/undertow"   // optional; derived if absent
+      "purchase_url": "/buy/colors/undertow"   // optional; see below
     }
   ]
 }
@@ -79,6 +79,12 @@ Everything lives in `assets/`. One folder per room, each with an
 
 A sold or not-for-sale picture's price is not merely hidden in the page — it
 is never sent to the browser.
+
+**`purchase_url`** is optional and is handled entirely on the server: the
+gallery always links to `/buy/<room>/<slug>`, and that page redirects if the
+JSON points somewhere else. The browser builds every image and link URL from
+a fixed prefix and an encoded identifier, and never uses a URL that came from
+content — so no `index.json` can put a `javascript:` URL behind a link.
 
 **`description`** takes a deliberately small markup subset: `*italic*` and
 `**bold**`, nothing else. Text is escaped before the markup is applied, so a

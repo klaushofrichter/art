@@ -15,6 +15,14 @@ export function buyRouter(rooms: Room[]): Router {
       );
       return;
     }
+    // index.json may point a work at somewhere else entirely. The gallery
+    // always links to this canonical path, so the redirect lives here rather
+    // than in the browser — the client never handles a URL from content.
+    const canonical = `/buy/${found.room.id}/${found.work.slug}`;
+    if (found.work.purchaseUrl && found.work.purchaseUrl !== canonical) {
+      res.redirect(302, found.work.purchaseUrl);
+      return;
+    }
     res.status(200).type('html').send(renderBuy(found.room, found.work));
   });
   return router;
