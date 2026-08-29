@@ -231,6 +231,40 @@ test('full screen re-centres the picture, with the buttons gone', async ({ page 
   await expect.poll(async () => (await plateGeometry(page)).objectPosition).toBe('');
 });
 
+test('full screen really hides the navigation', async ({ page }) => {
+  // The idle-dim rule carries an id, so it used to outrank the rule that
+  // hides these — they stayed faintly visible with the pointer outside.
+  await page.goto('/#colors/undertow');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.room')).toHaveClass(/bare/);
+  for (const name of ['← Lobby', 'Pictures']) {
+    await expect(page.getByRole('button', { name })).toHaveCSS('opacity', '0');
+  }
+});
+
+test('the About hero pans to its own corners and never past them', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 800 });
+  await page.goto('/#about');
+  await page.locator('.enter').last().click();
+  const pos = () => page.evaluate(() =>
+    (document.querySelector('.aboutroom .bg') as HTMLElement).style.backgroundPosition);
+
+  await page.mouse.move(1399, 1);
+  await expect.poll(async () => parseFloat((await pos()).split(' ')[0])).toBeGreaterThan(90);
+  let [x, y] = (await pos()).split(' ').map(parseFloat);
+  // background-position with cover cannot expose an edge inside 0..100.
+  expect(x).toBeLessThanOrEqual(100);
+  expect(y).toBeLessThanOrEqual(100);
+  expect(y).toBeLessThan(10);
+
+  await page.mouse.move(1, 799);
+  await expect.poll(async () => parseFloat((await pos()).split(' ')[0])).toBeLessThan(10);
+  [x, y] = (await pos()).split(' ').map(parseFloat);
+  expect(x).toBeGreaterThanOrEqual(0);
+  expect(y).toBeGreaterThan(90);
+  expect(y).toBeLessThanOrEqual(100);
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.

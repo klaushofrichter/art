@@ -13,6 +13,19 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- The label's gradient in a room is about a third shorter, so it no longer
+  reaches the middle of the picture.
+- In full screen the short caption gets a pool of shade sized to itself
+  rather than relying on a text shadow over a bright picture.
+- The side menu fades out along its right edge — blur included — instead of
+  ending on a line, and its row separators fade with it.
+- Lobby covers shift about a third as far under the pointer. The light is
+  unchanged.
+- The About hero pans by background-position, so the pointer reaches the
+  picture's own corners and never an edge beyond them.
+- Fixed: the navigation buttons stayed faintly visible in full screen when
+  the pointer was outside the window.
+
 - A picture whose shape leaves a bar above and below it now sits below the
   navigation buttons instead of centred behind them.
 - Fixed: entering a room by clicking the button left the keyboard shortcuts
