@@ -6,6 +6,9 @@ const STATUSES: Status[] = ['available', 'sold', 'reserved', 'nfs'];
 
 export interface Work {
   file: string;
+  /** Stable 8-character id from index.json — the permalink never changes,
+   *  even if the title (and therefore the slug) does. */
+  uid: string;
   slug: string;
   src: string;
   title: string;
@@ -29,6 +32,7 @@ export interface AboutInfo {
 
 export interface Room {
   id: string;
+  uid: string;
   type: 'pictures' | 'about';
   title: string;
   subtitle: string;
@@ -76,10 +80,12 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     }
     const status: Status = STATUSES.includes(w.status) ? w.status : 'available';
     let slug = slugify(w.title || w.file);
-    while (seen.has(slug)) slug += '-2';
+    const base = slug;
+    for (let n = 2; seen.has(slug); n++) slug = `${base}-${n}`;
     seen.add(slug);
     return [{
       file: w.file,
+      uid: typeof w.uid === 'string' ? w.uid : '',
       slug,
       src: `/assets/${c.id}/${encodeURIComponent(w.file)}`,
       title: w.title || w.file,
@@ -100,6 +106,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
 
   return {
     id: c.id,
+    uid: typeof c.uid === 'string' ? c.uid : '',
     type: c.type === 'about' ? 'about' : 'pictures',
     title: c.title || c.id,
     subtitle: c.subtitle || '',
@@ -122,6 +129,18 @@ export function loadRooms(assetsDir: string = ASSETS_DIR): Room[] {
     // is allowed to have no works because its content is its text.
     .filter((r) => r.type === 'about' || r.works.length > 0)
     .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+}
+
+/** Resolve a permalink id to whatever it names — a room, or one picture. */
+export function findByUid(rooms: Room[], uid: string) {
+  if (!uid) return null;
+  for (const room of rooms) {
+    if (room.uid === uid) return { room, work: null };
+    for (const work of room.works) {
+      if (work.uid === uid) return { room, work };
+    }
+  }
+  return null;
 }
 
 export function findWork(rooms: Room[], roomId: string, slug: string) {

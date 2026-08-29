@@ -49,8 +49,18 @@ describe('GET /', () => {
 
   it('is readable without JavaScript', async () => {
     const res = await request(app()).get('/');
-    expect(res.text).toContain('id="fallback"');
+    expect(res.text).toContain('<noscript>');
     expect(res.text).toContain('Undertow');
+  });
+
+  it('keeps the fallback inside <noscript> so a browser never fetches it', async () => {
+    // It used to sit in the document, which meant a first visit requested
+    // every picture in the gallery before the script could remove it.
+    const res = await request(app()).get('/');
+    const noscript = res.text.match(/<noscript>([\s\S]*?)<\/noscript>/);
+    expect(noscript).toBeTruthy();
+    const outside = res.text.replace((noscript as RegExpMatchArray)[0], '');
+    expect(outside).not.toContain('<img');
   });
 
   it('closes the manifest script tag safely', async () => {
@@ -131,6 +141,29 @@ describe('the manifest ships identifiers, not URLs', () => {
       expect(w.purchaseUrl).toBeUndefined();
     }
     for (const r of data) expect(r.cover).toBeUndefined();
+  });
+});
+
+describe('the no-JavaScript fallback derives its URLs too', () => {
+  it('never puts a URL from content into an href or a src', async () => {
+    // purchase_url is copied verbatim out of index.json, so interpolating it
+    // would let a hand-edited file put "javascript:" behind a link.
+    const poisoned = rooms.map((r) =>
+      r.id !== 'colors' ? r : {
+        ...r,
+        works: r.works.map((w) =>
+          w.slug === 'undertow'
+            ? { ...w, purchaseUrl: 'javascript:alert(1)', src: '" onerror="alert(1)' }
+            : w
+        ),
+      }
+    );
+    const res = await request(createApp(poisoned)).get('/');
+    expect(res.text).not.toContain('javascript:alert(1)');
+    expect(res.text).not.toContain('onerror=');
+    // and it still links to the right place
+    expect(res.text).toContain('href="/buy/colors/undertow"');
+    expect(res.text).toContain('src="/assets/colors/IMG_7281.jpg"');
   });
 });
 

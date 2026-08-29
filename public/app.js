@@ -12,7 +12,10 @@
   if (!ROOMS.length) return;
 
   var REDUCE = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var INITIAL_HASH = decodeURIComponent(location.hash.replace(/^#/, ''));
+  var INITIAL_HASH = (function () {
+    var raw = location.hash.replace(/^#/, '');
+    try { return decodeURIComponent(raw); } catch (_) { return raw; }
+  })();
 
   /* Tuning. Both springs are deliberately slow — the weight is the point.
      omega = sqrt(K); damping ratio = (1 - D) / (2 * sqrt(K)).
@@ -69,6 +72,22 @@
     return f;
   }
   var STATUS = { available: '', sold: 'Sold', reserved: 'Reserved', nfs: 'Not for sale' };
+
+  /* A permalink is the picture's own id, not its position or its title, so it
+     survives renaming and reordering. */
+  function permalink(uid) { return location.origin + '/?id=' + encodeURIComponent(uid); }
+  function linkIcon(uid, label) {
+    var a = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    a.setAttribute('viewBox', '0 0 24 24');
+    a.innerHTML = '<path d="M10 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.2 1.2"/>' +
+                  '<path d="M14 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.2-1.2"/>';
+    var link = el('a', 'permalink no-drag');
+    link.href = permalink(uid);
+    link.title = label;
+    link.setAttribute('aria-label', label);
+    link.append(a);
+    return link;
+  }
 
   /* Every URL the page uses is built from a literal prefix plus encoded
      identifiers. Nothing that arrives as content is ever assigned to a src
@@ -187,20 +206,27 @@
       var b = el('button', 'mitem no-drag');
       b.type = 'button';
       var th = el('img', it.src ? 'th' : 'th blank');
-      if (it.src) { th.src = it.src; th.alt = ''; th.loading = 'lazy'; }
+      if (it.src) { th.dataset.src = it.src; th.alt = ''; th.loading = 'lazy'; }
       var label = el('div');
       var meta = el('div', 'm', it.meta);
       if (it.badge) { meta.append(document.createTextNode(' \u00b7 '), el('span', 's', it.badge)); }
       label.append(el('div', 't', it.title), meta);
       b.append(th, label);
-      b.style.transitionDelay = (0.03 + i * 0.035) + 's, ' + (0.03 + i * 0.035) + 's, 0s, 0s';
+      b.style.setProperty('--enter-delay', (0.03 + i * 0.035) + 's');
       b.onclick = function (ev) { ev.stopPropagation(); api.close(); onPick(i); };
       list.append(b);
     });
     m.append(head, list);
     var api = {
       veil: veil, menu: m,
-      open: function () { veil.classList.add('on'); m.classList.add('on'); },
+      open: function () {
+        /* thumbnails are only worth fetching once the drawer is asked for */
+        Array.prototype.forEach.call(list.querySelectorAll('img[data-src]'), function (t) {
+          t.src = t.dataset.src;
+          t.removeAttribute('data-src');
+        });
+        veil.classList.add('on'); m.classList.add('on');
+      },
       close: function () { veil.classList.remove('on'); m.classList.remove('on'); },
       toggle: function () { m.classList.contains('on') ? api.close() : api.open(); },
       isOpen: function () { return m.classList.contains('on'); },
@@ -217,15 +243,24 @@
      slow spring, so the light keeps travelling for a moment after the pointer
      stops and settles back on its own. Used by the lobby panels and by the
      About room, so they feel like the same place. */
-  function attachLight(host, bg, scale, drift) {
+  function attachLight(host, bg, opts) {
+    opts = opts || {};
     var sx = Spring(LIGHT_K, LIGHT_D), sy = Spring(LIGHT_K, LIGHT_D), raf = 0;
+    function clamp(v) { return v < 0 ? 0 : v > 100 ? 100 : v; }
     function paint() {
       sx.step(); sy.step();
       host.style.setProperty('--mx', (50 + sx.x * 58) + '%');
       host.style.setProperty('--my', (50 + sy.x * 58) + '%');
-      if (bg) {
-        bg.style.transform = 'scale(' + scale + ') translate3d(' +
-          (-sx.x * drift) + '%,' + (-sy.x * drift) + '%,0)';
+      if (bg && opts.pan) {
+        /* With background-size:cover the extremes of background-position land
+           exactly on the picture's own corners, so the pointer can reach the
+           top right of the picture and never past its edge. Clamped because
+           the spring overshoots by design. */
+        bg.style.backgroundPosition =
+          clamp(50 + sx.x * 100) + '% ' + clamp(50 + sy.x * 100) + '%';
+      } else if (bg) {
+        bg.style.transform = 'scale(' + opts.scale + ') translate3d(' +
+          (-sx.x * opts.drift) + '%,' + (-sy.x * opts.drift) + '%,0)';
       }
       if (sx.rest() && sy.rest()) { raf = 0; return; }
       raf = requestAnimationFrame(paint);
@@ -238,6 +273,52 @@
       run();
     });
     host.addEventListener('pointerleave', function () { sx.t = 0; sy.t = 0; run(); });
+  }
+
+  /* When a picture's shape leaves a bar above and below it, that slack is
+     free space — so spend it by dropping the picture clear of the navigation
+     buttons instead of centring it under them. A picture that is taller than
+     the window has no vertical slack and is left alone, and so is one in full
+     screen, where the buttons are gone. */
+  var NAV_CLEARANCE = 14;
+  function alignArt(view, img) {
+    if (!img) return;
+    if (view.classList.contains('bare')) { img.style.objectPosition = ''; return; }
+    var nw = img.naturalWidth, nh = img.naturalHeight;
+    /* offsetWidth/Top rather than a bounding rect: the slides are moved by
+       transform, so a rect would be measured from wherever the rail is. */
+    var boxW = img.offsetWidth, boxH = img.offsetHeight;
+    if (!nw || !nh || !boxW || !boxH) return;
+    var slack = boxH - nh * Math.min(boxW / nw, boxH / nh);
+    if (slack <= 1) { img.style.objectPosition = ''; return; }
+    var nav = view.querySelector('.navstack');
+    var wanted = (nav ? nav.getBoundingClientRect().bottom : 0) + NAV_CLEARANCE - img.offsetTop;
+    var pct = Math.max(0, Math.min(100, (wanted / slack) * 100));
+    img.style.objectPosition = '50% ' + pct + '%';
+  }
+  function alignAll(view) {
+    if (!view) return;
+    Array.prototype.forEach.call(view.querySelectorAll('.plate .art'), function (img) {
+      alignArt(view, img);
+    });
+  }
+
+  /* Load one picture at a time, nearest first. Everything starting at once is
+     why the lobby was slow: the cover on screen shared the connection with
+     three you could not see. The gallery is small by design (tens of
+     pictures, not thousands), so a queue is enough — no windowing needed. */
+  function loadOneByOne(order, show) {
+    var k = 0;
+    (function step() {
+      while (k < order.length) {
+        if (show(order[k++], step)) return;   /* started one; wait for it */
+      }
+    })();
+  }
+  function byDistance(count, from) {
+    var out = [];
+    for (var i = 0; i < count; i++) out.push(i);
+    return out.sort(function (a, b) { return Math.abs(a - from) - Math.abs(b - from); });
   }
 
   function aboutBody(room) {
@@ -255,24 +336,34 @@
       body.append(mail);
       if (a.contact.note) body.append(el('div', 'fine', a.contact.note));
     }
+    /* which build you are looking at, and where it came from */
+    var version = app.dataset.version, repo = app.dataset.repo;
+    if (version && repo) {
+      var ver = el('a', 'ver no-drag', 'Version ' + version);
+      ver.href = repo;
+      ver.target = '_blank';
+      ver.rel = 'noopener noreferrer';
+      body.append(ver);
+    }
     return body;
   }
 
   var app = document.getElementById('app');
-  var fallback = document.getElementById('fallback');
-  if (fallback) fallback.remove();
   var keyHandler = null;
 
   /* ================= LOBBY ================= */
   var lobby = el('div', 'screen');
   var rail = el('div', 'rail');
+  var coverUrls = [], covers = [];
 
   ROOMS.forEach(function (room) {
     var slide = el('div', 'slide');
-    var p = el('div', 'lpanel' + (room.type === 'about' ? ' about' : ''));
-    var bg = el('div', 'bg');
     var coverUrl = room.coverFile ? pictureUrl(room.id, room.coverFile) : null;
-    if (coverUrl) bg.style.backgroundImage = 'url("' + coverUrl + '")';
+    var p = el('div', 'lpanel' + (coverUrl ? '' : ' nocover'));
+    var bg = el('div', 'bg');
+    /* the picture itself is fetched by showCover(), nearest first */
+    coverUrls.push(coverUrl);
+    covers.push(bg);
     var scrim = el('div', 'scrim');
     p.append(bg, scrim);
 
@@ -293,7 +384,7 @@
     cap.append(btn);
     p.append(cap);
 
-    if (!REDUCE) attachLight(p, coverUrl ? bg : null, 1.14, 3.8);
+    if (!REDUCE) attachLight(p, coverUrl ? bg : null, { scale: 1.14, drift: 1.3 });
     slide.append(p);
     rail.append(slide);
   });
@@ -325,8 +416,23 @@
   }
   lobby.append(lobbyNav, ldots, lobbyMenu.veil, lobbyMenu.menu);
   roomsBtn.onclick = function (ev) { ev.stopPropagation(); lobbyMenu.toggle(); };
+  lobby.tabIndex = -1;
   app.append(lobby);
-  lobbyRail = Rail(rail, syncLobby);
+  function showCover(i, done) {
+    var bg = covers[i], url = coverUrls[i];
+    if (!bg || !url || bg.dataset.on) return false;
+    bg.dataset.on = '1';
+    var probe = new Image();
+    probe.onload = probe.onerror = function () {
+      bg.style.backgroundImage = 'url("' + url + '")';
+      bg.classList.add('in');
+      if (done) done();
+    };
+    probe.src = url;
+    return true;
+  }
+
+  lobbyRail = Rail(rail, function (i) { syncLobby(i); showCover(i); });
   syncLobby(0);
 
   function lobbyKeys(e) {
@@ -357,16 +463,19 @@
 
     var view = el('div', 'screen room');
     var rrail = el('div', 'rail');
+    var urls = [], plates = [];
     room.works.forEach(function (w) {
       var slide = el('div', 'slide');
       var plate = el('div', 'plate');
       var url = pictureUrl(room.id, w.file);
       var amb = el('div', 'ambient');
-      amb.style.backgroundImage = 'url("' + url + '")';
       var img = el('img', 'art');
-      img.src = url;
       img.alt = w.title;
       img.draggable = false;
+      img.addEventListener('load', function () { alignArt(view, img); });
+      /* src is set by show() below, so the picture on screen is not competing
+         with every other picture in the room for the connection */
+      urls.push(url); plates.push({ img: img, amb: amb });
       plate.append(amb, img);
       slide.append(plate);
       rrail.append(slide);
@@ -409,6 +518,7 @@
       bare = v;
       view.classList.toggle('bare', v);
       if (!v) setMini(false);
+      alignAll(view);
     }
     function setMini(v) { miniOn = v; mini.classList.toggle('on', v); }
 
@@ -448,11 +558,29 @@
         /* sold and not-for-sale never show a price */
         line.append(el('span', 'status sold', STATUS[w.status] || 'Not for sale'));
       }
+      if (w.uid) line.append(linkIcon(w.uid, 'Permanent link to ' + w.title));
       right.append(line);
       clear(sheet).append(left, right);
     }
 
-    var roomRail = Rail(rrail, paint);
+    function showPicture(i, done) {
+      var slot = plates[i];
+      if (!slot || slot.on) return false;
+      slot.on = true;
+      slot.img.addEventListener('load', function () { done && done(); }, { once: true });
+      slot.img.addEventListener('error', function () { done && done(); }, { once: true });
+      slot.img.src = urls[i];
+      slot.amb.style.backgroundImage = 'url("' + urls[i] + '")';
+      return true;
+    }
+
+    var roomRail = Rail(rrail, function (i) {
+      paint(i);
+      /* jumping somewhere new: fetch that one now, and its neighbours next */
+      showPicture(i);
+      showPicture(i + 1);
+      showPicture(i - 1);
+    });
     paint(0);
 
     /* a click anywhere clears the text; another brings it back */
@@ -468,6 +596,7 @@
       view.remove();
       liveRoom = null;
       lobby.hidden = false;
+      lobby.focus({ preventScroll: true });
       keyHandler = lobbyKeys;
       lobbyRail.go(roomIndex);
       syncLobby(roomIndex);
@@ -490,7 +619,13 @@
     };
 
     app.append(view);
+    view.tabIndex = -1;
+    view.focus({ preventScroll: true });
     liveRoom = view;
+    alignAll(view);
+    showPicture(0, function () {
+      loadOneByOne(byDistance(room.works.length, roomRail.index()), showPicture);
+    });
     return roomRail;
   }
 
@@ -510,7 +645,7 @@
     view.append(pane);
 
     /* the same light as the lobby, so the room feels like the panel it came from */
-    if (!REDUCE && coverUrl) attachLight(pane, bg, 1.08, 2.6);
+    if (!REDUCE && coverUrl) attachLight(pane, bg, { pan: true });
 
     var back = el('button', 'chrome fade-idle no-drag', '← Lobby');
     back.type = 'button';
@@ -522,6 +657,7 @@
       view.remove();
       liveRoom = null;
       lobby.hidden = false;
+      lobby.focus({ preventScroll: true });
       keyHandler = lobbyKeys;
       lobbyRail.go(roomIndex);
       syncLobby(roomIndex);
@@ -537,9 +673,17 @@
 
     history.replaceState(null, '', '#' + room.id);
     app.append(view);
+    view.tabIndex = -1;
+    view.focus({ preventScroll: true });
     liveRoom = view;
     return null;
   }
+
+  var resizeTimer = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { alignAll(liveRoom); }, 120);
+  });
 
   document.addEventListener('keydown', function (e) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -552,7 +696,34 @@
   });
 
   /* Deep links: #room, or #room/slug to land on a picture. */
+  /* ?id=<uid> — a permalink to a room or one picture. An id that no longer
+     exists just leaves you in the lobby; there is nothing useful to say
+     about it and an error page would be worse than the gallery. */
+  function openFromId() {
+    var uid = new URLSearchParams(location.search).get('id');
+    if (!uid) return false;
+    history.replaceState(null, '', location.pathname + location.hash);
+    for (var i = 0; i < ROOMS.length; i++) {
+      var room = ROOMS[i];
+      if (room.uid === uid) {
+        lobbyRail.go(i, true); syncLobby(i);
+        enterRoom(room);
+        return true;
+      }
+      for (var j = 0; j < room.works.length; j++) {
+        if (room.works[j].uid === uid) {
+          lobbyRail.go(i, true); syncLobby(i);
+          var rail = enterRoom(room);
+          if (rail) rail.go(j);
+          return true;
+        }
+      }
+    }
+    return false;   /* unknown id: stay in the lobby, say nothing */
+  }
+
   (function openFromHash() {
+    if (openFromId()) return;
     var h = INITIAL_HASH;
     if (!h) return;
     var parts = h.split('/');
@@ -566,5 +737,13 @@
       var w = ROOMS[idx].works.findIndex(function (x) { return x.slug === parts[1]; });
       if (r && w > -1) r.go(w);
     }
+  })();
+
+  /* The cover you land on downloads by itself; the others queue behind it. */
+  (function loadCovers() {
+    var start = lobbyRail.index();
+    showCover(start, function () {
+      loadOneByOne(byDistance(ROOMS.length, start), showCover);
+    });
   })();
 })();

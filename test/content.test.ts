@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { loadRooms, findWork } from '../src/content';
 import { ASSETS, rooms } from './setup';
 
@@ -47,6 +50,26 @@ describe('loadRooms', () => {
 
   it('returns nothing for a directory that does not exist', () => {
     expect(loadRooms('/no/such/place')).toEqual([]);
+  });
+});
+
+describe('slug collisions', () => {
+  it('counts rather than piling up suffixes', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-slug-'));
+    const room = path.join(dir, 'dup');
+    fs.mkdirSync(room);
+    for (const f of ['a.jpg', 'b.jpg', 'c.jpg']) fs.writeFileSync(path.join(room, f), 'x');
+    fs.writeFileSync(path.join(room, 'index.json'), JSON.stringify({
+      collection: { id: 'dup', title: 'Dup' },
+      works: [
+        { file: 'a.jpg', title: 'Untitled' },
+        { file: 'b.jpg', title: 'Untitled' },
+        { file: 'c.jpg', title: 'Untitled' },
+      ],
+    }));
+    const [loaded] = loadRooms(dir);
+    expect(loaded.works.map((w) => w.slug)).toEqual(['untitled', 'untitled-2', 'untitled-3']);
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });
 

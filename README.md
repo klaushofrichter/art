@@ -1,63 +1,95 @@
 # art.klaushofrichter.net
 
-A gallery, served at [art.klaushofrichter.net](https://art.klaushofrichter.net).
+A gallery of paintings and photographs, served at
+[art.klaushofrichter.net](https://art.klaushofrichter.net).
 
 Public — no login, no accounts, nothing to sign into. An Express/TypeScript
 app that reads its content from the picture folders at boot and runs as a
 [Knative](https://knative.dev/) Service on a self-hosted single-node k3s
 cluster (see [`klaushofrichter/kube-setup`](https://github.com/klaushofrichter/kube-setup)).
 
+---
+
 ## How it works
 
-A **lobby** of full-height panels, one per room, that you drag, scroll or
-arrow through. A room's cover is cropped and drifts against the pointer under
-a soft white light — both driven by springs on an animation-frame loop rather
-than CSS transitions, which is what keeps the motion smooth.
+### The lobby
 
-Entering a room is deliberate: the **Enter the room** button, the side menu,
-or Enter on the keyboard. Clicking a panel does nothing.
+Full-height panels, one per room, moved by drag, wheel or arrow keys. A room's
+cover is cropped and drifts against the pointer under a soft white light —
+both driven by springs on an animation-frame loop rather than CSS transitions,
+which is what keeps the motion smooth rather than choppy.
 
-Inside a **room**, each picture takes the whole screen — contained so nothing
-is ever clipped, but scaled up when the source is smaller so there is no dead
-space. The full label is shown by default; a click anywhere — or `Return` — clears
-it for an unobstructed picture, and a click, `Return` or `Esc` brings it back. Navigation is a strict tree: the side menu lists this
-room's pictures and offers no way sideways to another room.
+Entering a room is deliberate: the **Enter the room** button, the side menu, or
+`Return`. Clicking a panel does nothing.
 
-Navigation always sits in the same place: a stack at the top left. In the
-lobby that is **Rooms**; in a room it is **← Lobby** with **Pictures**
-underneath it.
+### A room
+
+Each picture takes the whole screen — contained so nothing is ever clipped, but
+scaled up when the source is smaller so there is no dead space. When a
+picture's shape leaves a bar above and below it, that slack drops the picture
+clear of the navigation buttons rather than centring it behind them.
+
+The full label shows by default; a click anywhere — or `Return` — clears it for
+an unobstructed picture, and a click, `Return` or `Esc` brings it back.
+
+Navigation always sits in the same place: a stack at the top left. In the lobby
+that is **Rooms**; in a room it is **← Lobby** with **Pictures** underneath.
+The tree is strict — a room's menu lists that room's pictures and offers no way
+sideways to another room.
+
+### The About room
+
+A room with no works: one hero image and the artist's text. Because there is
+one picture and nothing to sell, it is not built like a picture room — no
+paging, no thumbnails, no full screen. The only navigation is leaving it.
+
+### Keys
 
 | Key | |
 | --- | --- |
 | `↑` `↓` | previous / next |
 | drag, wheel | the same, with a throw |
 | `Return` | in the lobby, enter the room you are looking at; in a room, in and out of full screen |
-| `Space` | short label — title and date. Full screen only: with the full label up it would print the title on top of itself |
+| `Space` | short label — title and date. Full screen only, where there is no full label for it to collide with |
 | `R` | rooms (in the lobby) |
 | `P` | pictures (in a room) |
 | `Esc` | back one level: menu → full screen → room → lobby |
 
-Deep links work: `#dogs` opens the lobby on that room, `#dogs/close` opens
-straight to one picture.
+### Links
+
+| Form | Goes to |
+| --- | --- |
+| `/#dogs` | the lobby, on that room |
+| `/#dogs/close` | straight to one picture |
+| `/?id=bab5q6e3` | permalink — a room or a picture, by its own id |
+
+A permalink is the id from `index.json`, not a position or a title, so it
+survives renaming and reordering. Each picture's label carries a link icon
+holding its permalink. An id that no longer exists lands quietly in the lobby;
+there is no error page, because there is nothing useful to say.
+
+---
 
 ## Content
 
-Everything lives in `assets/`. One folder per room, each with an
-`index.json` beside its pictures:
+Everything lives in `assets/`. One folder per room, each with an `index.json`
+beside its pictures.
 
 ```jsonc
 {
   "collection": {
     "id": "colors",              // must match the folder name
+    "uid": "8ul97ls7",           // permalink id, never change it
     "title": "Colors",
     "subtitle": "Acrylic on canvas",
     "description": "Small framed abstracts. Each is **one of one**.",
-    "cover": "IMG_7281.jpg",     // which picture fronts the room
+    "cover": "IMG_7281.jpg",     // fronts the room in the lobby
     "order": 1                   // position in the lobby
   },
   "works": [
     {
       "file": "IMG_7281.jpg",    // the only link between JSON and image
+      "uid": "leyb1brb",         // permalink id, never change it
       "title": "Undertow",
       "date": "2024-03",         // YYYY-MM or YYYY-MM-DD; shown as "March 2024"
       "artist": "Klaus Hofrichter",
@@ -67,50 +99,46 @@ Everything lives in `assets/`. One folder per room, each with an
       "price": 340,
       "currency": "USD",
       "status": "available",
-      "purchase_url": "/buy/colors/undertow"   // optional; see below
+      "purchase_url": "/buy/colors/undertow"   // optional, see below
     }
   ]
 }
 ```
 
-**`status`** decides what is shown:
+### Sale status
 
-| | |
+| `status` | Shown |
 | --- | --- |
-| `available` | price and a link to the purchase page |
+| `available` | price, and a link to the purchase page |
 | `sold` | no price at all — the picture still hangs |
 | `reserved` | price shown, but it cannot be bought |
 | `nfs` | never for sale |
 
-A sold or not-for-sale picture's price is not merely hidden in the page — it
-is never sent to the browser.
+A sold or not-for-sale price is not merely hidden in the page: it is never sent
+to the browser.
 
-**`purchase_url`** is optional and is handled entirely on the server: the
-gallery always links to `/buy/<room>/<slug>`, and that page redirects if the
-JSON points somewhere else. The browser builds every image and link URL from
-a fixed prefix and an encoded identifier, and never uses a URL that came from
-content — so no `index.json` can put a `javascript:` URL behind a link.
+### Description markup
 
-**`description`** takes a deliberately small markup subset: `*italic*` and
-`**bold**`, nothing else. Text is escaped before the markup is applied, so a
-stray `<` stays text.
+A deliberately small subset — `*italic*` and `**bold**`, nothing else. Text is
+escaped before the markup is applied, so a stray `<` stays text. Everything the
+browser renders is built as DOM nodes rather than HTML strings, so content
+cannot become markup.
 
-**About** is a room with no works: `"type": "about"`, a `body` array of
-paragraphs and a `contact`. Its `cover` is a hero image — a picture in the
-folder that is not for sale and is not counted as a work. It fronts the panel
-in the lobby and fills the room behind the text.
+### Adding things
 
-Because there is only one picture and nothing to sell, the About room is not
-built like a picture room: no paging, no thumbnails, no full screen. The only
-navigation is leaving it, with **← Lobby**, `Esc` or `Return`. Without a
-`cover` it falls back to a generated ground.
+- **A picture** — drop the file in the folder and add a block to `works`, with
+  a fresh 8-character `uid`.
+- **A room** — a new folder with its own `index.json`.
+- **The About room** — `"type": "about"`, a `body` array of paragraphs, a
+  `contact`, and a `cover` used as its hero.
 
-Adding a picture is a file plus a block of JSON. Adding a room is a folder
-with its own `index.json`. Content ships inside the container image, so
-changing it means a commit and a redeploy — there is no database and nothing
-to back up separately. A picture listed but missing on disk is skipped with a
-warning; a malformed `index.json` fails the container's readiness check rather
-than serving a half-built gallery.
+Content ships inside the container image, so changing it means a commit and a
+redeploy. There is no database and nothing to back up separately. A picture
+listed but missing on disk is skipped with a warning; a malformed `index.json`
+throws, so the container fails its readiness probe rather than serving a
+half-built gallery.
+
+---
 
 ## Running it locally
 
@@ -126,14 +154,53 @@ npm run dev          # http://localhost:8080
 | `npm test` | unit tests (vitest + supertest) |
 | `npm run test:e2e` | Playwright, against a running server |
 
-No configuration beyond an optional `PORT` (default `8080`).
+No configuration beyond an optional `PORT` (default `8080`). Content is read
+once at boot, so restart after changing anything under `assets/`.
 
 ## Endpoints
 
-- `GET /` — the gallery
+- `GET /` — the gallery (`?id=` resolves a permalink)
 - `GET /buy/:room/:slug` — a single-picture purchase page
 - `GET /health` — `{"status":"ok","service":"art","version":"…","rooms":4,"works":15}`
 - `GET /assets/*` — the pictures
+
+---
+
+## How it is built
+
+```
+assets/<room>/index.json   content, read once at boot
+public/app.css, app.js     the gallery itself, served as static files
+src/content.ts             loads and validates the folders
+src/views/                 server-rendered shell, purchase page
+```
+
+The browser gets a manifest of **identifiers, not URLs** — a filename and a
+slug — and builds every `src` and `href` from a fixed prefix plus
+`encodeURIComponent`, so no `index.json` can put a `javascript:` URL behind a
+link.
+
+`public/app.css` and `public/app.js` are served immutable for a year, so their
+URLs carry a content hash; without it a deploy would never reach a returning
+visitor.
+
+### Motion
+
+Everything the pointer or a drag moves is a spring stepped once per
+`requestAnimationFrame`. A CSS transition on a value that pointer events
+already rewrite every frame is what makes an interface like this feel choppy.
+Tuning constants are at the top of `public/app.js`.
+
+### Loading
+
+Pictures are fetched one at a time, nearest first, so the one on screen is not
+sharing the connection with the ones behind it. On a 5 Mbps connection that
+takes the first cover from ~6.8s to ~2.6s. The no-JavaScript fallback lives in
+a `<noscript>`, so a normal visit never requests it — it used to pull every
+picture in the gallery on first load. The gallery is small by design (tens of
+pictures), so a simple queue is enough.
+
+---
 
 ## Branches and deployment
 
@@ -143,10 +210,36 @@ No configuration beyond an optional `PORT` (default `8080`).
   as required checks. Merging deploys via an in-cluster self-hosted runner and
   cuts a release.
 
-## Versioning
+Versions are generated at deploy time as `vYYYY.MM.DD.N` and baked in as
+`APP_VERSION`; `package.json` carries no version. The running build is shown at
+the bottom of the About room, linked to this repository.
 
-Generated at deploy time as `vYYYY.MM.DD.N` and baked in as `APP_VERSION`.
-`package.json` carries no version — the release tags are the only state.
+---
+
+## Open items
+
+**Payment is not implemented.** `/buy/<room>/<slug>` is a real page showing the
+picture, its details and its price, but the only way to buy is an email
+enquiry — there is no cart, no checkout, no payment provider and no order
+record. Deciding that is the next piece of work. The intent is one picture at a
+time rather than a basket, so the options are roughly: a payment link per
+picture (Stripe Payment Links or similar, no server state), a hosted checkout
+session (needs a secret and a webhook to mark a picture sold), or keeping the
+enquiry-and-invoice flow as it is. Whichever is chosen, `status` in
+`index.json` stays the source of truth for what is still for sale, and marking
+something sold remains a commit and a redeploy.
+
+Also open:
+
+- **Image sizes.** The pictures are full-resolution originals, ~1 MB each.
+  Generating web-sized derivatives at build time would cut first load
+  substantially — it is the single biggest remaining win.
+- **One low-resolution source.** `assets/food/IMG_8275.jpg` is 269 × 202 and
+  visibly soft now that pictures scale up; it wants re-exporting.
+- **Placeholder metadata.** Titles, dates and prices are invented and want
+  replacing with real ones.
+- **No analytics or error reporting**, deliberately, so nothing is known about
+  how the site is used.
 
 ## License
 
