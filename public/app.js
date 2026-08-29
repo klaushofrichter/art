@@ -213,6 +213,51 @@
     return api;
   }
 
+  /* The pointer light, and the drift of the picture under it. Both run on the
+     slow spring, so the light keeps travelling for a moment after the pointer
+     stops and settles back on its own. Used by the lobby panels and by the
+     About room, so they feel like the same place. */
+  function attachLight(host, bg, scale, drift) {
+    var sx = Spring(LIGHT_K, LIGHT_D), sy = Spring(LIGHT_K, LIGHT_D), raf = 0;
+    function paint() {
+      sx.step(); sy.step();
+      host.style.setProperty('--mx', (50 + sx.x * 58) + '%');
+      host.style.setProperty('--my', (50 + sy.x * 58) + '%');
+      if (bg) {
+        bg.style.transform = 'scale(' + scale + ') translate3d(' +
+          (-sx.x * drift) + '%,' + (-sy.x * drift) + '%,0)';
+      }
+      if (sx.rest() && sy.rest()) { raf = 0; return; }
+      raf = requestAnimationFrame(paint);
+    }
+    function run() { if (!raf) raf = requestAnimationFrame(paint); }
+    host.addEventListener('pointermove', function (e) {
+      var r = host.getBoundingClientRect();
+      sx.t = (e.clientX - r.left) / r.width - 0.5;
+      sy.t = (e.clientY - r.top) / r.height - 0.5;
+      run();
+    });
+    host.addEventListener('pointerleave', function () { sx.t = 0; sy.t = 0; run(); });
+  }
+
+  function aboutBody(room) {
+    var a = room.about || {};
+    var body = el('div', 'abody');
+    body.append(el('div', 'n', a.name || room.title), el('div', 'r', a.role || ''));
+    (a.body || []).forEach(function (t) {
+      var para = el('p');
+      para.append(markupNodes(t));
+      body.append(para);
+    });
+    if (a.contact && a.contact.email) {
+      var mail = el('a', 'mail no-drag', a.contact.email);
+      mail.href = 'mailto:' + a.contact.email;
+      body.append(mail);
+      if (a.contact.note) body.append(el('div', 'fine', a.contact.note));
+    }
+    return body;
+  }
+
   var app = document.getElementById('app');
   var fallback = document.getElementById('fallback');
   if (fallback) fallback.remove();
@@ -231,60 +276,24 @@
     var scrim = el('div', 'scrim');
     p.append(bg, scrim);
 
-    if (room.type === 'about' && room.about) {
-      var a = room.about;
-      var body = el('div', 'abody');
-      body.append(el('div', 'n', a.name || room.title), el('div', 'r', a.role || ''));
-      (a.body || []).forEach(function (t) {
-        var para = el('p');
-        para.append(markupNodes(t));
-        body.append(para);
-      });
-      if (a.contact && a.contact.email) {
-        var mail = el('a', 'mail no-drag', a.contact.email);
-        mail.href = 'mailto:' + a.contact.email;
-        body.append(mail);
-        if (a.contact.note) body.append(el('div', 'fine', a.contact.note));
-      }
-      p.append(body);
-    } else {
-      var cap = el('div', 'cap');
-      var blurb = el('p', 'b');
-      blurb.append(markupNodes(room.description));
-      cap.append(
-        el('span', 's', room.subtitle + ' \u00b7 ' + room.works.length + ' works'),
-        el('div', 'n', room.title),
-        blurb
-      );
-      var btn = el('button', 'enter no-drag', 'Enter the room →');
-      btn.type = 'button';
-      btn.onclick = function (ev) { ev.stopPropagation(); enterRoom(room); };
-      cap.append(btn);
-      p.append(cap);
-    }
+    var cap = el('div', 'cap');
+    var blurb = el('p', 'b');
+    blurb.append(markupNodes(room.description));
+    cap.append(
+      /* the About room has no works to count */
+      el('span', 's', room.type === 'about'
+        ? room.subtitle
+        : room.subtitle + ' \u00b7 ' + room.works.length + ' works'),
+      el('div', 'n', room.title),
+      blurb
+    );
+    var btn = el('button', 'enter no-drag', room.type === 'about' ? 'Read more →' : 'Enter the room →');
+    btn.type = 'button';
+    btn.onclick = function (ev) { ev.stopPropagation(); enterRoom(room); };
+    cap.append(btn);
+    p.append(cap);
 
-    /* pointer light and cover drift, both on the slow spring */
-    if (!REDUCE) {
-      var sx = Spring(LIGHT_K, LIGHT_D), sy = Spring(LIGHT_K, LIGHT_D), raf = 0;
-      var paint = function () {
-        sx.step(); sy.step();
-        p.style.setProperty('--mx', (50 + sx.x * 58) + '%');
-        p.style.setProperty('--my', (50 + sy.x * 58) + '%');
-        if (coverUrl) {
-          bg.style.transform = 'scale(1.14) translate3d(' + (-sx.x * 3.8) + '%,' + (-sy.x * 3.8) + '%,0)';
-        }
-        if (sx.rest() && sy.rest()) { raf = 0; return; }
-        raf = requestAnimationFrame(paint);
-      };
-      var run = function () { if (!raf) raf = requestAnimationFrame(paint); };
-      p.addEventListener('pointermove', function (e) {
-        var r = p.getBoundingClientRect();
-        sx.t = (e.clientX - r.left) / r.width - 0.5;
-        sy.t = (e.clientY - r.top) / r.height - 0.5;
-        run();
-      });
-      p.addEventListener('pointerleave', function () { sx.t = 0; sy.t = 0; run(); });
-    }
+    if (!REDUCE) attachLight(p, coverUrl ? bg : null, 1.14, 3.8);
     slide.append(p);
     rail.append(slide);
   });
@@ -301,9 +310,7 @@
       title: r.title,
       meta: r.type === 'about' ? 'Information' : r.works.length + ' works \u00b7 ' + r.subtitle
     };
-  }), function (i) {
-    if (ROOMS[i].type === 'about') lobbyRail.go(i); else enterRoom(ROOMS[i]);
-  });
+  }), function (i) { enterRoom(ROOMS[i]); });
   var ldots = el('div', 'dots');
   ROOMS.forEach(function (r, i) {
     var d = el('i', 'no-drag');
@@ -330,7 +337,7 @@
     if (e.key === 'Enter') {
       if (lobbyMenu.isOpen()) return true;
       var r = ROOMS[lobbyRail.index()];
-      if (r && r.type !== 'about') enterRoom(r);
+      if (r) enterRoom(r);
       return true;
     }
     return false;
@@ -341,6 +348,7 @@
   var liveRoom = null;
 
   function enterRoom(room) {
+    if (room.type === 'about') return enterAbout(room);
     lobbyMenu.close();
     if (liveRoom) liveRoom.remove();
     if (!room.works.length) return;
@@ -484,6 +492,53 @@
     app.append(view);
     liveRoom = view;
     return roomRail;
+  }
+
+  function enterAbout(room) {
+    lobbyMenu.close();
+    if (liveRoom) liveRoom.remove();
+    lobby.hidden = true;
+    var roomIndex = ROOMS.indexOf(room);
+    var coverUrl = room.coverFile ? pictureUrl(room.id, room.coverFile) : null;
+
+    var view = el('div', 'screen room');
+    var pane = el('div', 'aboutroom' + (coverUrl ? '' : ' nocover'));
+    var bg = el('div', 'bg');
+    if (coverUrl) bg.style.backgroundImage = 'url("' + coverUrl + '")';
+    var scrim = el('div', 'scrim');
+    pane.append(bg, scrim, aboutBody(room));
+    view.append(pane);
+
+    /* the same light as the lobby, so the room feels like the panel it came from */
+    if (!REDUCE && coverUrl) attachLight(pane, bg, 1.08, 2.6);
+
+    var back = el('button', 'chrome fade-idle no-drag', '← Lobby');
+    back.type = 'button';
+    var nav = el('div', 'navstack');
+    nav.append(back);
+    view.append(nav);
+
+    function leave() {
+      view.remove();
+      liveRoom = null;
+      lobby.hidden = false;
+      keyHandler = lobbyKeys;
+      lobbyRail.go(roomIndex);
+      syncLobby(roomIndex);
+    }
+    back.onclick = function (ev) { ev.stopPropagation(); leave(); };
+
+    /* Nothing to page through and no full screen, so Escape and Return both
+       mean the one thing there is to do here. */
+    keyHandler = function (e) {
+      if (e.key === 'Escape' || e.key === 'Enter') { leave(); return true; }
+      return false;
+    };
+
+    history.replaceState(null, '', '#' + room.id);
+    app.append(view);
+    liveRoom = view;
+    return null;
   }
 
   document.addEventListener('keydown', function (e) {

@@ -132,11 +132,45 @@ test('a sold picture shows no price, and still hangs', async ({ page }) => {
   await expect(page.locator('.plate .art').first()).toBeVisible();
 });
 
-test('the About room reads in place instead of opening', async ({ page }) => {
+test('the About room opens onto its hero, with nothing to page through', async ({ page }) => {
   await page.goto('/#about');
+  // In the lobby it is a panel like any other, minus a work count.
+  await expect(page.locator('.lpanel .cap .n').last()).toHaveText('About');
+  await page.locator('.enter').last().click();
+
+  const pane = page.locator('.aboutroom');
+  await expect(pane).toBeVisible();
   await expect(page.locator('.abody .n')).toHaveText('Klaus Hofrichter');
   await expect(page.locator('.abody strong')).toHaveText('the dog');
-  await expect(page.locator('.room')).toHaveCount(0);
+
+  // One picture, so there is nothing to navigate: no rail, no counter, no
+  // dots, no Pictures menu, and no full screen.
+  await expect(page.locator('.room .rail')).toHaveCount(0);
+  await expect(page.locator('.room .dots')).toHaveCount(0);
+  await expect(page.locator('.room .count')).toHaveCount(0);
+  await expect(page.locator('.room .navstack .chrome')).toHaveCount(1);
+  await page.keyboard.press('Space');
+  await expect(page.locator('.room')).not.toHaveClass(/bare/);
+});
+
+test('the About hero is shown, and is not one of the works', async ({ page }) => {
+  await page.goto('/#about');
+  await page.locator('.enter').last().click();
+  const bg = await page.locator('.aboutroom .bg').evaluate((n) => getComputedStyle(n).backgroundImage);
+  expect(bg).toContain('/assets/about/IMG_2731.jpg');
+  // It is a hero, not stock: /health still counts 15 works across the rooms.
+  const health = await (await page.request.get('/health')).json();
+  expect(health.works).toBe(15);
+});
+
+test('Escape leaves the About room for the lobby', async ({ page }) => {
+  await page.goto('/#about');
+  await page.locator('.enter').last().click();
+  await expect(page.locator('.aboutroom')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.aboutroom')).toHaveCount(0);
+  await expect(page.locator('.lpanel').last()).toBeVisible();
+  await expect(page.locator('.lpanel .cap .n').last()).toHaveText('About');
 });
 
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {

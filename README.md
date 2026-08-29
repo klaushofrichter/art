@@ -95,9 +95,15 @@ content — so no `index.json` can put a `javascript:` URL behind a link.
 `**bold**`, nothing else. Text is escaped before the markup is applied, so a
 stray `<` stays text.
 
-**About** is a room with no pictures: `"type": "about"`, a `body` array of
-paragraphs and a `contact`. It sits last in the lobby, gets its own generated
-ground instead of a photograph, and reads in place rather than opening.
+**About** is a room with no works: `"type": "about"`, a `body` array of
+paragraphs and a `contact`. Its `cover` is a hero image — a picture in the
+folder that is not for sale and is not counted as a work. It fronts the panel
+in the lobby and fills the room behind the text.
+
+Because there is only one picture and nothing to sell, the About room is not
+built like a picture room: no paging, no thumbnails, no full screen. The only
+navigation is leaving it, with **← Lobby**, `Esc` or `Return`. Without a
+`cover` it falls back to a generated ground.
 
 Adding a picture is a file plus a block of JSON. Adding a room is a folder
 with its own `index.json`. Content ships inside the container image, so
