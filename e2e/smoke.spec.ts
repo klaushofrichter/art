@@ -242,27 +242,37 @@ test('full screen really hides the navigation', async ({ page }) => {
   }
 });
 
-test('the About hero pans to its own corners and never past them', async ({ page }) => {
+test('the About hero is pinned by its top right and does not react', async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 800 });
   await page.goto('/#about');
   await page.locator('.enter').last().click();
-  const pos = () => page.evaluate(() =>
-    (document.querySelector('.aboutroom .bg') as HTMLElement).style.backgroundPosition);
+  const bg = page.locator('.aboutroom .bg');
+
+  // cover keeps the ratio and leaves no bar; the top right corner of the
+  // picture meets the top right corner of the window
+  await expect(bg).toHaveCSS('background-size', 'cover');
+  await expect(bg).toHaveCSS('background-position', '100% 0px');
+  // and none of the lobby's treatment follows it into the room
+  await expect(bg).toHaveCSS('filter', 'none');
+  await expect(bg).toHaveCSS('transform', 'none');
 
   await page.mouse.move(1399, 1);
-  await expect.poll(async () => parseFloat((await pos()).split(' ')[0])).toBeGreaterThan(90);
-  let [x, y] = (await pos()).split(' ').map(parseFloat);
-  // background-position with cover cannot expose an edge inside 0..100.
-  expect(x).toBeLessThanOrEqual(100);
-  expect(y).toBeLessThanOrEqual(100);
-  expect(y).toBeLessThan(10);
-
+  await page.waitForTimeout(900);
+  await expect(bg).toHaveCSS('background-position', '100% 0px');
   await page.mouse.move(1, 799);
-  await expect.poll(async () => parseFloat((await pos()).split(' ')[0])).toBeLessThan(10);
-  [x, y] = (await pos()).split(' ').map(parseFloat);
-  expect(x).toBeGreaterThanOrEqual(0);
-  expect(y).toBeGreaterThan(90);
-  expect(y).toBeLessThanOrEqual(100);
+  await page.waitForTimeout(900);
+  await expect(bg).toHaveCSS('background-position', '100% 0px');
+});
+
+test('the About text has something to be read against', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 800 });
+  await page.goto('/?id=rib3oeuf');
+  const scrim = page.locator('.aboutroom .scrim');
+  const bg = await scrim.evaluate((n) => getComputedStyle(n).backgroundImage);
+  expect(bg).toContain('linear-gradient');
+  // opaque where the words are, gone before the right edge
+  expect(bg).toMatch(/rgba\(6, 9, 14, 0\.9\d*\)/);
+  expect(bg).toContain('rgba(6, 9, 14, 0) 78%');
 });
 
 test('a permalink opens the picture it names', async ({ page }) => {

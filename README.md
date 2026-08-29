@@ -55,6 +55,12 @@ A room with no works: one hero image and the artist's text. Because there is
 one picture and nothing to sell, it is not built like a picture room — no
 paging, no thumbnails, no full screen. The only navigation is leaving it.
 
+The hero fills the frame without bars and keeps its ratio, pinned by its top
+right corner to the window's, so the crop is taken from the bottom left. It is
+shown as it is: none of the lobby's pointer light, drift or dimming follows it
+into the room, because no other room has those either. The text is carried by a
+band that fades away to the right instead.
+
 ### Keys
 
 | Key | |
