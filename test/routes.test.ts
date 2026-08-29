@@ -103,6 +103,15 @@ describe('static files', () => {
   it('serves the favicon, the stylesheet and the script', async () => {
     expect((await request(app()).get('/app.css')).status).toBe(200);
     expect((await request(app()).get('/app.js')).status).toBe(200);
+    expect((await request(app()).get('/palette.png')).status).toBe(200);
+  });
+
+  it('takes the favicon from the site, not from the content directory', async () => {
+    // The pictures live on a volume that is synced separately. If the favicon
+    // were one of them, a content sync could take the site's icon away.
+    const res = await request(app()).get('/');
+    expect(res.text).toContain('href="/palette.png"');
+    expect(res.text).not.toContain('/assets/palette.png');
   });
 });
 

@@ -8,3 +8,6 @@ playwright-report
 .git
 *.md
 .env
+
+# Content comes from a volume at runtime, never from the image.
+assets

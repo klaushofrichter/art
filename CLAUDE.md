@@ -39,10 +39,19 @@ Keep it that way unless there's a reason not to: the sibling
 `../www-klaushofrichter` carries a Google OAuth login and is the repo to
 copy from if authentication is ever wanted here.
 
-## Content lives in assets/, not in code
+## Content lives on a volume, not in code and not in git
 
-`src/content.ts` reads `assets/*/index.json` once at boot. The schema and the
-`status` rules are documented in `README.md`. Two things worth keeping:
+This repo is public and the artwork is not in it. `assets/` is git-ignored and
+the image does not carry it; `src/content.ts` reads whatever `ASSETS_DIR`
+points at, which in production is a PVC mounted read-only at `/data/assets`.
+`scripts/pull-assets.sh` and `scripts/sync-assets.sh` move content between the
+volume and a working copy. **Never re-add `assets/` to git or to the
+Dockerfile** — that is the whole point of the arrangement.
+
+Because content is no longer part of a deploy, the server watches the
+directory (`CONTENT_WATCH_MS`, default 10s) and re-renders in place. The
+schema and the `status` rules are documented in `README.md`. Four things worth
+keeping:
 
 - A **sold** or **not-for-sale** picture's price is never serialised into the
   manifest at all (`src/views/gallery.ts`), rather than being sent and hidden
@@ -50,6 +59,11 @@ copy from if authentication is ever wanted here.
 - A malformed `index.json` **throws**, so the container fails its readiness
   probe instead of serving a partial gallery. A picture listed but missing on
   disk only warns and is skipped — a missing file shouldn't take the site down.
+- That throw is caught on **reload**, where the rules invert: a bad edit on the
+  volume must not take a healthy site down, so `reloadContent` keeps what it
+  has and logs why. Same for content that vanishes. See `test/reload.test.ts`.
+- The favicon is `public/palette.png`, not a file in the content directory — a
+  content sync must not be able to take the site's own icon away.
 
 ## The About room is deliberately not a picture room
 
