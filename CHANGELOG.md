@@ -13,6 +13,11 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- The About room now has a hero image, set as the collection's `cover`. It
+  fronts the panel in the lobby and fills the room behind the text. Because
+  there is one picture and nothing to sell, the room has no paging, no
+  thumbnails and no full screen — the only way out is out.
+
 - Navigation now always sits at the top left: **Pictures** moved under
   **← Lobby** rather than sitting opposite it.
 - `Return` enters the room you are looking at from the lobby, and takes a

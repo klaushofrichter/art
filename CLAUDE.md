@@ -51,6 +51,15 @@ copy from if authentication is ever wanted here.
   probe instead of serving a partial gallery. A picture listed but missing on
   disk only warns and is skipped — a missing file shouldn't take the site down.
 
+## The About room is deliberately not a picture room
+
+It holds one hero (the collection's `cover`, not a work) and its text, so
+`enterRoom` hands it to `enterAbout` before any of the rail, label, menu or
+full-screen machinery is built. Don't be tempted to unify them: the whole
+point is that there is nothing to page through, so there is no rail, no
+counter, no dots, no Pictures menu and no `bare` state. Escape and Return
+both just leave.
+
 ## Client assets are fingerprinted for a reason
 
 `public/app.css` and `public/app.js` are served `immutable` for a year in
