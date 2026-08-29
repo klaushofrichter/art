@@ -34,6 +34,9 @@ an unobstructed picture, and a click, `Return` or `Esc` brings it back.
 
 Navigation always sits in the same place: a stack at the top left. In the lobby
 that is **Rooms**; in a room it is **← Lobby** with **Content** underneath.
+The rooms menu is headed **Lobby**, and that heading is itself the way back to
+the front door — out of any room, onto the first panel, with the greeting
+played again.
 The tree is strict — a room's menu lists that room's pictures and offers no way
 sideways to another room.
 

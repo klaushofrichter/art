@@ -503,6 +503,43 @@ test('someone who already knows where they are going is not greeted', async ({ p
   }
 });
 
+test('the rooms menu is titled Lobby and leads back to it', async ({ page }) => {
+  // start somewhere that is neither the lobby nor the first room
+  await page.goto('/#food/late');
+  await expect(page.locator('.info h2')).toHaveText('Late');
+  await page.keyboard.press('Escape');                 // back to the lobby
+  await page.getByRole('button', { name: 'Rooms' }).click();
+
+  const title = page.locator('.menu.on .mtitle');
+  await expect(title).toHaveText('Lobby');
+  await title.click();
+
+  // the menu closes, the lobby is showing its first room, and the greeting plays
+  await expect(page.locator('.menu.on')).toHaveCount(0);
+  await expect(page.locator('.welcome')).toBeVisible();
+  await expect(page.locator('.welcome')).toContainText('art.klaushofrichter.net');
+  await expect.poll(async () => page.evaluate(() => location.hash + location.search)).toBe('');
+  await expect(page.locator('.room')).toHaveCount(0);
+  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Colors');
+});
+
+test('going home from inside a room leaves the room', async ({ page }) => {
+  await page.goto('/#dogs/waiting');
+  await expect(page.locator('.room')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Rooms' }).click();
+  await page.locator('.menu.on .mtitle').click();
+  await expect(page.locator('.room')).toHaveCount(0);
+  await expect(page.locator('.welcome')).toBeVisible();
+});
+
+test('a room menu keeps its own name and is not a link', async ({ page }) => {
+  await page.goto('/#dogs/waiting');
+  await page.getByRole('button', { name: 'Content' }).click();
+  await expect(page.locator('.menu.on')).toContainText('Dogs');
+  await expect(page.locator('.menu.on .mtitle')).toHaveCount(0);
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.
