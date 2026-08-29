@@ -19,18 +19,23 @@ or Enter on the keyboard. Clicking a panel does nothing.
 
 Inside a **room**, each picture takes the whole screen — contained so nothing
 is ever clipped, but scaled up when the source is smaller so there is no dead
-space. The full label is shown by default; a click anywhere clears it, and
-another brings it back. Navigation is a strict tree: the side menu lists this
+space. The full label is shown by default; a click anywhere — or `Return` — clears
+it for an unobstructed picture, and a click, `Return` or `Esc` brings it back. Navigation is a strict tree: the side menu lists this
 room's pictures and offers no way sideways to another room.
+
+Navigation always sits in the same place: a stack at the top left. In the
+lobby that is **Rooms**; in a room it is **← Lobby** with **Pictures**
+underneath it.
 
 | Key | |
 | --- | --- |
 | `↑` `↓` | previous / next |
 | drag, wheel | the same, with a throw |
-| `Space` | short label — title and date |
+| `Return` | in the lobby, enter the room you are looking at; in a room, in and out of full screen |
+| `Space` | short label — title and date. Full screen only: with the full label up it would print the title on top of itself |
 | `R` | rooms (in the lobby) |
 | `P` | pictures (in a room) |
-| `Esc` | back one level: menu → label → room → lobby |
+| `Esc` | back one level: menu → full screen → room → lobby |
 
 Deep links work: `#dogs` opens the lobby on that room, `#dogs/close` opens
 straight to one picture.

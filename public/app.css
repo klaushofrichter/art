@@ -110,7 +110,9 @@ body {
   border:1px solid rgba(237,231,218,.13); border-radius:2px; padding:.7em 1em; cursor:pointer;
   text-decoration:none; transition:color .25s,border-color .25s,opacity .38s; }
 .chrome:hover { color:var(--brass); border-color:rgba(201,162,39,.55); }
-.c-tl { top:3.4vh; left:3vw; } .c-tr { top:3.4vh; right:3vw; }
+.navstack { position:absolute; top:3.4vh; left:3vw; z-index:8;
+  display:flex; flex-direction:column; align-items:flex-start; gap:8px; }
+.navstack .chrome { position:static; }
 @media (hover:hover) { #app:not(:hover) .fade-idle { opacity:.3; } }
 
 .dots { position:absolute; right:2.6vw; top:50%; transform:translateY(-50%); z-index:7; display:flex; flex-direction:column; gap:1.4vh; }
@@ -121,6 +123,7 @@ body {
 .count b { color:var(--brass); font-weight:400; }
 
 .room.bare .info, .room.bare .chrome, .room.bare .dots, .room.bare .count { opacity:0; pointer-events:none; }
+.room.bare .navstack { pointer-events:none; }
 .room.bare .backhint { opacity:1; }
 .backhint { position:absolute; left:50%; bottom:3vh; transform:translateX(-50%); z-index:9;
   font-family:var(--mono); font-size:clamp(8px,1.05vh,11px); letter-spacing:.18em; text-transform:uppercase;

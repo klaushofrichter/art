@@ -29,15 +29,68 @@ test('a click clears the label and another brings it back', async ({ page }) => 
   await expect(room).not.toHaveClass(/bare/);
 });
 
-test('Space toggles the short label', async ({ page }) => {
+test('Space does nothing while the full label is up, and works in full screen', async ({ page }) => {
   await page.goto('/');
   await page.locator('.enter').first().click();
+  // The full label already carries the title in the same corner, so Space
+  // here would print it twice on top of itself.
+  await page.keyboard.press('Space');
   await expect(page.locator('.mini')).not.toHaveClass(/on/);
+
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.room')).toHaveClass(/bare/);
   await page.keyboard.press('Space');
   await expect(page.locator('.mini')).toHaveClass(/on/);
   await expect(page.locator('.mini')).toContainText('Undertow');
   await page.keyboard.press('Space');
   await expect(page.locator('.mini')).not.toHaveClass(/on/);
+});
+
+test('Return toggles full screen, and Escape also comes back', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.enter').first().click();
+  const room = page.locator('.room');
+  await page.keyboard.press('Enter');
+  await expect(room).toHaveClass(/bare/);
+  await page.keyboard.press('Enter');
+  await expect(room).not.toHaveClass(/bare/);
+  await page.keyboard.press('Enter');
+  await expect(room).toHaveClass(/bare/);
+  await page.keyboard.press('Escape');
+  await expect(room).not.toHaveClass(/bare/);
+});
+
+test('leaving full screen puts the short label away with it', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.enter').first().click();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Space');
+  await expect(page.locator('.mini')).toHaveClass(/on/);
+  await page.keyboard.press('Escape');
+  // Otherwise it would sit on top of the full label in the same corner.
+  await expect(page.locator('.mini')).not.toHaveClass(/on/);
+});
+
+test('Return in the lobby enters the room you are looking at', async ({ page }) => {
+  await page.goto('/#dogs');
+  await expect(page.locator('.room')).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.room')).toBeVisible();
+  await expect(page.locator('.info h2')).toHaveText('Made in Texas');
+});
+
+test('both navigation controls sit on the left, one under the other', async ({ page }) => {
+  await page.goto('/');
+  const lobbyNav = page.locator('.navstack');
+  await expect(lobbyNav.locator('.chrome')).toHaveCount(1);
+
+  await page.locator('.enter').first().click();
+  const roomNav = page.locator('.room .navstack');
+  await expect(roomNav.locator('.chrome')).toHaveCount(2);
+  const lobbyBtn = await roomNav.locator('.chrome').first().boundingBox();
+  const picsBtn = await roomNav.locator('.chrome').last().boundingBox();
+  expect(lobbyBtn!.x).toBeCloseTo(picsBtn!.x, 0);      // same left edge
+  expect(picsBtn!.y).toBeGreaterThan(lobbyBtn!.y);      // Pictures underneath
 });
 
 test('Escape unwinds one level at a time', async ({ page }) => {

@@ -291,7 +291,9 @@
   lobby.append(rail);
 
   var lobbyRail;
-  var roomsBtn = el('button', 'chrome c-tl fade-idle no-drag', 'Rooms');
+  var roomsBtn = el('button', 'chrome fade-idle no-drag', 'Rooms');
+  var lobbyNav = el('div', 'navstack');
+  lobbyNav.append(roomsBtn);
   roomsBtn.type = 'button';
   var lobbyMenu = Menu('The Gallery', ROOMS.map(function (r) {
     return {
@@ -314,7 +316,7 @@
     var r = ROOMS[i];
     history.replaceState(null, '', r ? '#' + r.id : '#');
   }
-  lobby.append(roomsBtn, ldots, lobbyMenu.veil, lobbyMenu.menu);
+  lobby.append(lobbyNav, ldots, lobbyMenu.veil, lobbyMenu.menu);
   roomsBtn.onclick = function (ev) { ev.stopPropagation(); lobbyMenu.toggle(); };
   app.append(lobby);
   lobbyRail = Rail(rail, syncLobby);
@@ -326,6 +328,7 @@
     if (e.key === 'ArrowDown' || e.key === 'PageDown') { lobbyRail.step(1); return true; }
     if (e.key === 'ArrowUp' || e.key === 'PageUp') { lobbyRail.step(-1); return true; }
     if (e.key === 'Enter') {
+      if (lobbyMenu.isOpen()) return true;
       var r = ROOMS[lobbyRail.index()];
       if (r && r.type !== 'about') enterRoom(r);
       return true;
@@ -373,12 +376,14 @@
       dots.append(d);
     });
     var count = el('div', 'count');
-    var backhint = el('div', 'backhint', 'Click or Esc to bring the room back');
-    var back = el('button', 'chrome c-tl fade-idle no-drag', '← Lobby');
+    var backhint = el('div', 'backhint', 'Space for the title \u00b7 Return or Esc to go back');
+    var back = el('button', 'chrome fade-idle no-drag', '← Lobby');
     back.type = 'button';
-    var picsBtn = el('button', 'chrome c-tr fade-idle no-drag', 'Pictures');
+    var picsBtn = el('button', 'chrome fade-idle no-drag', 'Pictures');
+    var roomNav = el('div', 'navstack');
+    roomNav.append(back, picsBtn);
     picsBtn.type = 'button';
-    view.append(info, mini, dots, count, backhint, back, picsBtn);
+    view.append(info, mini, dots, count, backhint, roomNav);
 
     /* strict tree: no way sideways to another room from in here */
     var picsMenu = Menu(room.title, room.works.map(function (w) {
@@ -392,7 +397,11 @@
     view.append(picsMenu.veil, picsMenu.menu);
 
     var bare = false, miniOn = false;
-    function setBare(v) { bare = v; view.classList.toggle('bare', v); }
+    function setBare(v) {
+      bare = v;
+      view.classList.toggle('bare', v);
+      if (!v) setMini(false);
+    }
     function setMini(v) { miniOn = v; mini.classList.toggle('on', v); }
 
     function paint(i) {
@@ -462,7 +471,10 @@
         if (bare) { setBare(false); return true; }
         leave(); return true;
       }
-      if (e.key === ' ') { setMini(!miniOn); return true; }
+      /* Space only means anything in full screen. With the full label up it
+         would print the title on top of itself in the same corner. */
+      if (e.key === ' ') { if (bare) setMini(!miniOn); return true; }
+      if (e.key === 'Enter') { if (!picsMenu.isOpen()) setBare(!bare); return true; }
       if (e.key === 'ArrowDown' || e.key === 'PageDown') { roomRail.step(1); return true; }
       if (e.key === 'ArrowUp' || e.key === 'PageUp') { roomRail.step(-1); return true; }
       if (e.key === 't' || e.key === 'T' || e.key === 'p' || e.key === 'P') { picsMenu.toggle(); return true; }
@@ -475,9 +487,12 @@
   }
 
   document.addEventListener('keydown', function (e) {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
     var tag = e.target && e.target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    /* A focused button or link keeps Enter and Space for itself, so the
+       menus stay operable from the keyboard. */
+    if ((e.key === 'Enter' || e.key === ' ') && (tag === 'BUTTON' || tag === 'A')) return;
     if (keyHandler && keyHandler(e)) e.preventDefault();
   });
 
