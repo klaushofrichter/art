@@ -382,6 +382,34 @@ test('the About cover holds its right edge, the rooms stay centred', async ({ pa
     .toHaveCSS('background-position', '50% 50%');
 });
 
+test('the lobby offers full screen, opposite the navigation', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.goto('/');
+  const fs = page.locator('.chrome.c-tr.icon');
+  await expect(fs).toBeVisible();
+  await expect(fs).toHaveAttribute('aria-label', 'Fill the screen');
+
+  // opposite the nav stack: right half, top of the window
+  const box = (await fs.boundingBox())!;
+  const nav = (await page.locator('.navstack').boundingBox())!;
+  expect(box.x).toBeGreaterThan(600);
+  expect(box.y).toBeLessThan(120);
+  expect(box.x).toBeGreaterThan(nav.x);
+
+  // it really asks the browser, and the icon follows the browser's answer
+  await fs.click();
+  await expect.poll(async () => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+  await expect(fs).toHaveAttribute('aria-label', 'Leave full screen');
+  await fs.click();
+  await expect.poll(async () => page.evaluate(() => !!document.fullscreenElement)).toBe(false);
+  await expect(fs).toHaveAttribute('aria-label', 'Fill the screen');
+});
+
+test('a room has nothing in the top right', async ({ page }) => {
+  await page.goto('/#colors/undertow');
+  await expect(page.locator('.room .chrome.c-tr')).toHaveCount(0);
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.

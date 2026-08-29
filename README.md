@@ -37,6 +37,11 @@ that is **Rooms**; in a room it is **← Lobby** with **Pictures** underneath.
 The tree is strict — a room's menu lists that room's pictures and offers no way
 sideways to another room.
 
+The lobby also carries a full-screen control at the top right — the browser's
+own full screen, so the gallery fills the window and stays that way as you move
+through it. It is the one control that is not navigation, which is why it sits
+opposite the stack rather than in it.
+
 ### The About room
 
 A room with no works: one hero image and the artist's text. Because there is

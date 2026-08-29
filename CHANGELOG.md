@@ -13,6 +13,9 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- The lobby has a full-screen control at the top right, opposite the
+  navigation.
+
 - The About panel's cover is anchored to its right edge in the lobby, so the
   subject stays in frame when the panel is too narrow to show the full width.
   The picture rooms stay centred.

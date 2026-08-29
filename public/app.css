@@ -154,6 +154,10 @@ body {
   border:1px solid rgba(237,231,218,.13); border-radius:2px; padding:.7em 1em; cursor:pointer;
   text-decoration:none; transition:color .25s,border-color .25s,opacity .38s; }
 .chrome:hover { color:var(--brass); border-color:rgba(201,162,39,.55); }
+.c-tr { top:3.4vh; right:3vw; }
+.chrome.icon { padding:.72em; line-height:0; }
+.chrome.icon svg { width:1.15em; height:1.15em; display:block; fill:none; stroke:currentColor;
+  stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 .navstack { position:absolute; top:3.4vh; left:3vw; z-index:8;
   display:flex; flex-direction:column; align-items:flex-start; gap:8px; }
 .navstack .chrome { position:static; }
