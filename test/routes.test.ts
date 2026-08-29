@@ -144,6 +144,29 @@ describe('the manifest ships identifiers, not URLs', () => {
   });
 });
 
+describe('the no-JavaScript fallback derives its URLs too', () => {
+  it('never puts a URL from content into an href or a src', async () => {
+    // purchase_url is copied verbatim out of index.json, so interpolating it
+    // would let a hand-edited file put "javascript:" behind a link.
+    const poisoned = rooms.map((r) =>
+      r.id !== 'colors' ? r : {
+        ...r,
+        works: r.works.map((w) =>
+          w.slug === 'undertow'
+            ? { ...w, purchaseUrl: 'javascript:alert(1)', src: '" onerror="alert(1)' }
+            : w
+        ),
+      }
+    );
+    const res = await request(createApp(poisoned)).get('/');
+    expect(res.text).not.toContain('javascript:alert(1)');
+    expect(res.text).not.toContain('onerror=');
+    // and it still links to the right place
+    expect(res.text).toContain('href="/buy/colors/undertow"');
+    expect(res.text).toContain('src="/assets/colors/IMG_7281.jpg"');
+  });
+});
+
 describe('a custom purchase_url is honoured server-side', () => {
   it('redirects the canonical page to wherever the JSON points', async () => {
     const custom = rooms.map((r) =>

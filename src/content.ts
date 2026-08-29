@@ -80,7 +80,8 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     }
     const status: Status = STATUSES.includes(w.status) ? w.status : 'available';
     let slug = slugify(w.title || w.file);
-    while (seen.has(slug)) slug += '-2';
+    const base = slug;
+    for (let n = 2; seen.has(slug); n++) slug = `${base}-${n}`;
     seen.add(slug);
     return [{
       file: w.file,

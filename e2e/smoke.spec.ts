@@ -294,6 +294,31 @@ test('the label carries a permalink icon pointing at the id', async ({ page }) =
   await expect(link).toHaveAttribute('href', /\?id=leyb1brb$/);
 });
 
+test('the ?id= does not linger and hijack a later share', async ({ page }) => {
+  await page.goto('/?id=leyb1brb');                 // Colors / Undertow
+  await expect(page.locator('.info h2')).toHaveText('Undertow');
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.info h2')).toHaveText('Shallows');
+  // Whatever is in the address bar now must reopen what is on screen.
+  expect(page.url()).not.toContain('id=');
+  await page.goto(page.url());
+  await expect(page.locator('.info h2')).toHaveText('Shallows');
+});
+
+test('a permalink to the About room opens it', async ({ page }) => {
+  await page.goto('/?id=rib3oeuf');
+  await expect(page.locator('.aboutroom')).toBeVisible();
+});
+
+test('a malformed hash does not blank the page', async ({ page }) => {
+  const errs: string[] = [];
+  page.on('pageerror', (e) => errs.push(String(e)));
+  await page.goto('/#100%');
+  await expect(page.locator('.lpanel').first()).toBeAttached();
+  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Colors');
+  expect(errs).toEqual([]);
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.

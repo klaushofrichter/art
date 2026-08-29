@@ -13,6 +13,13 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- Fixed from review: a permalink's `?id=` stayed in the address bar after
+  navigating, so sharing that URL sent people back to the original picture;
+  a permalink to the About room stopped in the lobby instead of opening it;
+  a malformed `#` fragment threw and left the page blank; the no-JavaScript
+  fallback built links from content rather than from identifiers; and a
+  repeated title produced `-2-2-2` rather than counting.
+
 - Permalinks: every room and picture now carries a stable 8-character id, and
   `?id=<uid>` opens it. A picture's label shows the link as an icon. An id that
   no longer exists lands quietly in the lobby.

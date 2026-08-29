@@ -50,10 +50,12 @@ function fallback(rooms: Room[]): string {
         (r.about.contact ? `<p><a href="mailto:${escapeHtml(r.about.contact.email)}">${escapeHtml(r.about.contact.email)}</a></p>` : '') +
         `</section>`;
     }
-    const items = r.works.map((w) =>
-      `<li><a href="${w.purchaseUrl}"><img src="${w.src}" alt="${escapeHtml(w.title)}" loading="lazy">` +
-      `<span class="t">${escapeHtml(w.title)}</span></a></li>`
-    ).join('');
+    const items = r.works.map((w) => {
+      const buy = `/buy/${encodeURIComponent(r.id)}/${encodeURIComponent(w.slug)}`;
+      const src = `/assets/${encodeURIComponent(r.id)}/${encodeURIComponent(w.file)}`;
+      return `<li><a href="${buy}"><img src="${src}" alt="${escapeHtml(w.title)}" loading="lazy">` +
+        `<span class="t">${escapeHtml(w.title)}</span></a></li>`;
+    }).join('');
     return `<section><h2>${escapeHtml(r.title)}</h2><ul>${items}</ul></section>`;
   }).join('');
   return `<noscript><div class="fallback">${'<h1>Gallery</h1>'}${sections}</div></noscript>`;

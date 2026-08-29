@@ -12,7 +12,10 @@
   if (!ROOMS.length) return;
 
   var REDUCE = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var INITIAL_HASH = decodeURIComponent(location.hash.replace(/^#/, ''));
+  var INITIAL_HASH = (function () {
+    var raw = location.hash.replace(/^#/, '');
+    try { return decodeURIComponent(raw); } catch (_) { return raw; }
+  })();
 
   /* Tuning. Both springs are deliberately slow — the weight is the point.
      omega = sqrt(K); damping ratio = (1 - D) / (2 * sqrt(K)).
@@ -699,11 +702,12 @@
   function openFromId() {
     var uid = new URLSearchParams(location.search).get('id');
     if (!uid) return false;
+    history.replaceState(null, '', location.pathname + location.hash);
     for (var i = 0; i < ROOMS.length; i++) {
       var room = ROOMS[i];
       if (room.uid === uid) {
         lobbyRail.go(i, true); syncLobby(i);
-        if (room.type !== 'about') enterRoom(room);
+        enterRoom(room);
         return true;
       }
       for (var j = 0; j < room.works.length; j++) {
