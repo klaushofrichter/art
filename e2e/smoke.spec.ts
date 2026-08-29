@@ -319,6 +319,36 @@ test('a malformed hash does not blank the page', async ({ page }) => {
   expect(errs).toEqual([]);
 });
 
+test('the label offers the picture on screen at full resolution', async ({ page }) => {
+  await page.goto('/#colors/undertow');
+  const dl = page.locator('.info .download');
+  await expect(dl).toBeVisible();
+  await expect(dl).toHaveAttribute('href', '/assets/colors/IMG_7281.jpg');
+  await expect(dl).toHaveAttribute('download', 'undertow.jpg');
+
+  // it follows the picture, and there is only ever one
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.info h2')).toHaveText('Shallows');
+  await expect(page.locator('.info .download')).toHaveCount(1);
+  await expect(page.locator('.info .download')).toHaveAttribute('download', 'shallows.jpg');
+});
+
+test('the download really serves the full-resolution original', async ({ page }) => {
+  await page.goto('/#colors/undertow');
+  const href = await page.locator('.info .download').getAttribute('href');
+  const res = await page.request.get(href as string);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toContain('image/jpeg');
+  // the original on disk is ~1.2MB; the room view does not downscale
+  expect(Number(res.headers()['content-length'])).toBeGreaterThan(1_000_000);
+});
+
+test('the About room offers no download', async ({ page }) => {
+  await page.goto('/?id=rib3oeuf');
+  await expect(page.locator('.aboutroom')).toBeVisible();
+  await expect(page.locator('.download')).toHaveCount(0);
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.

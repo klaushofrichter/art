@@ -13,6 +13,10 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- A picture's label now offers the full-resolution original for download,
+  beside its permalink. Always the one picture on screen; never a whole room.
+- Lobby covers are 10% less darkened.
+
 - Fixed from review: a permalink's `?id=` stayed in the address bar after
   navigating, so sharing that URL sent people back to the original picture;
   a permalink to the About room stopped in the lobby instead of opening it;

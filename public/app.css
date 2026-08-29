@@ -32,7 +32,7 @@ body {
 /* ---- LOBBY ---- */
 .lpanel { position:relative; height:100%; overflow:hidden; display:flex; align-items:center; --mx:50%; --my:50%; }
 .lpanel .bg { position:absolute; inset:0; background-size:cover; background-position:center;
-  transform:scale(1.14); will-change:transform; filter:brightness(.52) saturate(.88);
+  transform:scale(1.14); will-change:transform; filter:brightness(.57) saturate(.88);
   opacity:0; transition:opacity .6s ease; }
 .lpanel .bg.in, .lpanel.nocover .bg { opacity:1; }
 /* The spotlight: near-white and low, with only a trace of warmth so it reads
@@ -115,13 +115,14 @@ body {
 .info dt { color:var(--mute); text-transform:uppercase; letter-spacing:.1em; }
 .info dd { margin:0; color:var(--bone); }
 .info .buyline { display:flex; align-items:center; gap:1.2vw; flex-wrap:wrap; }
-/* permalink: an icon, not a paragraph of URL */
-.permalink { pointer-events:auto; display:inline-flex; align-items:center; justify-content:center;
+/* small icon links in the label — a permalink and a download, not a
+   paragraph of URL or a button saying "download" */
+.iconlink { pointer-events:auto; display:inline-flex; align-items:center; justify-content:center;
   width:2.4em; height:2.4em; margin-left:.2em; border:1px solid rgba(237,231,218,.18); border-radius:2px;
   color:rgba(237,231,218,.6); text-decoration:none; transition:color .2s, border-color .2s; }
-.permalink:hover { color:var(--brass); border-color:rgba(201,162,39,.5); }
-.permalink svg { width:1.15em; height:1.15em; display:block; fill:none; stroke:currentColor;
-  stroke-width:1.6; stroke-linecap:round; }
+.iconlink:hover { color:var(--brass); border-color:rgba(201,162,39,.5); }
+.iconlink svg { width:1.15em; height:1.15em; display:block; fill:none; stroke:currentColor;
+  stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
 .info .price { font-family:var(--mono); font-size:clamp(16px,2.5vh,22px); color:var(--brass); letter-spacing:.04em; }
 .info .status { font-family:var(--mono); font-size:clamp(9px,1.25vh,12px); letter-spacing:.16em; text-transform:uppercase;
   border:1px solid var(--line); border-radius:100px; padding:.4em 1em; color:var(--mute); }
