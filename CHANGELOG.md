@@ -13,6 +13,14 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- **Terms of Service and a Privacy Policy**, at `/terms` and `/privacy`, linked
+  from the About room under the version line. Both are needed to take payments
+  through Stripe.
+
+- The favicon is now white on black rather than black on white, and its URL
+  carries a content hash like the stylesheet and the script — without one the
+  new icon would never reach anyone who had visited before.
+
 - **The pictures have moved out of this repository.** The gallery reads its
   content from a Kubernetes volume, the image no longer carries a copy, and
   `assets/` is git-ignored. Use `scripts/pull-assets.sh` to fetch a working

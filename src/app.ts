@@ -5,6 +5,7 @@ import { renderGallery } from './views/gallery';
 import { healthRouter } from './routes/health';
 import { indexRouter } from './routes/index';
 import { buyRouter } from './routes/buy';
+import { legalRouter } from './routes/legal';
 
 export type GalleryApp = Express & {
   /** Re-read the content from disk. Returns false and keeps what it has if
@@ -62,6 +63,7 @@ export function createApp(
     next();
   });
 
+  app.use(legalRouter());
   app.use(buyRouter(() => current));
   app.use(indexRouter(() => html));
   return app;
