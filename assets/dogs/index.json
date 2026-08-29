@@ -5,6 +5,9 @@
     "title": "Dogs",
     "subtitle": "Photographs",
     "description": "One dog, at rest, over several years. Printed to order on archival paper.",
+    "includes": [
+      "Personally signed by the artist"
+    ],
     "cover": "IMG_3689.jpg",
     "order": 2
   },

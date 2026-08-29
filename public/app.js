@@ -558,6 +558,16 @@
       var dl = el('dl');
       if (w.medium) dl.append(el('dt', null, 'Medium'), el('dd', null, w.medium));
       if (w.dimensions) dl.append(el('dt', null, 'Size'), el('dd', null, w.dimensions));
+      /* What a buyer gets that a visitor cannot just download. Only where the
+         work can still be had — it reads as a promise, not a description. */
+      if (w.includes && w.includes.length && (w.status === 'available' || w.status === 'reserved')) {
+        var dd = el('dd', 'includes');
+        w.includes.forEach(function (t, n) {
+          if (n) dd.append(el('br'));
+          dd.append(markupNodes(t));
+        });
+        dl.append(el('dt', null, 'Includes'), dd);
+      }
       right.append(dl);
       var line = el('div', 'buyline');
       if (w.status === 'available' && w.price != null) {

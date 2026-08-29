@@ -5,6 +5,10 @@
     "title": "Food",
     "subtitle": "Photographs",
     "description": "Dinners, photographed before they were eaten. Mostly *available light*, mostly in a hurry.",
+    "includes": [
+      "Personally signed by the artist",
+      "Comes with the recipe and cooking instructions"
+    ],
     "cover": "IMG_6985.jpg",
     "order": 3
   },

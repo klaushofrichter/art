@@ -13,6 +13,10 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- Prints now say what a buyer gets beyond the file: signed by the artist, and
+  for the food pictures, the recipe and cooking instructions. Shown in the
+  room label and on the purchase page, and only while the work can be bought.
+
 - A picture's label now offers the full-resolution original for download,
   beside its permalink. Always the one picture on screen; never a whole room.
 - Lobby covers are 10% less darkened.

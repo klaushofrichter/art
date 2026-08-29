@@ -349,6 +349,29 @@ test('the About room offers no download', async ({ page }) => {
   await expect(page.locator('.download')).toHaveCount(0);
 });
 
+test('a print says what a buyer gets that a download does not', async ({ page }) => {
+  await page.goto('/#food/romanesco');
+  const inc = page.locator('.info dd.includes');
+  await expect(inc).toContainText('Personally signed by the artist');
+  await expect(inc).toContainText('Comes with the recipe and cooking instructions');
+
+  // dogs are signed but come with no recipe
+  await page.goto('/?n=2#dogs/waiting');
+  await expect(page.locator('.info dd.includes')).toContainText('Personally signed');
+  await expect(page.locator('.info dd.includes')).not.toContainText('recipe');
+
+  // the originals are one of one; there is nothing to add
+  await page.goto('/?n=3#colors/undertow');
+  await expect(page.locator('.info h2')).toHaveText('Undertow');
+  await expect(page.locator('.info dd.includes')).toHaveCount(0);
+});
+
+test('a sold picture promises nothing', async ({ page }) => {
+  await page.goto('/#food/second-helping');
+  await expect(page.locator('.info .status')).toHaveText('Sold');
+  await expect(page.locator('.info dd.includes')).toHaveCount(0);
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.

@@ -108,6 +108,26 @@ beside its pictures.
 }
 ```
 
+### What a purchase includes
+
+The pictures are on the site, and the label offers the full-resolution file, so
+a download is not what someone pays for. `includes` says what is — signing,
+extras, anything a file cannot carry:
+
+```jsonc
+"collection": {
+  "includes": [
+    "Personally signed by the artist",
+    "Comes with the recipe and cooking instructions"
+  ]
+}
+```
+
+It sits on the collection and applies to every work in it; a work may add its
+own with the same key, and the two are merged. It is shown only where the work
+can still be bought, because it reads as a promise rather than a description.
+The original paintings carry none — being one of one is the difference.
+
 ### Sale status
 
 | `status` | Shown |
