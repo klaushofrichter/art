@@ -29,7 +29,7 @@ export function page(o: PageOptions): string {
 <meta property="og:title" content="${escapeHtml(o.title)}">
 <meta property="og:description" content="${escapeHtml(o.description)}">
 <meta property="og:type" content="website">
-<link rel="icon" type="image/png" href="/assets/palette.png">
+<link rel="icon" type="image/png" href="/palette.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="${FONTS}">
