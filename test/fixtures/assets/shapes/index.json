@@ -1,0 +1,52 @@
+{
+  "collection": {
+    "id": "shapes",
+    "uid": "fixshape",
+    "title": "Shapes",
+    "subtitle": "Fixture pictures",
+    "description": "Solid colours in three *shapes*, for tests to stand on.",
+    "cover": "wide.jpg",
+    "order": 1
+  },
+  "works": [
+    {
+      "file": "wide.jpg",
+      "uid": "fixwide1",
+      "title": "Wide",
+      "date": "2024-03",
+      "artist": "Fixture",
+      "medium": "Solid colour",
+      "dimensions": "800 × 600 px",
+      "description": "Landscape, **wider** than it is tall.",
+      "price": 100,
+      "currency": "USD",
+      "status": "available"
+    },
+    {
+      "file": "tall.jpg",
+      "uid": "fixtall1",
+      "title": "Tall",
+      "date": "2024-07",
+      "artist": "Fixture",
+      "medium": "Solid colour",
+      "dimensions": "600 × 900 px",
+      "description": "Portrait. Its price must never reach the browser.",
+      "price": 150,
+      "currency": "USD",
+      "status": "sold"
+    },
+    {
+      "file": "square.jpg",
+      "uid": "fixsqr01",
+      "title": "Square",
+      "date": "2025-01",
+      "artist": "Fixture",
+      "medium": "Solid colour",
+      "dimensions": "700 × 700 px",
+      "description": "Square, and *spoken for*.",
+      "price": 200,
+      "currency": "USD",
+      "status": "reserved"
+    }
+  ]
+}

@@ -48,7 +48,8 @@ export interface Room {
   works: Work[];
 }
 
-export const ASSETS_DIR = path.join(__dirname, '..', 'assets');
+export const ASSETS_DIR =
+  process.env.ASSETS_DIR || path.join(__dirname, '..', 'assets');
 
 function slugify(value: string): string {
   return value

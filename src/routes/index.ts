@@ -1,14 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { Room } from '../content';
-import { renderGallery } from '../views/gallery';
 
-export function indexRouter(rooms: Room[]): Router {
+/** The page is rendered when the content changes, not per request — but it
+ *  is read through a getter so a reload is picked up. */
+export function indexRouter(html: () => string): Router {
   const router = Router();
-  // Rendered once at boot: the content only changes when the image is
-  // rebuilt, so there is nothing to recompute per request.
-  const html = renderGallery(rooms);
   router.get('/', (_req: Request, res: Response) => {
-    res.status(200).type('html').send(html);
+    res.status(200).type('html').send(html());
   });
   return router;
 }

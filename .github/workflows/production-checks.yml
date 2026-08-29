@@ -38,6 +38,8 @@ jobs:
       - run: npm run build
 
       - name: Start the server and run the smoke test
+        env:
+          ASSETS_DIR: ${{ github.workspace }}/test/fixtures/assets
         run: |
           set -euo pipefail
           npm start &

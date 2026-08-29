@@ -198,8 +198,22 @@ npm run dev          # http://localhost:8080
 | `npm test` | unit tests (vitest + supertest) |
 | `npm run test:e2e` | Playwright, against a running server |
 
-No configuration beyond an optional `PORT` (default `8080`). Content is read
-once at boot, so restart after changing anything under `assets/`.
+| `npm run dev:fixtures` | the same, against the test fixtures |
+
+Configuration is an optional `PORT` (default `8080`) and an optional
+`ASSETS_DIR` (default `./assets`). Content is read once at boot, so restart
+after changing anything under it.
+
+### Tests own their content
+
+The suites run against `test/fixtures/assets` — three rooms of solid-colour
+images with hand-written metadata, chosen to exercise the cases rather than to
+look like art: a landscape, a portrait, a square, one deliberately low-resolution
+file, a sold work, a reserved one, one that is not for sale, a room that
+promises something with a purchase, and a room with no works at all.
+
+Nothing in the suite refers to the gallery's real content, so changing a price
+or a title can never fail a build, and the fixtures are safe to publish.
 
 ## Endpoints
 

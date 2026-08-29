@@ -1,0 +1,41 @@
+{
+  "collection": {
+    "id": "prints",
+    "uid": "fixprint",
+    "title": "Prints",
+    "subtitle": "Fixture prints",
+    "includes": [
+      "Signed by the artist",
+      "Comes with a note"
+    ],
+    "description": "A room whose works carry a promise.",
+    "cover": "one.jpg",
+    "order": 2
+  },
+  "works": [
+    {
+      "file": "one.jpg",
+      "uid": "fixone01",
+      "title": "First Print",
+      "date": "2024-05",
+      "artist": "Fixture",
+      "medium": "Solid colour",
+      "dimensions": "800 × 600 px",
+      "description": "Available, and says what comes with it.",
+      "price": 50,
+      "currency": "USD",
+      "status": "available"
+    },
+    {
+      "file": "two.jpg",
+      "uid": "fixtwo01",
+      "title": "Second Print",
+      "date": "2025-04",
+      "artist": "Fixture",
+      "medium": "Solid colour",
+      "dimensions": "240 × 180 px",
+      "description": "Deliberately small, and not for sale.",
+      "status": "nfs"
+    }
+  ]
+}

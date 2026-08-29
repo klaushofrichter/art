@@ -1,0 +1,25 @@
+{
+  "collection": {
+    "id": "about",
+    "uid": "fixabout",
+    "type": "about",
+    "title": "About",
+    "subtitle": "The fixture",
+    "description": "A room with no works.",
+    "cover": "hero.jpg",
+    "order": 99
+  },
+  "about": {
+    "name": "A Fixture",
+    "role": "Stands in for the artist",
+    "body": [
+      "This room exists so the tests have somewhere with **no works** to open.",
+      "It also carries *italics*, so the markup subset is exercised."
+    ],
+    "contact": {
+      "email": "fixture@example.com",
+      "note": "Nobody reads this address."
+    }
+  },
+  "works": []
+}
