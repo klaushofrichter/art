@@ -128,10 +128,20 @@ jobs:
           [ "$served" = "$VERSION" ] \
             || { echo "::error::/health reports ${served}, expected ${VERSION}"; exit 1; }
           echo "version ok: $served"
+          # The gallery is only as good as the content it loaded, so check the
+          # counts rather than just a 200. A shipped-but-broken index.json
+          # would otherwise deploy quietly.
+          rooms=$(sed -n 's/.*"rooms":\([0-9]*\).*/\1/p' /tmp/health.json)
+          works=$(sed -n 's/.*"works":\([0-9]*\).*/\1/p' /tmp/health.json)
+          echo "content: ${rooms} rooms, ${works} works"
+          [ "${rooms:-0}" -ge 1 ] && [ "${works:-0}" -ge 1 ] \
+            || { echo "::error::deployed with ${rooms} rooms and ${works} works"; exit 1; }
           page=$(curl -s -o /tmp/page.html -w "%{http_code}" "$BASE/")
           [ "$page" = "200" ] || { echo "::error::public page returned ${page}"; exit 1; }
-          grep -q 'id="app-version"' /tmp/page.html \
-            || { echo "::error::page footer is missing the version label"; exit 1; }
+          grep -q 'id="manifest"' /tmp/page.html \
+            || { echo "::error::page is missing the content manifest"; exit 1; }
+          grep -q 'id="app"' /tmp/page.html \
+            || { echo "::error::page is missing the gallery root"; exit 1; }
           echo "public page ok"
 
       - name: Tag the release

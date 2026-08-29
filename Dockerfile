@@ -16,7 +16,10 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
+# The pictures and their index.json files, plus the client stylesheet and
+# script. Content ships inside the image, so a content change is a redeploy.
 COPY assets ./assets
+COPY public ./public
 USER node
 EXPOSE 8080
 CMD ["node", "dist/server.js"]

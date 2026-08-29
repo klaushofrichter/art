@@ -13,4 +13,13 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
-- Added a favicon (`assets/palette.png`).
+- The gallery itself, replacing the placeholder page: a lobby of rooms and
+  rooms of full-screen pictures, with drag, wheel and keyboard navigation.
+- Content is read from `assets/<room>/index.json` at boot — title, date,
+  artist, medium, dimensions, description, price and sale status per picture.
+  A sold picture keeps its place and shows no price.
+- An About room with no pictures, for the artist's own text.
+- Single-picture purchase pages at `/buy/<room>/<slug>`.
+- Deep links: `#room` and `#room/picture`.
+- `/health` now reports how many rooms and works were loaded, and the deploy
+  checks those counts rather than only a 200.

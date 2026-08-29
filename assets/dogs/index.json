@@ -1,0 +1,103 @@
+{
+  "collection": {
+    "id": "dogs",
+    "title": "Dogs",
+    "subtitle": "Photographs",
+    "description": "One dog, at rest, over several years. Printed to order on archival paper.",
+    "cover": "IMG_3689.jpg",
+    "order": 2
+  },
+  "works": [
+    {
+      "file": "IMG_3689.jpg",
+      "title": "Made in Texas",
+      "date": "2023-11",
+      "artist": "Klaus Hofrichter",
+      "medium": "Archival pigment print",
+      "dimensions": "12 × 7 in",
+      "description": "Floor level, late afternoon, the whole length of him along the carpet. The sign on the shelf behind was **not** arranged.",
+      "price": 95,
+      "currency": "USD",
+      "status": "available",
+      "purchase_url": "/buy/dogs/made-in-texas"
+    },
+    {
+      "file": "IMG_0030.jpg",
+      "title": "Afternoon",
+      "date": "2022-06",
+      "artist": "Klaus Hofrichter",
+      "medium": "Archival pigment print",
+      "dimensions": "10 × 8 in",
+      "description": "Waiting out the heat of the day.",
+      "price": 80,
+      "currency": "USD",
+      "status": "available",
+      "purchase_url": "/buy/dogs/afternoon"
+    },
+    {
+      "file": "IMG_1700.jpg",
+      "title": "Waiting",
+      "date": "2023-02",
+      "artist": "Klaus Hofrichter",
+      "medium": "Archival pigment print",
+      "dimensions": "10 × 8 in",
+      "description": "He hears the door before anyone else does.",
+      "price": 80,
+      "currency": "USD",
+      "status": "available",
+      "purchase_url": "/buy/dogs/waiting"
+    },
+    {
+      "file": "IMG_4257.jpg",
+      "title": "Sun Patch",
+      "date": "2024-04",
+      "artist": "Klaus Hofrichter",
+      "medium": "Archival pigment print",
+      "dimensions": "10 × 8 in",
+      "description": "The one warm rectangle in the room, found and *claimed* within a minute of the sun reaching it.",
+      "price": 95,
+      "currency": "USD",
+      "status": "available",
+      "purchase_url": "/buy/dogs/sun-patch"
+    },
+    {
+      "file": "IMG_8677.jpg",
+      "title": "Ears Up",
+      "date": "2024-09",
+      "artist": "Klaus Hofrichter",
+      "medium": "Archival pigment print",
+      "dimensions": "10 × 8 in",
+      "description": "Something outside, briefly worth the effort.",
+      "price": 80,
+      "currency": "USD",
+      "status": "sold",
+      "purchase_url": "/buy/dogs/ears-up"
+    },
+    {
+      "file": "IMG_9201.jpg",
+      "title": "Close",
+      "date": "2025-03",
+      "artist": "Klaus Hofrichter",
+      "medium": "Archival pigment print",
+      "dimensions": "10 × 8 in",
+      "description": "Near enough that the lens had trouble deciding what to hold in focus.",
+      "price": 110,
+      "currency": "USD",
+      "status": "reserved",
+      "purchase_url": "/buy/dogs/close"
+    },
+    {
+      "file": "IMG_9398.jpg",
+      "title": "Still",
+      "date": "2025-05",
+      "artist": "Klaus Hofrichter",
+      "medium": "Archival pigment print",
+      "dimensions": "10 × 8 in",
+      "description": "Asleep, and entirely uninterested in being photographed.",
+      "price": 95,
+      "currency": "USD",
+      "status": "available",
+      "purchase_url": "/buy/dogs/still"
+    }
+  ]
+}

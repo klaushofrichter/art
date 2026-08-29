@@ -1,100 +1,45 @@
 import { appVersion } from '../version';
+import { escapeHtml } from '../markdown';
+import { assetUrl } from '../fingerprint';
 
-export function pageShell(title: string, bodyHtml: string): string {
+const FONTS =
+  'https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,600' +
+  '&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap';
+
+export interface PageOptions {
+  title: string;
+  description: string;
+  body: string;
+  /** Extra markup for <head> — the gallery uses it for its manifest. */
+  head?: string;
+  /** Public paths under public/, fingerprinted automatically. */
+  scripts?: string[];
+  bodyClass?: string;
+}
+
+export function page(o: PageOptions): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${title}</title>
-  <meta name="description" content="An art gallery by Klaus Hofrichter." />
-  <link rel="icon" type="image/png" href="/assets/palette.png" />
-  <style>
-    :root {
-      --bg: #0b0b10;
-      --bg-tile: #14141d;
-      --text: #f5f5f7;
-      --text-muted: #9a9aad;
-      --accent: #d4a15e;
-      --border: #232333;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.5;
-    }
-    main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 5rem 1.5rem 3rem;
-    }
-    header.hero {
-      text-align: center;
-      margin-bottom: 3.5rem;
-    }
-    h1 {
-      font-size: 2.4rem;
-      font-weight: 300;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      margin: 0 0 0.75rem;
-    }
-    .tagline {
-      color: var(--text-muted);
-      margin: 0;
-    }
-    .gallery {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-    }
-    /* Placeholder frames: the gallery itself is not built yet, so these stand
-       in for the artworks rather than pretending to be them. */
-    .frame {
-      aspect-ratio: 4 / 5;
-      background: var(--bg-tile);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--border);
-      font-size: 0.75rem;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-    }
-    .frame:nth-child(3n+2) { aspect-ratio: 1 / 1; }
-    .frame:nth-child(4n+3) { aspect-ratio: 5 / 4; }
-    .note {
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      margin: 3rem 0 0;
-    }
-    footer {
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.78rem;
-      padding: 0 1.5rem 2.5rem;
-    }
-    @media (max-width: 700px) {
-      .gallery { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 420px) {
-      .gallery { grid-template-columns: 1fr; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>${escapeHtml(o.title)}</title>
+<meta name="description" content="${escapeHtml(o.description)}">
+<meta name="generator" content="art v${appVersion()}">
+<meta property="og:title" content="${escapeHtml(o.title)}">
+<meta property="og:description" content="${escapeHtml(o.description)}">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" href="/assets/palette.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="${FONTS}">
+<link rel="stylesheet" href="${assetUrl('app.css')}">
+${o.head || ''}
 </head>
-<body>
-  <main>
-    ${bodyHtml}
-  </main>
-  <footer>
-    art.klaushofrichter.net &middot; <span id="app-version">v${appVersion()}</span>
-  </footer>
+<body${o.bodyClass ? ` class="${o.bodyClass}"` : ''}>
+${o.body}
+${(o.scripts || []).map((s) => `<script src="${assetUrl(s)}" defer></script>`).join('\n')}
+<!-- v${appVersion()} -->
 </body>
 </html>
 `;
