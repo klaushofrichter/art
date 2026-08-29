@@ -25,6 +25,8 @@ is where notes are written *before* a release, not an archive of them.
   picture's own corners and never an edge beyond them.
 - Fixed: the navigation buttons stayed faintly visible in full screen when
   the pointer was outside the window.
+- The menu's hover highlight fades out to the right instead of ending on a
+  rectangle edge.
 
 - A picture whose shape leaves a bar above and below it now sits below the
   navigation buttons instead of centred behind them.

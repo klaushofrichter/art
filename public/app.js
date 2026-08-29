@@ -193,7 +193,7 @@
       if (it.badge) { meta.append(document.createTextNode(' \u00b7 '), el('span', 's', it.badge)); }
       label.append(el('div', 't', it.title), meta);
       b.append(th, label);
-      b.style.transitionDelay = (0.03 + i * 0.035) + 's, ' + (0.03 + i * 0.035) + 's, 0s, 0s';
+      b.style.setProperty('--enter-delay', (0.03 + i * 0.035) + 's');
       b.onclick = function (ev) { ev.stopPropagation(); api.close(); onPick(i); };
       list.append(b);
     });
