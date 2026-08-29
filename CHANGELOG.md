@@ -13,6 +13,13 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- Navigation now always sits at the top left: **Pictures** moved under
+  **← Lobby** rather than sitting opposite it.
+- `Return` enters the room you are looking at from the lobby, and takes a
+  picture in and out of full screen from within a room.
+- `Space` is limited to full screen, where there is no full label for the
+  short one to collide with.
+
 - The gallery itself, replacing the placeholder page: a lobby of rooms and
   rooms of full-screen pictures, with drag, wheel and keyboard navigation.
 - Content is read from `assets/<room>/index.json` at boot — title, date,
