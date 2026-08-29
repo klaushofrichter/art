@@ -13,6 +13,8 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- More air between the price and the Buy button in a room's label.
+
 - The About room no longer borrows the lobby's pointer light, drift or
   dimming — no other room has them. Its hero is shown as it is, pinned by its
   top right corner, and the text now sits on a band that fades to the right.
