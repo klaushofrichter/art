@@ -631,7 +631,15 @@
       }
       right.append(dl);
       var line = el('div', 'buyline');
-      if (w.status === 'available' && w.price != null) {
+      var pending = w.status === 'available' &&
+        window.ArtPending && window.ArtPending.isPending(w.uid);
+      if (pending && w.price != null) {
+        line.append(el('div', 'price', money(w.price, w.currency)));
+        /* the status is also the way back to the page it was sent from */
+        var back = el('a', 'status pending no-drag', 'Sale pending');
+        back.href = buyUrl(room.id, w.slug);
+        line.append(back);
+      } else if (w.status === 'available' && w.price != null) {
         line.append(el('div', 'price', money(w.price, w.currency)));
         var a = el('a', 'buy no-drag', 'Buy this picture');
         a.href = buyUrl(room.id, w.slug);

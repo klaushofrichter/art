@@ -540,6 +540,70 @@ test('a room menu keeps its own name and is not a link', async ({ page }) => {
   await expect(page.locator('.menu.on .mtitle')).toHaveCount(0);
 });
 
+// mailto: would leave the page; the app's own listener still runs.
+async function stopMailto(page: import('@playwright/test').Page) {
+  await page.addInitScript(() => {
+    document.addEventListener('click', (e) => {
+      const a = (e.target as HTMLElement).closest?.('a[href^="mailto:"]');
+      if (a) e.preventDefault();
+    }, true);
+  });
+}
+
+test('sending an enquiry marks the picture pending for that visitor', async ({ page }) => {
+  await stopMailto(page);
+  await page.goto('/buy/colors/undertow');
+  await expect(page.locator('.pending-note')).toBeHidden();
+  await page.locator('[data-enquire-uid]').click();
+  await expect(page.locator('.pending-note')).toBeVisible();
+
+  // and the room says so, with the status itself leading back
+  await page.goto('/#colors/undertow');
+  const pill = page.locator('.info .status.pending');
+  await expect(pill).toHaveText('Sale pending');
+  await expect(pill).toHaveAttribute('href', '/buy/colors/undertow');
+  await expect(page.locator('.info .price')).toHaveText('$340');
+  await expect(page.locator('.info .buy')).toHaveCount(0);
+});
+
+test('the mark is only in that browser, never for anyone else', async ({ browser }) => {
+  const mine = await browser.newContext();
+  const minePage = await mine.newPage();
+  await minePage.addInitScript(() => {
+    document.addEventListener('click', (e) => {
+      const a = (e.target as HTMLElement).closest?.('a[href^="mailto:"]');
+      if (a) e.preventDefault();
+    }, true);
+  });
+  await minePage.goto('/buy/colors/undertow');
+  await minePage.locator('[data-enquire-uid]').click();
+  await minePage.goto('/#colors/undertow');
+  await expect(minePage.locator('.info .status.pending')).toBeVisible();
+
+  // someone arriving fresh sees the picture as it really is
+  const theirs = await browser.newContext();
+  const theirPage = await theirs.newPage();
+  await theirPage.goto('/#colors/undertow');
+  await expect(theirPage.locator('.info .status.pending')).toHaveCount(0);
+  await expect(theirPage.locator('.info .buy')).toBeVisible();
+  await mine.close();
+  await theirs.close();
+});
+
+test('a pending mark lapses after its window', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    // one that expired a minute ago
+    localStorage.setItem('art:enquired', JSON.stringify({ leyb1brb: Date.now() - 60000 }));
+  });
+  await page.goto('/?x=1#colors/undertow');
+  await expect(page.locator('.info .buy')).toBeVisible();
+  await expect(page.locator('.info .status.pending')).toHaveCount(0);
+  // and the lapsed entry is cleared out rather than left to accumulate
+  const left = await page.evaluate(() => localStorage.getItem('art:enquired'));
+  expect(left).toBe('{}');
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.

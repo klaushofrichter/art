@@ -271,7 +271,16 @@ the bottom of the About room, linked to this repository.
 **Payment is not implemented.** `/buy/<room>/<slug>` is a real page showing the
 picture, its details and its price, but the only way to buy is an email
 enquiry — there is no cart, no checkout, no payment provider and no order
-record. Deciding that is the next piece of work. The intent is one picture at a
+record. The enquiry opens a mail client with the picture named, a request to
+hold it for 48 hours, and its permalink, so a reply can be about one specific
+work.
+
+Sending one marks that picture **Sale pending** — but only in the sender's own
+browser. There is no server-side state to write to: the status in
+`index.json` is baked into the image. A second visitor still sees the picture
+as available, and two people can both enquire. It is a reminder to the person
+who asked, not a reservation, and it clears itself after the same 48 hours the
+email asks for. A real hold needs the persistence that arrives with payment. Deciding that is the next piece of work. The intent is one picture at a
 time rather than a basket, so the options are roughly: a payment link per
 picture (Stripe Payment Links or similar, no server state), a hosted checkout
 session (needs a secret and a webhook to mark a picture sold), or keeping the
