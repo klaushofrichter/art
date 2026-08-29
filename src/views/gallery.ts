@@ -2,9 +2,7 @@ import { Room } from '../content';
 import { escapeHtml, inlineMarkup, plainText } from '../markdown';
 import { page } from './layout';
 import { appVersion } from '../version';
-
-/** Where the running build came from. Shown in the About room. */
-export const REPO_URL = 'https://github.com/klaushofrichter/art';
+import { REPO_URL } from '../site';
 
 /** What the browser needs. The images themselves stay on disk. */
 function manifest(rooms: Room[]) {
@@ -72,6 +70,6 @@ export function renderGallery(rooms: Room[]): string {
       JSON.stringify(manifest(rooms)).replace(/</g, '\\u003c')
     }</script>`,
     body: `<div id="app" data-version="${escapeHtml(appVersion())}" data-repo="${REPO_URL}"></div>\n${fallback(rooms)}`,
-    scripts: ['app.js'],
+    scripts: ['pending.js', 'app.js'],
   });
 }

@@ -169,6 +169,36 @@ describe('the manifest ships identifiers, not URLs', () => {
   });
 });
 
+describe('the enquiry email', () => {
+  function mailto(html: string) {
+    const raw = (html.match(/href="(mailto:[^"]*)"/) as RegExpMatchArray)[1]
+      .replace(/&amp;/g, '&');
+    const q = new URL(raw).search;
+    return Object.fromEntries(new URLSearchParams(q));
+  }
+
+  it('says what is wanted, asks for the hold, and links to the picture', async () => {
+    const res = await request(app()).get('/buy/colors/undertow');
+    const { subject, body } = mailto(res.text);
+    expect(subject).toBe('Interested in "Undertow"');
+    expect(body).toContain('I am interested in "Undertow" (Colors).');
+    expect(body).toContain('Can you reserve it for 48 hours and connect with me?');
+    // the permalink, so a reply can be about this picture and no other
+    expect(body).toContain('https://art.klaushofrichter.net/?id=leyb1brb');
+  });
+
+  it('carries the id of the work it is on, for the pending mark', async () => {
+    const res = await request(app()).get('/buy/dogs/waiting');
+    expect(res.text).toContain('data-enquire-uid="bab5q6e3"');
+  });
+
+  it('offers no enquiry for work that cannot be bought', async () => {
+    const res = await request(app()).get('/buy/colors/ember');
+    expect(res.text).not.toContain('mailto:');
+    expect(res.text).toContain('Sold');
+  });
+});
+
 describe('what a purchase includes', () => {
   it('lists it on the purchase page for work that can be bought', async () => {
     const res = await request(app()).get('/buy/food/romanesco');

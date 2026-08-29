@@ -218,11 +218,18 @@
   }
 
   /* the side menu — rooms in the lobby, this room's pictures in a room */
-  function Menu(title, items, onPick) {
+  function Menu(title, items, onPick, onTitle) {
     var veil = el('div', 'veil');
     var m = el('div', 'menu');
     var head = el('div', 'mhead');
-    head.append(el('span', null, title));
+    if (onTitle) {
+      var home = el('button', 'mtitle no-drag', title);
+      home.type = 'button';
+      home.onclick = function (ev) { ev.stopPropagation(); api.close(); onTitle(); };
+      head.append(home);
+    } else {
+      head.append(el('span', null, title));
+    }
     var list = el('div', 'mlist');
     var foot = el('div', 'mfoot');
     var close = el('button', 'mclose', 'Close');
@@ -413,13 +420,28 @@
   var lobbyNav = el('div', 'navstack');
   lobbyNav.append(roomsBtn);
   roomsBtn.type = 'button';
-  var lobbyMenu = Menu('The Gallery', ROOMS.map(function (r) {
+  var lobbyMenu = Menu('Lobby', ROOMS.map(function (r) {
     return {
       src: r.coverFile ? pictureUrl(r.id, r.coverFile) : null,
       title: r.title,
       meta: r.type === 'about' ? 'Information' : r.works.length + ' works \u00b7 ' + r.subtitle
     };
-  }), function (i) { enterRoom(ROOMS[i]); });
+  }), function (i) { enterRoom(ROOMS[i]); }, goHome);
+
+  /* Back to the front door: out of any room, onto the first panel, with the
+     URL and the greeting as they were on arrival. */
+  function goHome() {
+    if (liveRoom) {
+      liveRoom.remove();
+      liveRoom = null;
+      lobby.hidden = false;
+      keyHandler = lobbyKeys;
+    }
+    lobbyRail.go(0);
+    syncLobby(0);
+    history.replaceState(null, '', location.pathname);
+    showWelcome();
+  }
   var ldots = el('div', 'dots');
   ROOMS.forEach(function (r, i) {
     var d = el('i', 'no-drag');
@@ -609,7 +631,15 @@
       }
       right.append(dl);
       var line = el('div', 'buyline');
-      if (w.status === 'available' && w.price != null) {
+      var pending = w.status === 'available' &&
+        window.ArtPending && window.ArtPending.isPending(w.uid);
+      if (pending && w.price != null) {
+        line.append(el('div', 'price', money(w.price, w.currency)));
+        /* the status is also the way back to the page it was sent from */
+        var back = el('a', 'status pending no-drag', 'Sale pending');
+        back.href = buyUrl(room.id, w.slug);
+        line.append(back);
+      } else if (w.status === 'available' && w.price != null) {
         line.append(el('div', 'price', money(w.price, w.currency)));
         var a = el('a', 'buy no-drag', 'Buy this picture');
         a.href = buyUrl(room.id, w.slug);
@@ -806,28 +836,35 @@
      deep link or a permalink means they already know where they are going.
      It ignores the pointer, so it never stands between the visitor and the
      gallery; the dismissal is a capturing listener instead. */
-  (function welcome() {
-    if (!CAME_IN_BARE) return;
+  var greeting = null;
+  function showWelcome() {
+    if (greeting) greeting();          /* clear one already on screen */
     var card = el('div', 'welcome');
     card.append(el('div', 'w-from', 'Welcome to'), el('div', 'w-title', 'art.klaushofrichter.net'));
     app.append(card);
     app.classList.add('greeting');
-    requestAnimationFrame(function () { card.classList.add('on'); });
-
     var events = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
     var timer = setTimeout(dismiss, 4200);
     var done = false;
+    requestAnimationFrame(function () {
+      card.classList.add('on');
+      /* A frame late on purpose: when a click is what asked for the card, the
+         same gesture must not also be the input that dismisses it. */
+      if (!done) events.forEach(function (t) { window.addEventListener(t, dismiss, true); });
+    });
     function dismiss() {
       if (done) return;
       done = true;
       clearTimeout(timer);
       events.forEach(function (t) { window.removeEventListener(t, dismiss, true); });
+      if (greeting === dismiss) greeting = null;
       app.classList.remove('greeting');
       card.classList.remove('on');
       setTimeout(function () { card.remove(); }, 1200);
     }
-    events.forEach(function (t) { window.addEventListener(t, dismiss, true); });
-  })();
+    greeting = dismiss;
+  }
+  if (CAME_IN_BARE) showWelcome();
 
   /* The cover you land on downloads by itself; the others queue behind it. */
   (function loadCovers() {
