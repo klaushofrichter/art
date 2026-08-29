@@ -222,9 +222,11 @@
     var m = el('div', 'menu');
     var head = el('div', 'mhead');
     head.append(el('span', null, title));
-    var close = el('button', null, 'Close');
-    head.append(close);
     var list = el('div', 'mlist');
+    var foot = el('div', 'mfoot');
+    var close = el('button', 'mclose', 'Close');
+    close.type = 'button';
+    foot.append(close);
     items.forEach(function (it, i) {
       var b = el('button', 'mitem no-drag');
       b.type = 'button';
@@ -239,7 +241,7 @@
       b.onclick = function (ev) { ev.stopPropagation(); api.close(); onPick(i); };
       list.append(b);
     });
-    m.append(head, list);
+    m.append(head, list, foot);
     var api = {
       veil: veil, menu: m,
       open: function () {
@@ -548,7 +550,11 @@
       dots.append(d);
     });
     var count = el('div', 'count');
-    var backhint = el('div', 'backhint', 'Space for the title \u00b7 Return or Esc to go back');
+    var backhint = el('div', 'backhint');
+    backhint.append(
+      el('span', 'by-key', 'Space for the title \u00b7 Return or Esc to go back'),
+      el('span', 'by-touch', 'Tap to bring the room back')
+    );
     var back = el('button', 'chrome fade-idle no-drag', '← Lobby');
     back.type = 'button';
     var picsBtn = el('button', 'chrome fade-idle no-drag', 'Pictures');
