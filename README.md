@@ -37,6 +37,13 @@ that is **Rooms**; in a room it is **← Lobby** with **Content** underneath.
 The tree is strict — a room's menu lists that room's pictures and offers no way
 sideways to another room.
 
+Someone arriving at the bare front door — no fragment, no permalink — is met
+by a title card that names the gallery, holds for a few seconds and fades. The
+room's own caption waits until it has gone rather than sitting behind it. Any
+click, tap, key or scroll dismisses it at once, and it ignores the pointer, so
+it is never in the way. A visitor who followed a deep link or a permalink
+already knows where they are going and is not greeted.
+
 The lobby also carries a full-screen control at the top right — the browser's
 own full screen, so the gallery fills the window and stays that way as you move
 through it. It is the one control that is not navigation, which is why it sits

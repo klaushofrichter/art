@@ -12,6 +12,7 @@
   if (!ROOMS.length) return;
 
   var REDUCE = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var CAME_IN_BARE = !location.hash && !location.search;
   var INITIAL_HASH = (function () {
     var raw = location.hash.replace(/^#/, '');
     try { return decodeURIComponent(raw); } catch (_) { return raw; }
@@ -809,6 +810,33 @@
       var w = ROOMS[idx].works.findIndex(function (x) { return x.slug === parts[1]; });
       if (r && w > -1) r.go(w);
     }
+  })();
+
+  /* A title card for someone arriving at the front door, and only then — a
+     deep link or a permalink means they already know where they are going.
+     It ignores the pointer, so it never stands between the visitor and the
+     gallery; the dismissal is a capturing listener instead. */
+  (function welcome() {
+    if (!CAME_IN_BARE) return;
+    var card = el('div', 'welcome');
+    card.append(el('div', 'w-from', 'Welcome to'), el('div', 'w-title', 'art.klaushofrichter.net'));
+    app.append(card);
+    app.classList.add('greeting');
+    requestAnimationFrame(function () { card.classList.add('on'); });
+
+    var events = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+    var timer = setTimeout(dismiss, 4200);
+    var done = false;
+    function dismiss() {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      events.forEach(function (t) { window.removeEventListener(t, dismiss, true); });
+      app.classList.remove('greeting');
+      card.classList.remove('on');
+      setTimeout(function () { card.remove(); }, 1200);
+    }
+    events.forEach(function (t) { window.addEventListener(t, dismiss, true); });
   })();
 
   /* The cover you land on downloads by itself; the others queue behind it. */

@@ -458,6 +458,41 @@ test('the full-screen hint suits the keyboard it is talking to', async ({ page }
   await expect(hint.locator('.by-touch')).toBeHidden();
 });
 
+test('the front door is greeted, and the greeting goes on its own', async ({ page }) => {
+  await page.goto('/');
+  const card = page.locator('.welcome');
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('Welcome to');
+  await expect(card).toContainText('art.klaushofrichter.net');
+  // it must never stand between the visitor and the gallery
+  await expect(card).toHaveCSS('pointer-events', 'none');
+  // and it leaves by itself
+  await expect(card).toHaveCount(0, { timeout: 12000 });
+  await expect(page.locator('.lpanel .cap').first()).toBeVisible();
+});
+
+test('a click sends the greeting away at once', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.welcome')).toBeVisible();
+  await page.mouse.click(650, 700);
+  await expect(page.locator('.welcome')).toHaveCount(0, { timeout: 4000 });
+});
+
+test('a key sends the greeting away at once', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.welcome')).toBeVisible();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.welcome')).toHaveCount(0, { timeout: 4000 });
+});
+
+test('someone who already knows where they are going is not greeted', async ({ page }) => {
+  for (const url of ['/#dogs', '/#colors/undertow', '/?id=leyb1brb']) {
+    await page.goto(url);
+    await page.waitForTimeout(400);
+    await expect(page.locator('.welcome')).toHaveCount(0);
+  }
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.
