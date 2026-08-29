@@ -35,6 +35,7 @@ function manifest(rooms: Room[]) {
       price: w.status === 'available' || w.status === 'reserved' ? w.price : undefined,
       currency: w.currency,
       status: w.status,
+      includes: w.includes,
     })),
   }));
 }

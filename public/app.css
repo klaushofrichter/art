@@ -32,7 +32,7 @@ body {
 /* ---- LOBBY ---- */
 .lpanel { position:relative; height:100%; overflow:hidden; display:flex; align-items:center; --mx:50%; --my:50%; }
 .lpanel .bg { position:absolute; inset:0; background-size:cover; background-position:center;
-  transform:scale(1.14); will-change:transform; filter:brightness(.52) saturate(.88);
+  transform:scale(1.14); will-change:transform; filter:brightness(.57) saturate(.88);
   opacity:0; transition:opacity .6s ease; }
 .lpanel .bg.in, .lpanel.nocover .bg { opacity:1; }
 /* The spotlight: near-white and low, with only a trace of warmth so it reads
@@ -51,6 +51,7 @@ body {
   padding:.9em 1.6em; cursor:pointer; transition:background .25s, border-color .25s, color .25s; }
 .enter:hover, .enter:focus-visible { background:var(--brass); border-color:var(--brass); color:#17120A; }
 /* the About room has no photograph, so it gets its own ground */
+.lpanel.about .bg { background-position:100% 50%; }
 .lpanel.nocover .bg { background:radial-gradient(120% 90% at 78% 30%, #1B2635, #0A0E15 70%); filter:none; transform:none; }
 .lpanel.nocover .scrim { background:radial-gradient(44% 56% at var(--mx) var(--my), rgba(255,251,244,.10), rgba(255,251,244,0) 60%); }
 
@@ -114,14 +115,16 @@ body {
 .info dl { margin:0 0 1em; display:grid; grid-template-columns:auto 1fr; gap:.35em 1.2em; font-family:var(--mono); font-size:clamp(9px,1.25vh,12px); }
 .info dt { color:var(--mute); text-transform:uppercase; letter-spacing:.1em; }
 .info dd { margin:0; color:var(--bone); }
+.info dd.includes { color:var(--brass); line-height:1.7; }
 .info .buyline { display:flex; align-items:center; gap:1.2vw; flex-wrap:wrap; }
-/* permalink: an icon, not a paragraph of URL */
-.permalink { pointer-events:auto; display:inline-flex; align-items:center; justify-content:center;
+/* small icon links in the label — a permalink and a download, not a
+   paragraph of URL or a button saying "download" */
+.iconlink { pointer-events:auto; display:inline-flex; align-items:center; justify-content:center;
   width:2.4em; height:2.4em; margin-left:.2em; border:1px solid rgba(237,231,218,.18); border-radius:2px;
   color:rgba(237,231,218,.6); text-decoration:none; transition:color .2s, border-color .2s; }
-.permalink:hover { color:var(--brass); border-color:rgba(201,162,39,.5); }
-.permalink svg { width:1.15em; height:1.15em; display:block; fill:none; stroke:currentColor;
-  stroke-width:1.6; stroke-linecap:round; }
+.iconlink:hover { color:var(--brass); border-color:rgba(201,162,39,.5); }
+.iconlink svg { width:1.15em; height:1.15em; display:block; fill:none; stroke:currentColor;
+  stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
 .info .price { font-family:var(--mono); font-size:clamp(16px,2.5vh,22px); color:var(--brass); letter-spacing:.04em; }
 .info .status { font-family:var(--mono); font-size:clamp(9px,1.25vh,12px); letter-spacing:.16em; text-transform:uppercase;
   border:1px solid var(--line); border-radius:100px; padding:.4em 1em; color:var(--mute); }
@@ -255,6 +258,10 @@ body.buypage { overflow:auto; }
   font-family:var(--mono); font-size:12px; padding-top:1.4em; border-top:1px solid var(--line); }
 .buyside dt { color:var(--mute); text-transform:uppercase; letter-spacing:.1em; }
 .buyside dd { margin:0; color:var(--bone); }
+.buyside .includes { list-style:none; margin:0 0 1.8em; padding:0; display:flex; flex-direction:column; gap:.5em; }
+.buyside .includes li { font-family:var(--mono); font-size:12px; letter-spacing:.04em; color:var(--brass);
+  padding-left:1.4em; position:relative; }
+.buyside .includes li::before { content:'+'; position:absolute; left:0; color:rgba(201,162,39,.6); }
 .buyside .price { font-family:var(--mono); font-size:clamp(22px,3vw,30px); color:var(--brass); letter-spacing:.04em; margin-bottom:.6em; }
 .buyside .fine { font-family:var(--mono); font-size:11.5px; line-height:1.8; color:var(--mute); margin:0 0 1.8em; max-width:40ch; }
 .buyside .soldbox { font-family:var(--mono); font-size:13px; letter-spacing:.18em; text-transform:uppercase;

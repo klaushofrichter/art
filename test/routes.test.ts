@@ -144,6 +144,30 @@ describe('the manifest ships identifiers, not URLs', () => {
   });
 });
 
+describe('what a purchase includes', () => {
+  it('lists it on the purchase page for work that can be bought', async () => {
+    const res = await request(app()).get('/buy/food/romanesco');
+    expect(res.text).toContain('Personally signed by the artist');
+    expect(res.text).toContain('Comes with the recipe and cooking instructions');
+  });
+
+  it('promises nothing for work that is sold', async () => {
+    const res = await request(app()).get('/buy/food/second-helping');
+    expect(res.text).toContain('Sold');
+    expect(res.text).not.toContain('Personally signed');
+  });
+
+  it('merges the room list with anything a work adds', async () => {
+    const room = rooms.find((r) => r.id === 'food');
+    expect(room?.includes).toEqual([
+      'Personally signed by the artist',
+      'Comes with the recipe and cooking instructions',
+    ]);
+    for (const w of room!.works) expect(w.includes).toEqual(room!.includes);
+    expect(rooms.find((r) => r.id === 'colors')?.works[0].includes).toEqual([]);
+  });
+});
+
 describe('the no-JavaScript fallback derives its URLs too', () => {
   it('never puts a URL from content into an href or a src', async () => {
     // purchase_url is copied verbatim out of index.json, so interpolating it

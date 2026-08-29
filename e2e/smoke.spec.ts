@@ -319,6 +319,69 @@ test('a malformed hash does not blank the page', async ({ page }) => {
   expect(errs).toEqual([]);
 });
 
+test('the label offers the picture on screen at full resolution', async ({ page }) => {
+  await page.goto('/#colors/undertow');
+  const dl = page.locator('.info .download');
+  await expect(dl).toBeVisible();
+  await expect(dl).toHaveAttribute('href', '/assets/colors/IMG_7281.jpg');
+  await expect(dl).toHaveAttribute('download', 'undertow.jpg');
+
+  // it follows the picture, and there is only ever one
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.info h2')).toHaveText('Shallows');
+  await expect(page.locator('.info .download')).toHaveCount(1);
+  await expect(page.locator('.info .download')).toHaveAttribute('download', 'shallows.jpg');
+});
+
+test('the download really serves the full-resolution original', async ({ page }) => {
+  await page.goto('/#colors/undertow');
+  const href = await page.locator('.info .download').getAttribute('href');
+  const res = await page.request.get(href as string);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toContain('image/jpeg');
+  // the original on disk is ~1.2MB; the room view does not downscale
+  expect(Number(res.headers()['content-length'])).toBeGreaterThan(1_000_000);
+});
+
+test('the About room offers no download', async ({ page }) => {
+  await page.goto('/?id=rib3oeuf');
+  await expect(page.locator('.aboutroom')).toBeVisible();
+  await expect(page.locator('.download')).toHaveCount(0);
+});
+
+test('a print says what a buyer gets that a download does not', async ({ page }) => {
+  await page.goto('/#food/romanesco');
+  const inc = page.locator('.info dd.includes');
+  await expect(inc).toContainText('Personally signed by the artist');
+  await expect(inc).toContainText('Comes with the recipe and cooking instructions');
+
+  // dogs are signed but come with no recipe
+  await page.goto('/?n=2#dogs/waiting');
+  await expect(page.locator('.info dd.includes')).toContainText('Personally signed');
+  await expect(page.locator('.info dd.includes')).not.toContainText('recipe');
+
+  // the originals are one of one; there is nothing to add
+  await page.goto('/?n=3#colors/undertow');
+  await expect(page.locator('.info h2')).toHaveText('Undertow');
+  await expect(page.locator('.info dd.includes')).toHaveCount(0);
+});
+
+test('a sold picture promises nothing', async ({ page }) => {
+  await page.goto('/#food/second-helping');
+  await expect(page.locator('.info .status')).toHaveText('Sold');
+  await expect(page.locator('.info dd.includes')).toHaveCount(0);
+});
+
+test('the About cover holds its right edge, the rooms stay centred', async ({ page }) => {
+  // Only matters when the panel is narrower than the picture's 4:3, which is
+  // when cover crops left and right rather than top and bottom.
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.goto('/#about');
+  await expect(page.locator('.lpanel.about .bg')).toHaveCSS('background-position', '100% 50%');
+  await expect(page.locator('.lpanel:not(.about) .bg').first())
+    .toHaveCSS('background-position', '50% 50%');
+});
+
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {
   // The browser derives every src from a prefix plus encoded ids rather than
   // taking a URL from the manifest — this is the guard on that construction.

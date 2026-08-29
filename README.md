@@ -64,9 +64,12 @@ paging, no thumbnails, no full screen. The only navigation is leaving it.
 | `/?id=bab5q6e3` | permalink — a room or a picture, by its own id |
 
 A permalink is the id from `index.json`, not a position or a title, so it
-survives renaming and reordering. Each picture's label carries a link icon
-holding its permalink. An id that no longer exists lands quietly in the lobby;
-there is no error page, because there is nothing useful to say.
+survives renaming and reordering. An id that no longer exists lands quietly in
+the lobby; there is no error page, because there is nothing useful to say.
+
+A picture's label carries two icons: its permalink, and a download of that
+picture at full resolution. The download is always the one picture on screen —
+there is no way to pull a whole room, by design.
 
 ---
 
@@ -104,6 +107,26 @@ beside its pictures.
   ]
 }
 ```
+
+### What a purchase includes
+
+The pictures are on the site, and the label offers the full-resolution file, so
+a download is not what someone pays for. `includes` says what is — signing,
+extras, anything a file cannot carry:
+
+```jsonc
+"collection": {
+  "includes": [
+    "Personally signed by the artist",
+    "Comes with the recipe and cooking instructions"
+  ]
+}
+```
+
+It sits on the collection and applies to every work in it; a work may add its
+own with the same key, and the two are merged. It is shown only where the work
+can still be bought, because it reads as a promise rather than a description.
+The original paintings carry none — being one of one is the difference.
 
 ### Sale status
 

@@ -21,6 +21,9 @@ export interface Work {
   currency: string;
   status: Status;
   purchaseUrl: string;
+  /** What a buyer gets beyond the picture itself — signing, extras. Merged
+   *  from the collection's list and anything the work adds. */
+  includes: string[];
 }
 
 export interface AboutInfo {
@@ -39,6 +42,7 @@ export interface Room {
   description: string;
   cover: string | null;
   coverFile: string | null;
+  includes: string[];
   order: number;
   about?: AboutInfo;
   works: Work[];
@@ -67,6 +71,10 @@ function readRoom(dir: string, assetsDir: string): Room | null {
   if (!c || typeof c.id !== 'string') {
     throw new Error(`${dir}/index.json: missing collection.id`);
   }
+
+  const strings = (v: any): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  const roomIncludes = strings(c.includes);
 
   const seen = new Set<string>();
   const works: Work[] = (raw.works || []).flatMap((w: any): Work[] => {
@@ -98,6 +106,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
       currency: w.currency || 'USD',
       status,
       purchaseUrl: w.purchase_url || `/buy/${c.id}/${slug}`,
+      includes: [...roomIncludes, ...strings(w.includes)],
     }];
   });
 
@@ -113,6 +122,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     description: c.description || '',
     cover: coverOk ? `/assets/${c.id}/${encodeURIComponent(coverFile as string)}` : null,
     coverFile: coverOk ? (coverFile as string) : null,
+    includes: roomIncludes,
     order: typeof c.order === 'number' ? c.order : 50,
     about: raw.about,
     works,

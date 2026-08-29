@@ -76,16 +76,30 @@
   /* A permalink is the picture's own id, not its position or its title, so it
      survives renaming and reordering. */
   function permalink(uid) { return location.origin + '/?id=' + encodeURIComponent(uid); }
-  function linkIcon(uid, label) {
-    var a = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    a.setAttribute('viewBox', '0 0 24 24');
-    a.innerHTML = '<path d="M10 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.2 1.2"/>' +
-                  '<path d="M14 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.2-1.2"/>';
-    var link = el('a', 'permalink no-drag');
-    link.href = permalink(uid);
+  function iconLink(cls, href, label, paths) {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.innerHTML = paths;
+    var link = el('a', 'iconlink ' + cls + ' no-drag');
+    link.href = href;
     link.title = label;
     link.setAttribute('aria-label', label);
-    link.append(a);
+    link.append(svg);
+    return link;
+  }
+  function linkIcon(uid, label) {
+    return iconLink('permalink', permalink(uid), label,
+      '<path d="M10 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.2 1.2"/>' +
+      '<path d="M14 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.2-1.2"/>');
+  }
+  /* The picture on screen, at the size it was shot. One picture, never a
+     whole room — there is no bulk download. */
+  function downloadIcon(roomId, w) {
+    var ext = (w.file.match(/\.[A-Za-z0-9]+$/) || ['.jpg'])[0];
+    var link = iconLink('download', pictureUrl(roomId, w.file),
+      'Download ' + w.title + ' at full resolution',
+      '<path d="M12 4v11"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4.5 19.5h15"/>');
+    link.setAttribute('download', w.slug + ext);
     return link;
   }
 
@@ -359,7 +373,8 @@
   ROOMS.forEach(function (room) {
     var slide = el('div', 'slide');
     var coverUrl = room.coverFile ? pictureUrl(room.id, room.coverFile) : null;
-    var p = el('div', 'lpanel' + (coverUrl ? '' : ' nocover'));
+    var p = el('div', 'lpanel' + (room.type === 'about' ? ' about' : '') +
+      (coverUrl ? '' : ' nocover'));
     var bg = el('div', 'bg');
     /* the picture itself is fetched by showCover(), nearest first */
     coverUrls.push(coverUrl);
@@ -544,6 +559,16 @@
       var dl = el('dl');
       if (w.medium) dl.append(el('dt', null, 'Medium'), el('dd', null, w.medium));
       if (w.dimensions) dl.append(el('dt', null, 'Size'), el('dd', null, w.dimensions));
+      /* What a buyer gets that a visitor cannot just download. Only where the
+         work can still be had — it reads as a promise, not a description. */
+      if (w.includes && w.includes.length && (w.status === 'available' || w.status === 'reserved')) {
+        var dd = el('dd', 'includes');
+        w.includes.forEach(function (t, n) {
+          if (n) dd.append(el('br'));
+          dd.append(markupNodes(t));
+        });
+        dl.append(el('dt', null, 'Includes'), dd);
+      }
       right.append(dl);
       var line = el('div', 'buyline');
       if (w.status === 'available' && w.price != null) {
@@ -559,6 +584,7 @@
         line.append(el('span', 'status sold', STATUS[w.status] || 'Not for sale'));
       }
       if (w.uid) line.append(linkIcon(w.uid, 'Permanent link to ' + w.title));
+      line.append(downloadIcon(room.id, w));
       right.append(line);
       clear(sheet).append(left, right);
     }

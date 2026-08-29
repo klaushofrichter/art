@@ -22,6 +22,9 @@ export function renderBuy(room: Room, work: Work): string {
         ${work.dimensions ? `<dt>Size</dt><dd>${escapeHtml(work.dimensions)}</dd>` : ''}
         <dt>Room</dt><dd>${escapeHtml(room.title)}</dd>
       </dl>
+      ${work.includes.length && priced
+        ? `<ul class="includes">${work.includes.map((i) => `<li>${inlineMarkup(i)}</li>`).join('')}</ul>`
+        : ''}
       ${priced
         ? `<div class="price">${formatMoney(work.price as number, work.currency)}</div>
       <p class="fine">One picture at a time — there is no basket. Tell me you want it and
