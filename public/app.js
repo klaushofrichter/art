@@ -265,28 +265,19 @@
     return api;
   }
 
-  /* The pointer light, and the drift of the picture under it. Both run on the
+  /* The pointer light, and the drift of the cover under it. Both run on the
      slow spring, so the light keeps travelling for a moment after the pointer
-     stops and settles back on its own. Used by the lobby panels and by the
-     About room, so they feel like the same place. */
-  function attachLight(host, bg, opts) {
-    opts = opts || {};
+     stops and settles back on its own. The lobby only — inside a room the
+     pictures are simply shown. */
+  function attachLight(host, bg, scale, drift) {
     var sx = Spring(LIGHT_K, LIGHT_D), sy = Spring(LIGHT_K, LIGHT_D), raf = 0;
-    function clamp(v) { return v < 0 ? 0 : v > 100 ? 100 : v; }
     function paint() {
       sx.step(); sy.step();
       host.style.setProperty('--mx', (50 + sx.x * 58) + '%');
       host.style.setProperty('--my', (50 + sy.x * 58) + '%');
-      if (bg && opts.pan) {
-        /* With background-size:cover the extremes of background-position land
-           exactly on the picture's own corners, so the pointer can reach the
-           top right of the picture and never past its edge. Clamped because
-           the spring overshoots by design. */
-        bg.style.backgroundPosition =
-          clamp(50 + sx.x * 100) + '% ' + clamp(50 + sy.x * 100) + '%';
-      } else if (bg) {
-        bg.style.transform = 'scale(' + opts.scale + ') translate3d(' +
-          (-sx.x * opts.drift) + '%,' + (-sy.x * opts.drift) + '%,0)';
+      if (bg) {
+        bg.style.transform = 'scale(' + scale + ') translate3d(' +
+          (-sx.x * drift) + '%,' + (-sy.x * drift) + '%,0)';
       }
       if (sx.rest() && sy.rest()) { raf = 0; return; }
       raf = requestAnimationFrame(paint);
@@ -411,7 +402,7 @@
     cap.append(btn);
     p.append(cap);
 
-    if (!REDUCE) attachLight(p, coverUrl ? bg : null, { scale: 1.14, drift: 1.3 });
+    if (!REDUCE) attachLight(p, coverUrl ? bg : null, 1.14, 1.3);
     slide.append(p);
     rail.append(slide);
   });
@@ -718,7 +709,6 @@
     view.append(pane);
 
     /* the same light as the lobby, so the room feels like the panel it came from */
-    if (!REDUCE && coverUrl) attachLight(pane, bg, { pan: true });
 
     var back = el('button', 'chrome fade-idle no-drag', '← Lobby');
     back.type = 'button';
