@@ -48,6 +48,11 @@
   function money(n, cur) {
     return (cur === 'USD' || !cur ? '$' : '') + n.toLocaleString('en-US') + (cur && cur !== 'USD' ? ' ' + cur : '');
   }
+  function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
   function markup(s) {
     if (!s) return '';
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -155,7 +160,7 @@
     var veil = el('div', 'veil');
     var m = el('div', 'menu');
     var head = el('div', 'mhead');
-    head.append(el('span', null, title));
+    head.append(el('span', null, esc(title)));
     var close = el('button', null, 'Close');
     head.append(close);
     var list = el('div', 'mlist');
@@ -165,7 +170,7 @@
       var th = el('img', it.src ? 'th' : 'th blank');
       if (it.src) { th.src = it.src; th.alt = ''; th.loading = 'lazy'; }
       var txt = el('div');
-      txt.append(el('div', 't', it.title), el('div', 'm', it.meta));
+      txt.append(el('div', 't', esc(it.title)), el('div', 'm', it.meta));
       b.append(th, txt);
       b.style.transitionDelay = (0.03 + i * 0.035) + 's, ' + (0.03 + i * 0.035) + 's, 0s, 0s';
       b.onclick = function (ev) { ev.stopPropagation(); api.close(); onPick(i); };
@@ -207,16 +212,16 @@
     if (room.type === 'about' && room.about) {
       var a = room.about;
       var body = el('div', 'abody');
-      body.innerHTML = '<div class="n">' + markup(a.name || room.title) + '</div>' +
-        '<div class="r">' + markup(a.role || '') + '</div>' +
+      body.innerHTML = '<div class="n">' + esc(a.name || room.title) + '</div>' +
+        '<div class="r">' + esc(a.role || '') + '</div>' +
         (a.body || []).map(function (t) { return '<p>' + markup(t) + '</p>'; }).join('') +
-        (a.contact ? '<a class="mail no-drag" href="mailto:' + a.contact.email + '">' + a.contact.email + '</a>' +
-          (a.contact.note ? '<div class="fine">' + markup(a.contact.note) + '</div>' : '') : '');
+        (a.contact ? '<a class="mail no-drag" href="mailto:' + encodeURIComponent(a.contact.email) + '">' + esc(a.contact.email) + '</a>' +
+          (a.contact.note ? '<div class="fine">' + esc(a.contact.note) + '</div>' : '') : '');
       p.append(body);
     } else {
       var cap = el('div', 'cap');
-      cap.innerHTML = '<span class="s">' + markup(room.subtitle) + ' &middot; ' + room.works.length + ' works</span>' +
-        '<div class="n">' + markup(room.title) + '</div>' +
+      cap.innerHTML = '<span class="s">' + esc(room.subtitle) + ' &middot; ' + room.works.length + ' works</span>' +
+        '<div class="n">' + esc(room.title) + '</div>' +
         '<p class="b">' + markup(room.description) + '</p>';
       var btn = el('button', 'enter no-drag', 'Enter the room →');
       btn.type = 'button';
@@ -360,17 +365,17 @@
       picsMenu.mark(i);
       Array.prototype.forEach.call(dots.children, function (d, j) { d.classList.toggle('on', j === i); });
       count.innerHTML = '<b>' + String(i + 1).padStart(2, '0') + '</b> / ' + String(room.works.length).padStart(2, '0');
-      mini.innerHTML = '<b>' + markup(w.title) + '</b>' + niceDate(w.date);
+      mini.innerHTML = '<b>' + esc(w.title) + '</b>' + esc(niceDate(w.date));
       history.replaceState(null, '', '#' + room.id + '/' + w.slug);
 
       var left = el('div');
-      left.innerHTML = '<h2>' + markup(w.title) + '</h2>' +
-        '<p class="by">' + markup(w.artist || '') + (w.date ? ' &middot; ' + niceDate(w.date) : '') + '</p>' +
+      left.innerHTML = '<h2>' + esc(w.title) + '</h2>' +
+        '<p class="by">' + esc(w.artist || '') + (w.date ? ' &middot; ' + esc(niceDate(w.date)) : '') + '</p>' +
         '<p class="desc">' + markup(w.description) + '</p>';
       var right = el('div');
       var dl = el('dl');
-      dl.innerHTML = (w.medium ? '<dt>Medium</dt><dd>' + markup(w.medium) + '</dd>' : '') +
-        (w.dimensions ? '<dt>Size</dt><dd>' + markup(w.dimensions) + '</dd>' : '');
+      dl.innerHTML = (w.medium ? '<dt>Medium</dt><dd>' + esc(w.medium) + '</dd>' : '') +
+        (w.dimensions ? '<dt>Size</dt><dd>' + esc(w.dimensions) + '</dd>' : '');
       right.append(dl);
       var line = el('div', 'buyline');
       if (w.status === 'available' && w.price != null) {

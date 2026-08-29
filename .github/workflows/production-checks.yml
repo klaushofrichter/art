@@ -76,6 +76,14 @@ jobs:
           for f in sarif-results/*.sarif; do
             count=$(jq '[.runs[].results[]] | length' "$f")
             total=$((total + count))
+            # Print what was found, not just how much. A bare count means
+            # anyone hitting this gate has to re-run CodeQL locally to learn
+            # anything, which is most of the cost of the gate.
+            jq -r '.runs[] as $run | $run.results[]
+              | . as $r
+              | ($run.tool.driver.rules[$r.rule.index // 0].id // $r.ruleId) as $rule
+              | ($r.locations[0].physicalLocation) as $loc
+              | "\($loc.artifactLocation.uri):\($loc.region.startLine // 0)  [\($rule)]  \($r.message.text)"' "$f" || true
           done
           echo "CodeQL findings: $total"
           if [ "$total" -gt 0 ]; then
