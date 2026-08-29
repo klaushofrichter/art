@@ -13,6 +13,17 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- Arriving at the front door with no fragment or permalink now shows a title
+  card naming the gallery, which fades after a few seconds or on any input.
+
+- No print is marked sold any more — a print can be run again, so the word
+  was wrong for them. Only the original paintings can be gone.
+- The side menu in a room is now **Content** rather than **Pictures**.
+
+- Pages are now `Cache-Control: no-cache`, so a browser always checks for a
+  new build instead of deciding for itself. The assets keep their immutable
+  year.
+
 - The side menu's Close moved to the foot of its list, aligned with the rows.
 - The full-screen hint no longer offers a phone keys it does not have, and
   no longer wraps into something that reads like placeholder text.

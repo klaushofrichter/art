@@ -115,6 +115,31 @@ describe('date formatting on the purchase page', () => {
   });
 });
 
+describe('caching', () => {
+  // A page names the fingerprinted assets it needs. If a stale page is served
+  // it points at stale assets, and those are immutable for a year — the
+  // visitor is stuck on an old build with no way to reload out of it.
+  it('makes pages revalidate', async () => {
+    for (const path of ['/', '/buy/colors/undertow']) {
+      const res = await request(app()).get(path);
+      expect(res.headers['cache-control']).toBe('no-cache');
+      expect(res.headers.etag).toBeTruthy();
+    }
+  });
+
+  it('answers an unchanged page with an empty 304', async () => {
+    const first = await request(app()).get('/');
+    const again = await request(app()).get('/').set('If-None-Match', first.headers.etag);
+    expect(again.status).toBe(304);
+    expect(again.text).toBeFalsy();
+  });
+
+  it('does not put no-cache on the assets', async () => {
+    const res = await request(app()).get('/assets/colors/IMG_7281.jpg');
+    expect(res.headers['cache-control']).not.toContain('no-cache');
+  });
+});
+
 describe('client assets are cacheable and versioned', () => {
   it('fingerprints the stylesheet and the script', async () => {
     const res = await request(app()).get('/');
@@ -152,9 +177,18 @@ describe('what a purchase includes', () => {
   });
 
   it('promises nothing for work that is sold', async () => {
-    const res = await request(app()).get('/buy/food/second-helping');
+    const sold = rooms.map((r) =>
+      r.id !== 'food' ? r : {
+        ...r,
+        works: r.works.map((w) =>
+          w.slug === 'romanesco' ? { ...w, status: 'sold' as const } : w
+        ),
+      }
+    );
+    const res = await request(createApp(sold)).get('/buy/food/romanesco');
     expect(res.text).toContain('Sold');
     expect(res.text).not.toContain('Personally signed');
+    expect(res.text).not.toContain('recipe and cooking instructions');
   });
 
   it('merges the room list with anything a work adds', async () => {

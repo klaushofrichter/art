@@ -22,6 +22,16 @@ export function createApp(rooms: Room[] = loadRooms()): Express {
   app.use('/assets', express.static(ASSETS_DIR, oneYear));
   app.use(express.static(PUBLIC_DIR, oneYear));
 
+  // A page carries the fingerprinted URLs of the assets it needs, so it must
+  // never be served from cache without checking first. A stale page points at
+  // stale assets, and those are immutable for a year — a visitor would be
+  // stuck on an old build with no way to reload out of it. "no-cache" still
+  // caches; it just requires revalidation, which the ETag makes a cheap 304.
+  app.use((_req, res, next) => {
+    res.set('Cache-Control', 'no-cache');
+    next();
+  });
+
   app.use(buyRouter(rooms));
   app.use(indexRouter(rooms));
   return app;

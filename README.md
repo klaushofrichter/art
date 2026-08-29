@@ -33,9 +33,16 @@ The full label shows by default; a click anywhere — or `Return` — clears it 
 an unobstructed picture, and a click, `Return` or `Esc` brings it back.
 
 Navigation always sits in the same place: a stack at the top left. In the lobby
-that is **Rooms**; in a room it is **← Lobby** with **Pictures** underneath.
+that is **Rooms**; in a room it is **← Lobby** with **Content** underneath.
 The tree is strict — a room's menu lists that room's pictures and offers no way
 sideways to another room.
+
+Someone arriving at the bare front door — no fragment, no permalink — is met
+by a title card that names the gallery, holds for a few seconds and fades. The
+room's own caption waits until it has gone rather than sitting behind it. Any
+click, tap, key or scroll dismisses it at once, and it ignores the pointer, so
+it is never in the way. A visitor who followed a deep link or a permalink
+already knows where they are going and is not greeted.
 
 The lobby also carries a full-screen control at the top right — the browser's
 own full screen, so the gallery fills the window and stays that way as you move
@@ -57,7 +64,7 @@ paging, no thumbnails, no full screen. The only navigation is leaving it.
 | `Return` | in the lobby, enter the room you are looking at; in a room, in and out of full screen |
 | `Space` | short label — title and date. Full screen only, where there is no full label for it to collide with |
 | `R` | rooms (in the lobby) |
-| `P` | pictures (in a room) |
+| `P` | content of the room you are in |
 | `Esc` | back one level: menu → full screen → room → lobby |
 
 ### Links
@@ -211,6 +218,12 @@ link.
 `public/app.css` and `public/app.js` are served immutable for a year, so their
 URLs carry a content hash; without it a deploy would never reach a returning
 visitor.
+
+The pages themselves are `Cache-Control: no-cache` — cached, but revalidated
+every time, which the ETag makes a 304 with no body. A page names the
+fingerprinted assets it needs, so serving a stale one would point at stale
+immutable assets and strand the visitor on an old build with no way to reload
+out of it. Safari on iOS is the browser most likely to try.
 
 ### Motion
 

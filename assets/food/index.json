@@ -52,7 +52,7 @@
       "description": "Photographed quickly, because it was getting cold.",
       "price": 60,
       "currency": "USD",
-      "status": "sold",
+      "status": "available",
       "purchase_url": "/buy/food/second-helping"
     },
     {
