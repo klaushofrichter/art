@@ -41,8 +41,13 @@ POD=$($KUBECTL get pod -n $NS -l app=$DEPLOY -o jsonpath='{.items[0].metadata.na
 # 3. Stream it in and swap it into place. Extracting beside the live directory
 #    and moving means the gallery never reads a half-written tree, and the
 #    previous content stays as .old for a one-command rollback.
+# COPYFILE_DISABLE stops macOS tar writing an AppleDouble "._name" shadow
+# beside every file; without it a sync doubles the file count on the volume
+# with junk, and a later pull chokes trying to read it back.
 echo "==> copying to $POD"
-tar -C "$SRC" -czf - . | $KUBECTL exec -i -n $NS "$POD" -- sh -c '
+COPYFILE_DISABLE=1 tar -C "$SRC" \
+  --exclude='._*' --exclude='.DS_Store' -czf - . \
+  | $KUBECTL exec -i -n $NS "$POD" -- sh -c '
   set -e
   rm -rf /data/incoming
   mkdir -p /data/incoming

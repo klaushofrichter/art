@@ -41,7 +41,14 @@ POD=$($KUBECTL get pod -n $NS -l app=$DEPLOY -o jsonpath='{.items[0].metadata.na
 TMP=$(mktemp -d "./.pull-assets.XXXXXX")
 trap 'rm -rf "$TMP"; cleanup' EXIT
 echo "==> copying from $POD"
-$KUBECTL exec -n $NS "$POD" -- tar -C /data/assets -czf - . | tar -C "$TMP" -xzf -
+# Land the archive as a file before unpacking rather than piping straight into
+# tar: a pipe hides a short read, so a truncated stream looks like a corrupt
+# archive at the far end instead of a failed transfer. -i keeps kubectl from
+# closing the stream early.
+$KUBECTL exec -i -n $NS "$POD" -- \
+  tar -C /data/assets --exclude='._*' --exclude='.DS_Store' -czf - . > "$TMP/assets.tgz"
+tar -C "$TMP" -xzf "$TMP/assets.tgz"
+rm -f "$TMP/assets.tgz"
 mv "$TMP" "$DEST"
 chmod 755 "$DEST"
 
