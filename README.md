@@ -19,7 +19,9 @@ or Enter on the keyboard. Clicking a panel does nothing.
 
 Inside a **room**, each picture takes the whole screen — contained so nothing
 is ever clipped, but scaled up when the source is smaller so there is no dead
-space. The full label is shown by default; a click anywhere — or `Return` — clears
+space. When a picture's shape leaves a bar above and below it, that slack is
+spent dropping the picture clear of the navigation buttons rather than
+centring it under them; the space collects at the bottom, where the label is. The full label is shown by default; a click anywhere — or `Return` — clears
 it for an unobstructed picture, and a click, `Return` or `Esc` brings it back. Navigation is a strict tree: the side menu lists this
 room's pictures and offers no way sideways to another room.
 

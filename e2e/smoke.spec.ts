@@ -71,6 +71,17 @@ test('leaving full screen puts the short label away with it', async ({ page }) =
   await expect(page.locator('.mini')).not.toHaveClass(/on/);
 });
 
+test('the keyboard still works after entering by clicking the button', async ({ page }) => {
+  // Chrome leaves focus on the button even once its subtree is hidden, so
+  // without moving focus onto the room the shortcuts are dead until you
+  // click somewhere else — and Enter re-fires the button instead.
+  await page.goto('/');
+  await page.locator('.enter').first().click();
+  await expect(page.evaluate(() => document.activeElement?.className)).resolves.not.toContain('enter');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.room')).toHaveClass(/bare/);
+});
+
 test('Return in the lobby enters the room you are looking at', async ({ page }) => {
   await page.goto('/#dogs');
   await expect(page.locator('.room')).toHaveCount(0);
@@ -129,7 +140,7 @@ test('a sold picture shows no price, and still hangs', async ({ page }) => {
   await expect(page.locator('.info h2')).toHaveText('Ember');
   await expect(page.locator('.info .status')).toHaveText('Sold');
   await expect(page.locator('.info .price')).toHaveCount(0);
-  await expect(page.locator('.plate .art').first()).toBeVisible();
+  await expect(page.locator('.room .rail > .slide').nth(2).locator('.art')).toBeVisible();
 });
 
 test('the About room opens onto its hero, with nothing to page through', async ({ page }) => {
@@ -171,6 +182,53 @@ test('Escape leaves the About room for the lobby', async ({ page }) => {
   await expect(page.locator('.aboutroom')).toHaveCount(0);
   await expect(page.locator('.lpanel').last()).toBeVisible();
   await expect(page.locator('.lpanel .cap .n').last()).toHaveText('About');
+});
+
+// How the picture sits in the frame depends on its shape against the window's,
+// so these set a viewport deliberately either side of the pictures' 4:3.
+async function plateGeometry(page: import('@playwright/test').Page) {
+  return page.evaluate(() => {
+    const img = document.querySelector('.room .plate .art') as HTMLImageElement;
+    const nav = document.querySelector('.room .navstack') as HTMLElement;
+    const boxW = img.offsetWidth, boxH = img.offsetHeight;
+    const slack = boxH - img.naturalHeight * Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight);
+    const pct = parseFloat((img.style.objectPosition || '50% 50%').split(' ')[1]);
+    return {
+      slack: Math.round(slack),
+      navBottom: Math.round(nav.getBoundingClientRect().bottom),
+      pictureTop: Math.round(img.offsetTop + slack * (pct / 100)),
+      objectPosition: img.style.objectPosition,
+    };
+  });
+}
+
+test('a picture with space above and below sits clear of the navigation', async ({ page }) => {
+  // Narrower than the picture's 4:3, so contain leaves a bar top and bottom.
+  await page.setViewportSize({ width: 900, height: 1000 });
+  await page.goto('/#colors/undertow');
+  await expect(page.locator('.room .plate .art').first()).toBeVisible();
+  await expect.poll(async () => (await plateGeometry(page)).slack).toBeGreaterThan(0);
+  const g = await plateGeometry(page);
+  expect(g.pictureTop).toBeGreaterThanOrEqual(g.navBottom);
+});
+
+test('a picture that fills the height is left centred', async ({ page }) => {
+  // Wider than 4:3: the bars are at the sides, so there is nothing to spend.
+  await page.setViewportSize({ width: 1600, height: 800 });
+  await page.goto('/#colors/undertow');
+  await expect(page.locator('.room .plate .art').first()).toBeVisible();
+  const g = await plateGeometry(page);
+  expect(g.slack).toBeLessThanOrEqual(1);
+  expect(g.objectPosition).toBe('');
+});
+
+test('full screen re-centres the picture, with the buttons gone', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 1000 });
+  await page.goto('/#colors/undertow');
+  await expect.poll(async () => (await plateGeometry(page)).objectPosition).not.toBe('');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.room')).toHaveClass(/bare/);
+  await expect.poll(async () => (await plateGeometry(page)).objectPosition).toBe('');
 });
 
 test('the pictures actually load at the URLs the client builds', async ({ page }) => {

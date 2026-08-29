@@ -240,6 +240,34 @@
     host.addEventListener('pointerleave', function () { sx.t = 0; sy.t = 0; run(); });
   }
 
+  /* When a picture's shape leaves a bar above and below it, that slack is
+     free space — so spend it by dropping the picture clear of the navigation
+     buttons instead of centring it under them. A picture that is taller than
+     the window has no vertical slack and is left alone, and so is one in full
+     screen, where the buttons are gone. */
+  var NAV_CLEARANCE = 14;
+  function alignArt(view, img) {
+    if (!img) return;
+    if (view.classList.contains('bare')) { img.style.objectPosition = ''; return; }
+    var nw = img.naturalWidth, nh = img.naturalHeight;
+    /* offsetWidth/Top rather than a bounding rect: the slides are moved by
+       transform, so a rect would be measured from wherever the rail is. */
+    var boxW = img.offsetWidth, boxH = img.offsetHeight;
+    if (!nw || !nh || !boxW || !boxH) return;
+    var slack = boxH - nh * Math.min(boxW / nw, boxH / nh);
+    if (slack <= 1) { img.style.objectPosition = ''; return; }
+    var nav = view.querySelector('.navstack');
+    var wanted = (nav ? nav.getBoundingClientRect().bottom : 0) + NAV_CLEARANCE - img.offsetTop;
+    var pct = Math.max(0, Math.min(100, (wanted / slack) * 100));
+    img.style.objectPosition = '50% ' + pct + '%';
+  }
+  function alignAll(view) {
+    if (!view) return;
+    Array.prototype.forEach.call(view.querySelectorAll('.plate .art'), function (img) {
+      alignArt(view, img);
+    });
+  }
+
   function aboutBody(room) {
     var a = room.about || {};
     var body = el('div', 'abody');
@@ -325,6 +353,7 @@
   }
   lobby.append(lobbyNav, ldots, lobbyMenu.veil, lobbyMenu.menu);
   roomsBtn.onclick = function (ev) { ev.stopPropagation(); lobbyMenu.toggle(); };
+  lobby.tabIndex = -1;
   app.append(lobby);
   lobbyRail = Rail(rail, syncLobby);
   syncLobby(0);
@@ -367,6 +396,7 @@
       img.src = url;
       img.alt = w.title;
       img.draggable = false;
+      img.addEventListener('load', function () { alignArt(view, img); });
       plate.append(amb, img);
       slide.append(plate);
       rrail.append(slide);
@@ -409,6 +439,7 @@
       bare = v;
       view.classList.toggle('bare', v);
       if (!v) setMini(false);
+      alignAll(view);
     }
     function setMini(v) { miniOn = v; mini.classList.toggle('on', v); }
 
@@ -468,6 +499,7 @@
       view.remove();
       liveRoom = null;
       lobby.hidden = false;
+      lobby.focus({ preventScroll: true });
       keyHandler = lobbyKeys;
       lobbyRail.go(roomIndex);
       syncLobby(roomIndex);
@@ -490,7 +522,10 @@
     };
 
     app.append(view);
+    view.tabIndex = -1;
+    view.focus({ preventScroll: true });
     liveRoom = view;
+    alignAll(view);
     return roomRail;
   }
 
@@ -522,6 +557,7 @@
       view.remove();
       liveRoom = null;
       lobby.hidden = false;
+      lobby.focus({ preventScroll: true });
       keyHandler = lobbyKeys;
       lobbyRail.go(roomIndex);
       syncLobby(roomIndex);
@@ -537,9 +573,17 @@
 
     history.replaceState(null, '', '#' + room.id);
     app.append(view);
+    view.tabIndex = -1;
+    view.focus({ preventScroll: true });
     liveRoom = view;
     return null;
   }
+
+  var resizeTimer = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { alignAll(liveRoom); }, 120);
+  });
 
   document.addEventListener('keydown', function (e) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;

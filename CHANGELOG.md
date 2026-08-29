@@ -13,6 +13,11 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- A picture whose shape leaves a bar above and below it now sits below the
+  navigation buttons instead of centred behind them.
+- Fixed: entering a room by clicking the button left the keyboard shortcuts
+  dead, because focus stayed on the button after its subtree was hidden.
+
 - The About room now has a hero image, set as the collection's `cover`. It
   fronts the panel in the lobby and fills the room behind the text. Because
   there is one picture and nothing to sell, the room has no paging, no

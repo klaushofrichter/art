@@ -22,6 +22,7 @@ body {
 #app { position:fixed; inset:0; overflow:hidden; }
 .screen { position:absolute; inset:0; }
 .screen[hidden] { display:none; }
+.screen:focus { outline:none; }
 
 /* ---- the rail ---- */
 .rail { position:absolute; inset:0; touch-action:none; cursor:grab; }
@@ -89,7 +90,8 @@ body {
    small picture scales up instead of floating in empty space. */
 .plate .art { position:absolute; inset:2.2vh 2vw; width:calc(100% - 4vw); height:calc(100% - 4.4vh);
   object-fit:contain; display:block; box-shadow:0 30px 90px rgba(0,0,0,.66);
-  transition:inset .5s cubic-bezier(.3,0,.2,1), width .5s cubic-bezier(.3,0,.2,1), height .5s cubic-bezier(.3,0,.2,1); }
+  transition:inset .5s cubic-bezier(.3,0,.2,1), width .5s cubic-bezier(.3,0,.2,1),
+    height .5s cubic-bezier(.3,0,.2,1), object-position .45s cubic-bezier(.3,0,.2,1); }
 .room.bare .plate .art { inset:.6vh .6vw; width:calc(100% - 1.2vw); height:calc(100% - 1.2vh); box-shadow:none; }
 
 /* full label, shown by default in a room; click-through so it never blocks a drag */
