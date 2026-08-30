@@ -35,6 +35,12 @@ for (const room of rooms) {
           'so a shared link will show no preview image'
       );
     }
+    if (w.width && w.width > 1400 && !w.widths.length) {
+      console.warn(
+        `    ! ${w.file} is ${w.width}px wide with no smaller copies — ` +
+          'run scripts/make-derivatives.sh so a phone is not sent the original'
+      );
+    }
     if (w.width && w.height && Math.min(w.width, w.height) < MIN_PREVIEW_PX) {
       console.warn(
         `    ! ${w.file} is ${w.width}x${w.height} — under ${MIN_PREVIEW_PX}px, ` +

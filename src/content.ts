@@ -7,6 +7,10 @@ const STATUSES: Status[] = ['available', 'sold', 'reserved', 'nfs'];
 
 export interface Work {
   file: string;
+  /** Widths of the smaller copies that exist beside this picture, ascending.
+   *  The browser picks one; the original is always there as the fallback and
+   *  is what the download link serves. See scripts/make-derivatives.sh. */
+  widths: number[];
   /** Pixel size, when it could be read from the file's header. Used only for
    *  the og:image hints a link preview lays itself out with. */
   width?: number;
@@ -49,6 +53,7 @@ export interface Room {
   coverFile: string | null;
   coverWidth?: number;
   coverHeight?: number;
+  coverWidths: number[];
   includes: string[];
   order: number;
   about?: AboutInfo;
@@ -84,6 +89,9 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
   const roomIncludes = strings(c.includes);
 
+  const roomDir = path.join(assetsDir, dir);
+  const availableWidths = widthDirs(roomDir);
+
   const seen = new Set<string>();
   const works: Work[] = (raw.works || []).flatMap((w: any): Work[] => {
     if (!w || typeof w.file !== 'string') {
@@ -102,6 +110,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     const size = imageSize(path.join(assetsDir, dir, w.file));
     return [{
       file: w.file,
+      widths: widthsFor(roomDir, w.file, availableWidths),
       width: size?.width,
       height: size?.height,
       uid: typeof w.uid === 'string' ? w.uid : '',
@@ -136,11 +145,32 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     coverFile: coverOk ? (coverFile as string) : null,
     coverWidth: coverSize?.width,
     coverHeight: coverSize?.height,
+    coverWidths: coverOk ? widthsFor(roomDir, coverFile as string, availableWidths) : [],
     includes: roomIncludes,
     order: typeof c.order === 'number' ? c.order : 50,
     about: raw.about,
     works,
   };
+}
+
+/** The width directories a room has, e.g. [640, 1024] from w640/ and w1024/.
+ *  Read once per room rather than per picture. */
+function widthDirs(roomDir: string): number[] {
+  try {
+    return fs
+      .readdirSync(roomDir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && /^w[0-9]+$/.test(e.name))
+      .map((e) => Number(e.name.slice(1)))
+      .sort((a, b) => a - b);
+  } catch {
+    return [];
+  }
+}
+
+/** Of those, the ones that actually hold this picture. A derivative can be
+ *  missing — a picture too small to be worth shrinking has none at all. */
+function widthsFor(roomDir: string, file: string, dirs: number[]): number[] {
+  return dirs.filter((w) => fs.existsSync(path.join(roomDir, `w${w}`, file)));
 }
 
 export function loadRooms(assetsDir: string = ASSETS_DIR): Room[] {
