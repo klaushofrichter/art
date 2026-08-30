@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createApp } from '../src/app';
 import { ASSETS, rooms } from './setup';
 import { LEGAL_DOCS, PRIVACY, TERMS } from '../src/legal';
+import { SITE_URL } from '../src/site';
 
 const app = () => createApp(rooms, ASSETS);
 
@@ -80,11 +81,33 @@ describe('what the documents promise has to stay true of the code', () => {
     expect(text).toContain(String(ENQUIRY_HOURS));
   });
 
-  it('discloses Google Fonts, which the pages really do request', async () => {
-    const disclosed = JSON.stringify(PRIVACY).includes('Google Fonts');
-    expect(disclosed).toBe(true);
+  it('lists exactly the third parties the pages actually contact', async () => {
+    // The policy says browsing contacts nobody. That is only true while no
+    // page reaches off-site for anything, so check the pages, not the prose.
+    const offsite = new Set<string>();
+    for (const path of ['/', '/terms', '/privacy', '/buy/shapes/wide']) {
+      const res = await request(app()).get(path);
+      for (const m of res.text.matchAll(/(?:href|src)="(https?:\/\/[^"]+)"/g)) {
+        offsite.add(new URL(m[1]).host);
+      }
+    }
+    // The site's own host appears in og:image and the canonical link, which
+    // have to be absolute. github.com is the version link in the About panel:
+    // somewhere to click, not a request the page makes.
+    offsite.delete(new URL(SITE_URL).host);
+    offsite.delete('github.com');
+    expect([...offsite]).toEqual([]);
+    // Stripe is the only third party the policy claims, and it is only
+    // reached at payment — never from a page served here.
+    expect(JSON.stringify(PRIVACY)).toContain('Stripe');
+  });
+
+  it('serves its own typefaces', async () => {
     const res = await request(app()).get('/');
-    expect(res.text).toContain('fonts.googleapis.com');
+    expect(res.text).not.toContain('fonts.googleapis.com');
+    expect(res.text).not.toContain('fonts.gstatic.com');
+    expect(res.text).toMatch(/<link rel="preload" href="\/fonts\/[^"]+\.woff2"/);
+    expect((await request(app()).get('/fonts/archivo-v25-latin.woff2')).status).toBe(200);
   });
 
   it('says card details never reach this site, and no page takes them', async () => {

@@ -1,4 +1,5 @@
 import express, { Express } from 'express';
+import compression from 'compression';
 import { ASSETS_DIR, Room, loadRooms } from './content';
 import { PUBLIC_DIR } from './fingerprint';
 import { renderGallery } from './views/gallery';
@@ -32,6 +33,11 @@ export function createApp(
 
   const app = express() as GalleryApp;
   app.disable('x-powered-by');
+
+  // The pages, the stylesheet and the script are text and were going out raw —
+  // about 72KB on a cold visit. `compression` skips types that are already
+  // compressed, so the pictures are left alone.
+  app.use(compression());
 
   app.reloadContent = () => {
     try {

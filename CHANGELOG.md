@@ -13,6 +13,16 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- **The site is quicker to arrive.** Text is compressed (about 72KB of HTML,
+  stylesheet and script now leaves as 21KB), and the typefaces are served from
+  here rather than fetched from Google Fonts — that was a render-blocking
+  request on a third origin, and it handed every visitor's address to Google.
+  Nothing about the design changes.
+
+- Fixed a click that could be swallowed in the first quarter-second after a
+  page loaded: the rail's drag guard treated a rail that had never been
+  dragged as one that had just been.
+
 - **Open Graph link previews.** A shared link now shows the picture, its title
   and its description instead of a bare URL. A `?id=` permalink previews the
   picture it names — the server resolves the id as well as the browser does,

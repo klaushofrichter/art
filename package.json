@@ -12,10 +12,12 @@
     "dev:fixtures": "ASSETS_DIR=$PWD/test/fixtures/assets tsx src/server.ts"
   },
   "dependencies": {
+    "compression": "^1.8.1",
     "express": "^4.19.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",
+    "@types/compression": "^1.8.1",
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.10",
     "@types/supertest": "^6.0.2",
