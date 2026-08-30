@@ -369,6 +369,15 @@
       ver.rel = 'noopener noreferrer';
       body.append(ver);
     }
+    /* the terms and the privacy policy, under the version line. These are
+       ordinary pages on this site, so they navigate in the same tab. */
+    var legal = el('div', 'legal');
+    [['Terms of Service', '/terms'], ['Privacy Policy', '/privacy']].forEach(function (pair) {
+      var a = el('a', 'no-drag', pair[0]);
+      a.href = pair[1];
+      legal.append(a);
+    });
+    body.append(legal);
     return body;
   }
 

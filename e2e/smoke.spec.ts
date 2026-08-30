@@ -636,3 +636,70 @@ test('/health reports the content it loaded', async ({ request }) => {
   expect(body.rooms).toBe(3);
   expect(body.works).toBe(5);
 });
+
+/* ---- the terms and the privacy policy ---- */
+// Stripe wants both at fixed URLs, so these are ordinary server-rendered
+// pages rather than anything the gallery script builds.
+
+test('both legal pages are served, titled, and dated', async ({ page }) => {
+  for (const [path, heading] of [
+    ['/terms', 'Terms of Service'],
+    ['/privacy', 'Privacy Policy'],
+  ]) {
+    const res = await page.goto(path);
+    expect(res?.status()).toBe(200);
+    await expect(page.locator('h1')).toHaveText(heading);
+    await expect(page.locator('.updated')).toContainText('Last updated');
+  }
+});
+
+test('the About room links to both, under the version', async ({ page }) => {
+  await page.goto('/#about');
+  await page.locator('.slide', { hasText: 'About' }).locator('.enter').click();
+  const body = page.locator('.abody');
+  await expect(body.locator('.ver')).toBeVisible();
+  const links = body.locator('.legal a');
+  await expect(links).toHaveCount(2);
+  await expect(links.nth(0)).toHaveAttribute('href', '/terms');
+  await expect(links.nth(1)).toHaveAttribute('href', '/privacy');
+  // and the pair sits below the version line, not above it
+  const ver = await body.locator('.ver').boundingBox();
+  const legal = await body.locator('.legal').boundingBox();
+  expect(legal!.y).toBeGreaterThan(ver!.y);
+});
+
+test('the links actually go there and lead back', async ({ page }) => {
+  await page.goto('/#about');
+  await page.locator('.slide', { hasText: 'About' }).locator('.enter').click();
+  await page.locator('.abody .legal a', { hasText: 'Terms' }).click();
+  await expect(page.locator('h1')).toHaveText('Terms of Service');
+  await page.locator('.crumb').click();
+  await expect(page.locator('.lpanel').first()).toBeVisible();
+});
+
+test('each legal page offers the other one', async ({ page }) => {
+  await page.goto('/terms');
+  await page.locator('.legalalso a').click();
+  await expect(page.locator('h1')).toHaveText('Privacy Policy');
+});
+
+test('the legal pages read on a phone without sideways scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 380, height: 780 });
+  for (const path of ['/terms', '/privacy']) {
+    await page.goto(path);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    await expect(page.locator('h1')).toBeVisible();
+  }
+});
+
+test('the favicon is fingerprinted and really loads', async ({ page }) => {
+  await page.goto('/');
+  const href = await page.locator('link[rel="icon"]').getAttribute('href');
+  expect(href).toMatch(/^\/palette\.png\?v=[a-f0-9]{10}$/);
+  const res = await page.request.get(href!);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toContain('image/png');
+});

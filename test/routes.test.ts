@@ -110,8 +110,15 @@ describe('static files', () => {
     // The pictures live on a volume that is synced separately. If the favicon
     // were one of them, a content sync could take the site's icon away.
     const res = await request(app()).get('/');
-    expect(res.text).toContain('href="/palette.png"');
+    expect(res.text).toMatch(/href="\/palette\.png\?v=/);
     expect(res.text).not.toContain('/assets/palette.png');
+  });
+
+  it('fingerprints the favicon too, so a new icon reaches an old visitor', async () => {
+    // It is served immutable for a year like the other client files, so a
+    // changed icon behind an unchanged URL would never be fetched again.
+    const res = await request(app()).get('/');
+    expect(res.text).toMatch(/href="\/palette\.png\?v=[a-f0-9]{10}"/);
   });
 });
 
