@@ -44,6 +44,10 @@ export interface AboutInfo {
 
 export interface Room {
   id: string;
+  /** The folder this room was read from. Normally the same as `id`, but the
+   *  two are not enforced to match, and anything that wants to find a file on
+   *  disk has to use this one. */
+  dir: string;
   uid: string;
   type: 'pictures' | 'about';
   title: string;
@@ -136,6 +140,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
 
   return {
     id: c.id,
+    dir,
     uid: typeof c.uid === 'string' ? c.uid : '',
     type: c.type === 'about' ? 'about' : 'pictures',
     title: c.title || c.id,
