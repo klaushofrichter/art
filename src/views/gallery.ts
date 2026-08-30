@@ -81,7 +81,7 @@ function fallback(rooms: Room[]): string {
     }).join('');
     return `<section><h2>${escapeHtml(r.title)}</h2><ul>${items}</ul></section>`;
   }).join('');
-  return `<noscript><div class="fallback">${'<h1>Gallery</h1>'}${sections}</div></noscript>`;
+  return `<noscript><div class="fallback">${'<h1>Art</h1>'}${sections}</div></noscript>`;
 }
 
 export function renderGallery(rooms: Room[], focus: Focus | null = null): string {
@@ -93,7 +93,7 @@ export function renderGallery(rooms: Room[], focus: Focus | null = null): string
       : null;
   const uid = focus ? focus.work?.uid || focus.room.uid : '';
   return page({
-    title: subject ? `${subject} — Klaus Hofrichter` : 'Gallery — Klaus Hofrichter',
+    title: subject ? `${subject} — Klaus Hofrichter` : 'Art — Klaus Hofrichter',
     description: focus?.work
       ? workDescription(focus.room, focus.work)
       : plainText(focus?.room.description) || plainText(first?.description) || BLURB,
