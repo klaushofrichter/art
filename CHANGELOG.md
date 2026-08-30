@@ -13,6 +13,11 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- **Pictures are sized for the screen that asked.** A phone was being sent a
+  3000px original to show in a 400px frame; it now gets a copy that fits, and
+  the lobby costs 964KB instead of 3960KB. The original is untouched and is
+  still what the download link serves.
+
 - **The site is quicker to arrive.** Text is compressed (about 72KB of HTML,
   stylesheet and script now leaves as 21KB), and the typefaces are served from
   here rather than fetched from Google Fonts — that was a render-blocking

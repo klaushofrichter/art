@@ -3,7 +3,7 @@ import { escapeHtml, inlineMarkup, plainText } from '../markdown';
 import { page } from './layout';
 import { appVersion } from '../version';
 import { REPO_URL } from '../site';
-import { galleryImage, roomImage, workImage, workDescription } from '../share';
+import { galleryImage, roomImage, workImage, workDescription, srcset } from '../share';
 
 const BLURB = 'Paintings and photographs by Klaus Hofrichter.';
 
@@ -26,6 +26,10 @@ function manifest(rooms: Room[]) {
     subtitle: r.subtitle,
     description: r.description,
     coverFile: r.coverFile,
+    // Which smaller copies exist. Numbers, not URLs — the browser builds the
+    // path from a constant prefix and the width, same as everything else.
+    coverWidths: r.coverWidths,
+    coverW: r.coverWidth,
     about: r.about,
     // Identifiers, not URLs. The browser builds every src and href from a
     // constant prefix plus an encoded id, so a hand-edited index.json cannot
@@ -34,6 +38,11 @@ function manifest(rooms: Room[]) {
       slug: w.slug,
       uid: w.uid,
       file: w.file,
+      widths: w.widths,
+      // The original's own pixel size: the last candidate in a srcset, and
+      // what lets an <img> reserve its space before the picture arrives.
+      w: w.width,
+      h: w.height,
       title: w.title,
       date: w.date,
       artist: w.artist,
@@ -64,7 +73,10 @@ function fallback(rooms: Room[]): string {
     const items = r.works.map((w) => {
       const buy = `/buy/${encodeURIComponent(r.id)}/${encodeURIComponent(w.slug)}`;
       const src = `/assets/${encodeURIComponent(r.id)}/${encodeURIComponent(w.file)}`;
-      return `<li><a href="${buy}"><img src="${src}" alt="${escapeHtml(w.title)}" loading="lazy">` +
+      // Without JavaScript this is a plain grid of thumbnails, so the
+      // smallest copy is the right one to offer first.
+      const set = srcset(r.id, w);
+      return `<li><a href="${buy}"><img src="${src}"${set ? ` srcset="${set}" sizes="(max-width: 700px) 45vw, 300px"` : ''} alt="${escapeHtml(w.title)}" loading="lazy">` +
         `<span class="t">${escapeHtml(w.title)}</span></a></li>`;
     }).join('');
     return `<section><h2>${escapeHtml(r.title)}</h2><ul>${items}</ul></section>`;

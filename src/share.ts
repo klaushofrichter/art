@@ -65,3 +65,15 @@ export function workDescription(room: Room, work: Work): string {
   const parts = [plainText(work.description), work.medium, room.title].filter(Boolean);
   return parts[0] ? String(parts[0]) : `${work.title} — ${room.title}.`;
 }
+
+/** A picture's smaller copies, as an <img srcset>. Built from a literal
+ *  prefix, a number and encoded identifiers — never from anything content
+ *  supplies — so it is no more of a sink than a plain src. The original goes
+ *  last at its own width, and stays what the download link serves. */
+export function srcset(roomId: string, work: Work): string {
+  const at = (w: number) =>
+    `/assets/${encodeURIComponent(roomId)}/w${w}/${encodeURIComponent(work.file)}`;
+  // The original is deliberately absent: the ladder's top is the ceiling for
+  // anything shown on screen, and the original is what the download serves.
+  return work.widths.map((w) => `${at(w)} ${w}w`).join(', ');
+}

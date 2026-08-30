@@ -3,7 +3,7 @@ import { escapeHtml, inlineMarkup } from '../markdown';
 import { formatDate, formatMoney } from '../format';
 import { page } from './layout';
 import { ENQUIRY_HOURS, SITE_URL } from '../site';
-import { workImage } from '../share';
+import { workImage, srcset } from '../share';
 
 /** What the visitor's mail client opens with: what they want, the hold they
  *  are asking for, and a link back to the exact picture. */
@@ -29,7 +29,11 @@ export function renderBuy(room: Room, work: Work): string {
     body: `<main class="buywrap">
   <a class="crumb" href="/#${room.id}/${work.slug}">&larr; Back to ${escapeHtml(room.title)}</a>
   <div class="buygrid">
-    <img class="buyart" src="${work.src}" alt="${escapeHtml(work.title)}">
+    <img class="buyart" src="${work.src}"${
+      srcset(room.id, work)
+        ? ` srcset="${srcset(room.id, work)}" sizes="(max-width: 760px) 100vw, 60vw"`
+        : ''
+    } alt="${escapeHtml(work.title)}">
     <div class="buyside">
       <h1>${escapeHtml(work.title)}</h1>
       <p class="by">${escapeHtml(work.artist || '')}${work.date ? ` &middot; ${escapeHtml(formatDate(work.date))}` : ''}</p>
