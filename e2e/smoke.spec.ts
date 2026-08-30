@@ -703,3 +703,59 @@ test('the favicon is fingerprinted and really loads', async ({ page }) => {
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toContain('image/png');
 });
+
+/* ---- link previews (Open Graph) ---- */
+
+async function metaOf(page: import('@playwright/test').Page) {
+  return page.evaluate(() => {
+    const out: Record<string, string> = {};
+    document.querySelectorAll('meta[property], meta[name]').forEach((m) => {
+      const k = m.getAttribute('property') || m.getAttribute('name');
+      if (k) out[k] = m.getAttribute('content') || '';
+    });
+    return out;
+  });
+}
+
+test('every page names an image a crawler can actually fetch', async ({ page }) => {
+  for (const path of ['/', '/buy/shapes/wide', '/terms', '/privacy']) {
+    await page.goto(path);
+    const m = await metaOf(page);
+    expect(m['og:image'], path).toBeTruthy();
+    expect(m['og:image'], path).toMatch(/^https?:\/\//);
+    // The tag is absolute against the real host, so fetch the same file here.
+    const local = m['og:image'].replace(/^https?:\/\/[^/]+/, '');
+    const res = await page.request.get(local);
+    expect(res.status(), `${path} -> ${local}`).toBe(200);
+    expect(res.headers()['content-type']).toMatch(/^image\//);
+  }
+});
+
+test('a shared permalink previews the picture it names', async ({ page }) => {
+  await page.goto('/?id=fixtall1');
+  const m = await metaOf(page);
+  expect(m['og:title']).toBe('Tall — Klaus Hofrichter');
+  expect(m['og:image']).toContain('/assets/shapes/tall.jpg');
+  expect(m['og:image:width']).toBe('600');
+  expect(m['og:image:height']).toBe('900');
+  // and the page still opens on that picture for a person, as it always did
+  await expect(page.locator('.room')).toBeVisible();
+  await expect(page.locator('.info h2')).toHaveText('Tall');
+});
+
+test('the preview image size matches the picture that is served', async ({ page }) => {
+  await page.goto('/?id=fixwide1');
+  const m = await metaOf(page);
+  const size = await page.evaluate(
+    (src) =>
+      new Promise<{ w: number; h: number }>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+        img.onerror = reject;
+        img.src = src.replace(/^https?:\/\/[^/]+/, '');
+      }),
+    m['og:image']
+  );
+  expect(String(size.w)).toBe(m['og:image:width']);
+  expect(String(size.h)).toBe(m['og:image:height']);
+});

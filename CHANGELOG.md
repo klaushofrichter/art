@@ -13,6 +13,11 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- **Open Graph link previews.** A shared link now shows the picture, its title
+  and its description instead of a bare URL. A `?id=` permalink previews the
+  picture it names — the server resolves the id as well as the browser does,
+  because a crawler runs no JavaScript.
+
 - **Terms of Service and a Privacy Policy**, at `/terms` and `/privacy`, linked
   from the About room under the version line. Both are needed to take payments
   through Stripe.

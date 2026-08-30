@@ -242,6 +242,29 @@ or a title can never fail a build, and the fixtures are safe to publish.
 - `GET /health` — `{"status":"ok","service":"art","version":"…","rooms":4,"works":15}`
 - `GET /assets/*` — the pictures
 
+### Link previews
+
+Every page carries Open Graph tags, so a link pasted into a chat or a social
+post shows the picture rather than a bare URL. `og:image` is absolute — a
+crawler has no page to resolve a relative URL against — and carries
+`og:image:width`/`height` so a card can be laid out before the image arrives.
+Those dimensions are read from each file's header at content load
+(`src/imagesize.ts`, JPEG and PNG); there is no image library in this project
+and no reason to add one for four numbers.
+
+The interesting case is `?id=`. The gallery is a single page for the whole
+site and the browser resolves the permalink itself — but a crawler runs no
+JavaScript, so without help every shared picture would preview as the same
+generic gallery card. The server therefore resolves `?id=` too and serves a
+variant whose *only* difference is the head; `src/views/shares.ts` pre-renders
+one per permalink when the content loads, about twenty copies of a 12KB page.
+An unknown id falls back to the gallery and points `og:url` at `/`, so a
+mistyped link is not indexed as a page of its own.
+
+`scripts/check-assets.ts` warns about a picture over 5MB or under 200px on its
+short side — both make a crawler drop the preview image. Warnings, not errors:
+such a picture is still worth showing.
+
 ### Terms and privacy
 
 Both live in `src/legal.ts` as data, not markup, so the two pages render the

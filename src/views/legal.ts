@@ -1,6 +1,8 @@
 import { LegalDoc, LEGAL_DOCS } from '../legal';
 import { escapeHtml, inlineMarkup } from '../markdown';
 import { page } from './layout';
+import { assetUrl } from '../fingerprint';
+import { siteImage } from '../share';
 
 /** The other document, so each page offers the one a reader is not on. */
 function crossLinks(doc: LegalDoc): string {
@@ -30,6 +32,8 @@ export function renderLegal(doc: LegalDoc): string {
     title: `${doc.title} — Klaus Hofrichter`,
     description: doc.description,
     bodyClass: 'legalpage',
+    path: doc.path,
+    image: siteImage(assetUrl('palette.png')),
     body: `<main class="legalwrap">
   <a class="crumb" href="/#about">&larr; Back to the gallery</a>
   <h1>${escapeHtml(doc.title)}</h1>
