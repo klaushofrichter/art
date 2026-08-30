@@ -3,6 +3,7 @@ import { escapeHtml, inlineMarkup } from '../markdown';
 import { formatDate, formatMoney } from '../format';
 import { page } from './layout';
 import { ENQUIRY_HOURS, SITE_URL } from '../site';
+import { workImage } from '../share';
 
 /** What the visitor's mail client opens with: what they want, the hold they
  *  are asking for, and a link back to the exact picture. */
@@ -22,6 +23,8 @@ export function renderBuy(room: Room, work: Work): string {
     title: `${work.title} — Klaus Hofrichter`,
     description: `${work.title}${work.medium ? `, ${work.medium}` : ''}.`,
     bodyClass: 'buypage',
+    path: `/buy/${room.id}/${work.slug}`,
+    image: workImage(room, work),
     scripts: ['pending.js'],
     body: `<main class="buywrap">
   <a class="crumb" href="/#${room.id}/${work.slug}">&larr; Back to ${escapeHtml(room.title)}</a>

@@ -1,11 +1,16 @@
 import fs from 'fs';
 import path from 'path';
+import { imageSize } from './imagesize';
 
 export type Status = 'available' | 'sold' | 'reserved' | 'nfs';
 const STATUSES: Status[] = ['available', 'sold', 'reserved', 'nfs'];
 
 export interface Work {
   file: string;
+  /** Pixel size, when it could be read from the file's header. Used only for
+   *  the og:image hints a link preview lays itself out with. */
+  width?: number;
+  height?: number;
   /** Stable 8-character id from index.json — the permalink never changes,
    *  even if the title (and therefore the slug) does. */
   uid: string;
@@ -42,6 +47,8 @@ export interface Room {
   description: string;
   cover: string | null;
   coverFile: string | null;
+  coverWidth?: number;
+  coverHeight?: number;
   includes: string[];
   order: number;
   about?: AboutInfo;
@@ -92,8 +99,11 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     const base = slug;
     for (let n = 2; seen.has(slug); n++) slug = `${base}-${n}`;
     seen.add(slug);
+    const size = imageSize(path.join(assetsDir, dir, w.file));
     return [{
       file: w.file,
+      width: size?.width,
+      height: size?.height,
       uid: typeof w.uid === 'string' ? w.uid : '',
       slug,
       src: `/assets/${c.id}/${encodeURIComponent(w.file)}`,
@@ -113,6 +123,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
 
   const coverFile = typeof c.cover === 'string' ? c.cover : null;
   const coverOk = coverFile && fs.existsSync(path.join(assetsDir, dir, coverFile));
+  const coverSize = coverOk ? imageSize(path.join(assetsDir, dir, coverFile as string)) : null;
 
   return {
     id: c.id,
@@ -123,6 +134,8 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     description: c.description || '',
     cover: coverOk ? `/assets/${c.id}/${encodeURIComponent(coverFile as string)}` : null,
     coverFile: coverOk ? (coverFile as string) : null,
+    coverWidth: coverSize?.width,
+    coverHeight: coverSize?.height,
     includes: roomIncludes,
     order: typeof c.order === 'number' ? c.order : 50,
     about: raw.about,

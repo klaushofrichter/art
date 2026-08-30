@@ -2,6 +2,7 @@ import express, { Express } from 'express';
 import { ASSETS_DIR, Room, loadRooms } from './content';
 import { PUBLIC_DIR } from './fingerprint';
 import { renderGallery } from './views/gallery';
+import { shareVariants } from './views/shares';
 import { healthRouter } from './routes/health';
 import { indexRouter } from './routes/index';
 import { buyRouter } from './routes/buy';
@@ -16,11 +17,18 @@ export type GalleryApp = Express & {
 };
 
 export function createApp(
-  rooms: Room[] = loadRooms(),
+  rooms?: Room[],
   assetsDir: string = ASSETS_DIR,
 ): GalleryApp {
-  let current = rooms;
+  // Defaulting to loadRooms() would read ASSETS_DIR even when a caller named
+  // a different directory, and then the pages and the /assets route would
+  // disagree about which content they are serving.
+  let current = rooms ?? loadRooms(assetsDir);
   let html = renderGallery(current);
+  // One pre-rendered page per permalink, so a shared ?id= previews the
+  // picture it names. Twenty-odd copies of a 12KB page; built with the
+  // content, never per request.
+  let shares = shareVariants(current);
 
   const app = express() as GalleryApp;
   app.disable('x-powered-by');
@@ -34,6 +42,7 @@ export function createApp(
       }
       current = next;
       html = renderGallery(current);
+      shares = shareVariants(current);
       return true;
     } catch (err) {
       console.warn(`content: reload failed, keeping what is loaded — ${err}`);
@@ -65,6 +74,6 @@ export function createApp(
 
   app.use(legalRouter());
   app.use(buyRouter(() => current));
-  app.use(indexRouter(() => html));
+  app.use(indexRouter((uid) => (uid && shares.get(uid)) || html));
   return app;
 }
