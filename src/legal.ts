@@ -138,11 +138,8 @@ export const PRIVACY: LegalDoc = {
     {
       heading: 'Third parties',
       body: [
-        'Only two, and neither is a tracker:',
-      ],
-      list: [
-        '**Google Fonts** serves the typefaces the site uses. Loading them means your browser requests files from Google, which necessarily discloses your IP address to Google. Nothing else is shared, and no cookie is set by this site to do it.',
-        '**Stripe** handles payments, as described above, and only if you buy something.',
+        'One, and only if you buy something: **Stripe** handles payments, as described above.',
+        'Browsing the site contacts nobody else. The typefaces are served from this site rather than from Google Fonts, so simply reading a page does not disclose your address to anyone but me.',
       ],
     },
     {

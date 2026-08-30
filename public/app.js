@@ -132,7 +132,11 @@
     var slides = Array.prototype.slice.call(host.children);
     var n = slides.length;
     var s = Spring(RAIL_K, RAIL_D);
-    var raf = 0, idx = 0, drag = null, lastDragEnd = 0;
+    /* -Infinity, not 0: with 0, `performance.now() - lastDragEnd` is smaller
+       than the guard below for the first quarter-second of the page's life,
+       so a rail that had never been dragged claimed it had, and the first
+       click after entering a room was swallowed. */
+    var raf = 0, idx = 0, drag = null, lastDragEnd = -Infinity;
 
     function render() {
       for (var i = 0; i < n; i++) {

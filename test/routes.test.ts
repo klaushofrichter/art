@@ -290,3 +290,68 @@ describe('a custom purchase_url is honoured server-side', () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe('the text is compressed', () => {
+  // 72KB of HTML, CSS and script were going out raw on every cold visit.
+  it('compresses a page when the browser offers to accept it', async () => {
+    const res = await request(app()).get('/').set('Accept-Encoding', 'gzip');
+    expect(res.headers['content-encoding']).toBe('gzip');
+  });
+
+  it('compresses the stylesheet and the script', async () => {
+    for (const p of ['/app.css', '/app.js']) {
+      const res = await request(app()).get(p).set('Accept-Encoding', 'gzip');
+      expect(res.headers['content-encoding'], p).toBe('gzip');
+    }
+  });
+
+  it('leaves the pictures alone — they are already compressed', async () => {
+    const res = await request(app())
+      .get('/assets/shapes/wide.jpg')
+      .set('Accept-Encoding', 'gzip');
+    expect(res.headers['content-encoding']).toBeUndefined();
+  });
+
+  it('still serves a browser that asks for no encoding', async () => {
+    const res = await request(app()).get('/').set('Accept-Encoding', '');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-encoding']).toBeUndefined();
+    expect(res.text).toContain('id="app"');
+  });
+});
+
+describe('the typefaces are served from here', () => {
+  // They used to come from fonts.googleapis.com: a render-blocking request on
+  // a third origin, and every visitor's address handed to Google.
+  it('asks Google for nothing', async () => {
+    for (const p of ['/', '/terms', '/buy/shapes/wide']) {
+      const res = await request(app()).get(p);
+      expect(res.text, p).not.toContain('fonts.googleapis.com');
+      expect(res.text, p).not.toContain('fonts.gstatic.com');
+    }
+  });
+
+  it('preloads only fonts that exist and that the stylesheet asks for', async () => {
+    const res = await request(app()).get('/');
+    const preloaded = [...res.text.matchAll(/<link rel="preload" href="([^"]+)"/g)].map(
+      (m) => m[1]
+    );
+    expect(preloaded.length).toBeGreaterThan(0);
+    const css = (await request(app()).get('/app.css')).text;
+    for (const href of preloaded) {
+      // A preload that does not match the stylesheet's URL exactly downloads
+      // the font a second time instead of saving a round trip.
+      expect(css, href).toContain(`url('${href}')`);
+      expect((await request(app()).get(href)).status, href).toBe(200);
+    }
+  });
+
+  it('declares every weight the stylesheet sets, so none is faked', async () => {
+    const css = (await request(app()).get('/app.css')).text;
+    const faces = [...css.matchAll(/@font-face\s*\{[^}]*?font-family:\s*'([^']+)'[^}]*?font-weight:\s*(\d+)[^}]*?\}/g)]
+      .map((m) => `${m[1]}/${m[2]}`);
+    for (const need of ['Archivo/400', 'Archivo/600', 'Bodoni Moda/400', 'IBM Plex Mono/400', 'IBM Plex Mono/500']) {
+      expect(faces, need).toContain(need);
+    }
+  });
+});
