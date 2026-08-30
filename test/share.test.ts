@@ -106,7 +106,7 @@ describe('a shared permalink previews what was shared', () => {
 
   it('falls back to the gallery for an id it does not know', async () => {
     const m = meta((await request(app()).get('/?id=nope')).text);
-    expect(m['og:title']).toBe('Gallery — Klaus Hofrichter');
+    expect(m['og:title']).toBe('Art — Klaus Hofrichter');
     // and points at the gallery, so a bad link is not indexed as its own page
     expect(m['og:url']).toBe('https://art.klaushofrichter.net/');
   });
@@ -114,7 +114,7 @@ describe('a shared permalink previews what was shared', () => {
   it('ignores a repeated id rather than treating the array as an id', async () => {
     const res = await request(app()).get('/?id=fixtall1&id=fixwide1');
     expect(res.status).toBe(200);
-    expect(meta(res.text)['og:title']).toBe('Gallery — Klaus Hofrichter');
+    expect(meta(res.text)['og:title']).toBe('Art — Klaus Hofrichter');
   });
 
   it('serves the same body, so only the preview differs', async () => {
