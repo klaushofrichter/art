@@ -238,8 +238,21 @@ or a title can never fail a build, and the fixtures are safe to publish.
 
 - `GET /` — the gallery (`?id=` resolves a permalink)
 - `GET /buy/:room/:slug` — a single-picture purchase page
+- `GET /terms`, `GET /privacy` — the two documents a payment processor asks for
 - `GET /health` — `{"status":"ok","service":"art","version":"…","rooms":4,"works":15}`
 - `GET /assets/*` — the pictures
+
+### Terms and privacy
+
+Both live in `src/legal.ts` as data, not markup, so the two pages render the
+same way and the facts sit beside the constants they have to agree with — the
+enquiry window, for instance, is read from `ENQUIRY_HOURS` rather than typed
+out again. Edit the text there and change the `UPDATED` date with it.
+
+They are rendered once at startup: nothing on the content volume can change
+them. Tests assert the claims that the code has to keep true — that no page
+sets a cookie, that Google Fonts is disclosed because the pages really do
+request it, and that no page anywhere asks for a card number.
 
 ---
 
