@@ -759,3 +759,17 @@ test('the preview image size matches the picture that is served', async ({ page 
   expect(String(size.w)).toBe(m['og:image:width']);
   expect(String(size.h)).toBe(m['og:image:height']);
 });
+
+test('a click lands even in the first moments after the page loads', async ({ page }) => {
+  // The rail's "was it just dragged?" guard compared performance.now() against
+  // a lastDragEnd of 0, so for the first ~260ms of a page's life a rail that
+  // had never been dragged claimed it had, and swallowed the click. It only
+  // showed up once the site got fast enough to reliably click inside that
+  // window. No waiting here on purpose — that is the whole point.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.goto('/');
+    await page.locator('.enter').first().click();
+    await page.locator('.rail').last().click({ position: { x: 400, y: 200 } });
+    await expect(page.locator('.room'), `attempt ${attempt}`).toHaveClass(/bare/);
+  }
+});

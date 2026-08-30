@@ -4,9 +4,15 @@ import { assetUrl } from '../fingerprint';
 import { ShareImage, absolute } from '../share';
 import { SITE_URL } from '../site';
 
-const FONTS =
-  'https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,600' +
-  '&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap';
+/* The faces used above the fold on every page. They are declared in app.css,
+   which the browser only parses after fetching it — preloading starts them in
+   parallel instead. The 500-weight mono is used on the legal pages only and is
+   left to load on demand. */
+const PRELOAD_FONTS = [
+  '/fonts/bodoni-moda-v28-latin.woff2',
+  '/fonts/archivo-v25-latin.woff2',
+  '/fonts/ibm-plex-mono-v20-latin-400.woff2',
+];
 
 export interface PageOptions {
   title: string;
@@ -59,9 +65,7 @@ ${o.path ? `<meta property="og:url" content="${escapeHtml(absolute(o.path))}">
 <link rel="canonical" href="${escapeHtml(absolute(o.path))}">` : `<meta property="og:url" content="${SITE_URL}">`}
 ${shareTags(o.image)}
 <link rel="icon" type="image/png" href="${assetUrl('palette.png')}">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="${FONTS}">
+${PRELOAD_FONTS.map((f) => `<link rel="preload" href="${f}" as="font" type="font/woff2" crossorigin>`).join('\n')}
 <link rel="stylesheet" href="${assetUrl('app.css')}">
 ${o.head || ''}
 </head>

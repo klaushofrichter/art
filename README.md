@@ -242,6 +242,20 @@ or a title can never fail a build, and the fixtures are safe to publish.
 - `GET /health` — `{"status":"ok","service":"art","version":"…","rooms":4,"works":15}`
 - `GET /assets/*` — the pictures
 
+### Speed
+
+Two things matter and both are invisible: the text is gzipped (`compression`
+in `src/app.ts`), and the typefaces are served from `public/fonts/` rather
+than fetched from Google Fonts. That request was render-blocking on a third
+origin — about 1.4s before a font file even started — and it disclosed every
+visitor's IP to Google, which the privacy policy then had to admit. The faces
+are the same, latin subset only; `public/fonts/LICENSE.md` records the
+licences.
+
+The small uppercase mono labels are deliberately below Lighthouse's 12px
+threshold. That is the design, and the audit is a blunt instrument: contrast
+and tap targets both pass, and accessibility scores 100.
+
 ### Link previews
 
 Every page carries Open Graph tags, so a link pasted into a chat or a social
