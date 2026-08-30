@@ -1,8 +1,20 @@
-import { Room } from '../content';
+import { Room, Work } from '../content';
 import { escapeHtml, inlineMarkup, plainText } from '../markdown';
 import { page } from './layout';
 import { appVersion } from '../version';
 import { REPO_URL } from '../site';
+import { galleryImage, roomImage, workImage, workDescription } from '../share';
+
+const BLURB = 'Paintings and photographs by Klaus Hofrichter.';
+
+/** What a permalink points at. The gallery is one page for every room and
+ *  picture, so a crawler — which runs no JavaScript — would otherwise show
+ *  the same preview for every share. The server resolves ?id= itself and
+ *  renders a variant whose only difference is the head. */
+export interface Focus {
+  room: Room;
+  work: Work | null;
+}
 
 /** What the browser needs. The images themselves stay on disk. */
 function manifest(rooms: Room[]) {
@@ -60,12 +72,25 @@ function fallback(rooms: Room[]): string {
   return `<noscript><div class="fallback">${'<h1>Gallery</h1>'}${sections}</div></noscript>`;
 }
 
-export function renderGallery(rooms: Room[]): string {
+export function renderGallery(rooms: Room[], focus: Focus | null = null): string {
   const first = rooms.find((r) => r.type === 'pictures');
+  const subject = focus?.work
+    ? focus.work.title
+    : focus?.room
+      ? focus.room.title
+      : null;
+  const uid = focus ? focus.work?.uid || focus.room.uid : '';
   return page({
-    title: 'Gallery — Klaus Hofrichter',
-    description: plainText(first?.description) ||
-      'Paintings and photographs by Klaus Hofrichter.',
+    title: subject ? `${subject} — Klaus Hofrichter` : 'Gallery — Klaus Hofrichter',
+    description: focus?.work
+      ? workDescription(focus.room, focus.work)
+      : plainText(focus?.room.description) || plainText(first?.description) || BLURB,
+    path: uid ? `/?id=${encodeURIComponent(uid)}` : '/',
+    image: focus?.work
+      ? workImage(focus.room, focus.work)
+      : focus?.room
+        ? roomImage(focus.room)
+        : galleryImage(rooms),
     head: `<script type="application/json" id="manifest">${
       JSON.stringify(manifest(rooms)).replace(/</g, '\\u003c')
     }</script>`,
