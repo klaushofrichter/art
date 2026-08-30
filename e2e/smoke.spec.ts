@@ -172,7 +172,9 @@ test('the About hero is shown, and is not one of the works', async ({ page }) =>
   await page.goto('/#about');
   await page.locator('.enter').last().click();
   const bg = await page.locator('.aboutroom .bg').evaluate((n) => getComputedStyle(n).backgroundImage);
-  expect(bg).toContain('/assets/about/hero.jpg');
+  // hero.jpg, at whatever size suits this screen — the point of the test is
+  // which picture it is, not which copy of it.
+  expect(bg).toMatch(/\/assets\/about\/(w\d+\/)?hero\.jpg/);
   // It is a hero, not stock: /health still counts 15 works across the rooms.
   const health = await (await page.request.get('/health')).json();
   expect(health.works).toBe(5);
@@ -772,4 +774,53 @@ test('a click lands even in the first moments after the page loads', async ({ pa
     await page.locator('.rail').last().click({ position: { x: 400, y: 200 } });
     await expect(page.locator('.room'), `attempt ${attempt}`).toHaveClass(/bare/);
   }
+});
+
+/* ---- smaller copies for smaller screens ---- */
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 });
+
+  test('the covers come from a smaller copy, not the original', async ({ page }) => {
+    const asked: string[] = [];
+    page.on('request', (r) => {
+      if (/\/assets\//.test(r.url())) asked.push(new URL(r.url()).pathname);
+    });
+    await page.goto('/');
+    await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Shapes');
+    await page.waitForTimeout(1500);
+    expect(asked.length).toBeGreaterThan(0);
+    // Fixture pictures are 800px at most, so w640 is the only rung; what
+    // matters is that a sized copy is asked for rather than the original.
+    expect(asked.some((p) => /\/w\d+\//.test(p)), asked.join(' ')).toBe(true);
+  });
+
+  test('the picture on screen is a copy, and the download is not', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.enter').first().click();
+    const img = page.locator('.slide .art').first();
+    await expect(img).toHaveAttribute('srcset', /\/w640\/.*640w/);
+    // srcset must not offer the original: the ladder's top is the ceiling
+    // for anything shown, and the original is what the download serves.
+    const set = await img.getAttribute('srcset');
+    expect(set).not.toMatch(/\/assets\/shapes\/wide\.jpg/);
+    const href = await page.locator('a[download]').first().getAttribute('href');
+    expect(href).not.toMatch(/\/w\d+\//);
+  });
+});
+
+test('a picture with no smaller copy still shows, from the original', async ({ page }) => {
+  // "Tall" is 600px wide, below the smallest rung.
+  await page.goto('/?id=fixtall1');
+  const img = page.locator('.slide .art').nth(1);
+  await expect(img).toHaveJSProperty('naturalWidth', 600);
+  expect(await img.getAttribute('srcset')).toBeFalsy();
+});
+
+test('the copies really are smaller than the original', async ({ page }) => {
+  const full = await page.request.get('/assets/shapes/wide.jpg');
+  const small = await page.request.get('/assets/shapes/w640/wide.jpg');
+  expect(full.status()).toBe(200);
+  expect(small.status()).toBe(200);
+  expect((await small.body()).length).toBeLessThan((await full.body()).length);
 });

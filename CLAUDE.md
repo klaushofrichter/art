@@ -65,6 +65,15 @@ keeping:
 - The favicon is `public/palette.png`, not a file in the content directory — a
   content sync must not be able to take the site's own icon away.
 
+## Pictures are sized for the screen, and the original is for download
+
+`scripts/make-derivatives.sh` (run by `sync-assets.sh`) writes `w<width>/`
+copies beside each picture. `Work.widths` says which exist; the manifest ships
+those numbers and the browser builds the path, because **no URL from content
+ever reaches a src**. Two rules: the largest copy is the ceiling for anything
+displayed — never the original, however large the screen — and the download
+link always serves the original at full resolution. Both are tested.
+
 ## The About room is deliberately not a picture room
 
 It holds one hero (the collection's `cover`, not a work) and its text, so

@@ -116,8 +116,50 @@
   /* Every URL the page uses is built from a literal prefix plus encoded
      identifiers. Nothing that arrives as content is ever assigned to a src
      or an href, so no index.json can put "javascript:" behind a link. */
+  /* The rooms and pictures menus show a 62x44 thumbnail. Each one used to
+     load the full-resolution original. */
+  var THUMB_PX = 62;
+
   function pictureUrl(roomId, file) {
     return '/assets/' + encodeURIComponent(roomId) + '/' + encodeURIComponent(file);
+  }
+  /* The same picture, shrunk to `w`. Built the same way — a literal prefix, a
+     number, and encoded identifiers — so this is no more of a sink than the
+     line above. */
+  function sizedUrl(roomId, file, w) {
+    return '/assets/' + encodeURIComponent(roomId) + '/w' + Number(w) +
+      '/' + encodeURIComponent(file);
+  }
+  /* The smallest copy that covers `cssPx` at this screen's density — or the
+     largest that exists, if the screen wants more than we made.
+     
+     The top of the ladder is deliberately the ceiling for anything shown on
+     screen: past it the extra pixels are invisible on a photograph and cost
+     half again as many bytes. The original is never displayed when a copy
+     exists; it is what the download link serves, at full resolution. */
+  function bestUrl(roomId, file, widths, cssPx) {
+    var list = widths || [];
+    if (!list.length) return pictureUrl(roomId, file);
+    var need = Math.round(cssPx * (window.devicePixelRatio || 1));
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] >= need) return sizedUrl(roomId, file, list[i]);
+    }
+    return sizedUrl(roomId, file, list[list.length - 1]);
+  }
+
+  /* The smallest copy there is, whatever the screen. For a picture that is
+     scaled up and blurred, density buys nothing. */
+  function smallestUrl(roomId, file, widths) {
+    return widths && widths.length
+      ? sizedUrl(roomId, file, widths[0])
+      : pictureUrl(roomId, file);
+  }
+  /* Every copy that exists, for an <img> to choose from itself. The original
+     is deliberately not among them — see bestUrl. */
+  function srcsetFor(roomId, file, widths) {
+    return (widths || []).map(function (w) {
+      return sizedUrl(roomId, file, w) + ' ' + w + 'w';
+    }).join(', ');
   }
   function buyUrl(roomId, slug) {
     return '/buy/' + encodeURIComponent(roomId) + '/' + encodeURIComponent(slug);
@@ -395,7 +437,9 @@
 
   ROOMS.forEach(function (room) {
     var slide = el('div', 'slide');
-    var coverUrl = room.coverFile ? pictureUrl(room.id, room.coverFile) : null;
+    var coverUrl = room.coverFile
+      ? bestUrl(room.id, room.coverFile, room.coverWidths, window.innerWidth)
+      : null;
     var p = el('div', 'lpanel' + (room.type === 'about' ? ' about' : '') +
       (coverUrl ? '' : ' nocover'));
     var bg = el('div', 'bg');
@@ -435,7 +479,7 @@
   roomsBtn.type = 'button';
   var lobbyMenu = Menu('Lobby', ROOMS.map(function (r) {
     return {
-      src: r.coverFile ? pictureUrl(r.id, r.coverFile) : null,
+      src: r.coverFile ? bestUrl(r.id, r.coverFile, r.coverWidths, THUMB_PX) : null,
       title: r.title,
       meta: r.type === 'about' ? 'Information' : r.works.length + ' works \u00b7 ' + r.subtitle
     };
@@ -556,10 +600,16 @@
       var img = el('img', 'art');
       img.alt = w.title;
       img.draggable = false;
+      /* The picture fills the screen, so let the browser pick the copy that
+         suits this display rather than always sending the original. The
+         download link still points at the original — see downloadIcon. */
+      var set = srcsetFor(room.id, w.file, w.widths);
       img.addEventListener('load', function () { alignArt(view, img); });
       /* src is set by show() below, so the picture on screen is not competing
          with every other picture in the room for the connection */
-      urls.push(url); plates.push({ img: img, amb: amb });
+      urls.push(url);
+      plates.push({ img: img, amb: amb, set: set,
+                    small: smallestUrl(room.id, w.file, w.widths) });
       plate.append(amb, img);
       slide.append(plate);
       rrail.append(slide);
@@ -593,7 +643,7 @@
     /* strict tree: no way sideways to another room from in here */
     var picsMenu = Menu(room.title, room.works.map(function (w) {
       return {
-        src: pictureUrl(room.id, w.file),
+        src: bestUrl(room.id, w.file, w.widths, THUMB_PX),
         title: w.title,
         meta: niceDate(w.date),
         badge: w.status !== 'available' ? STATUS[w.status] : null
@@ -676,8 +726,11 @@
       slot.on = true;
       slot.img.addEventListener('load', function () { done && done(); }, { once: true });
       slot.img.addEventListener('error', function () { done && done(); }, { once: true });
+      if (slot.set) { slot.img.sizes = '100vw'; slot.img.srcset = slot.set; }
       slot.img.src = urls[i];
-      slot.amb.style.backgroundImage = 'url("' + urls[i] + '")';
+      /* The ambient wash behind the picture is blurred out of recognition,
+         so it never needs more than the smallest copy. */
+      slot.amb.style.backgroundImage = 'url("' + slot.small + '")';
       return true;
     }
 
@@ -741,7 +794,9 @@
     if (liveRoom) liveRoom.remove();
     lobby.hidden = true;
     var roomIndex = ROOMS.indexOf(room);
-    var coverUrl = room.coverFile ? pictureUrl(room.id, room.coverFile) : null;
+    var coverUrl = room.coverFile
+      ? bestUrl(room.id, room.coverFile, room.coverWidths, window.innerWidth)
+      : null;
 
     var view = el('div', 'screen room');
     var pane = el('div', 'aboutroom' + (coverUrl ? '' : ' nocover'));
@@ -859,13 +914,15 @@
     var events = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
     var timer = setTimeout(dismiss, 4200);
     var done = false;
-    requestAnimationFrame(function () {
-      card.classList.add('on');
-      /* A frame late on purpose: when a click is what asked for the card, the
-         same gesture must not also be the input that dismisses it. */
-      if (!done) events.forEach(function (t) { window.addEventListener(t, dismiss, true); });
-    });
-    function dismiss() {
+    /* Listening starts now, not a frame later: a card that is on screen has to
+       answer the very next click. The guard against the gesture that asked for
+       the card is its timestamp, not a delay — waiting a frame left a window
+       where a quick click did nothing at all. */
+    var shownAt = performance.now();
+    events.forEach(function (t) { window.addEventListener(t, dismiss, true); });
+    requestAnimationFrame(function () { card.classList.add('on'); });
+    function dismiss(e) {
+      if (e && typeof e.timeStamp === 'number' && e.timeStamp < shownAt) return;
       if (done) return;
       done = true;
       clearTimeout(timer);

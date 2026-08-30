@@ -18,12 +18,20 @@ if [ ! -d "$SRC" ]; then
   exit 1
 fi
 
-# 1. Refuse to push content the server could not serve. This is the only gate
+# 1. Make the smaller copies a phone should get instead of a 3000px original.
+#    Content is not part of a deploy any more, so this is the moment for it.
+#    Skipped harmlessly if ffmpeg is not installed.
+if [ -z "${NO_DERIVATIVES:-}" ]; then
+  echo "==> sizing pictures"
+  scripts/make-derivatives.sh "$SRC"
+fi
+
+# 2. Refuse to push content the server could not serve. This is the only gate
 #    content gets, so it runs before anything in the cluster is touched.
 echo "==> checking $SRC"
 npx tsx scripts/check-assets.ts "$SRC"
 
-# 2. Wake the one pod allowed to write to the volume.
+# 3. Wake the one pod allowed to write to the volume.
 echo "==> waking $DEPLOY"
 scaled_up=0
 cleanup() {
@@ -38,7 +46,7 @@ scaled_up=1
 $KUBECTL rollout status deploy/$DEPLOY -n $NS --timeout=120s >/dev/null
 POD=$($KUBECTL get pod -n $NS -l app=$DEPLOY -o jsonpath='{.items[0].metadata.name}')
 
-# 3. Stream it in and swap it into place. Extracting beside the live directory
+# 4. Stream it in and swap it into place. Extracting beside the live directory
 #    and moving means the gallery never reads a half-written tree, and the
 #    previous content stays as .old for a one-command rollback.
 # COPYFILE_DISABLE stops macOS tar writing an AppleDouble "._name" shadow
@@ -57,7 +65,7 @@ COPYFILE_DISABLE=1 tar -C "$SRC" \
   mv /data/incoming /data/assets
 '
 
-# 4. Say what is actually on the volume now, rather than what we hoped.
+# 5. Say what is actually on the volume now, rather than what we hoped.
 echo "==> on the volume:"
 $KUBECTL exec -n $NS "$POD" -- sh -c '
   cd /data/assets

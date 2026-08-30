@@ -256,6 +256,45 @@ The small uppercase mono labels are deliberately below Lighthouse's 12px
 threshold. That is the design, and the audit is a blunt instrument: contrast
 and tap targets both pass, and accessibility scores 100.
 
+### Pictures are sized for the screen asking
+
+A phone was being sent a 3000px original to show in a 400px frame.
+`scripts/make-derivatives.sh` writes smaller copies beside each picture — one
+directory per width, keeping the filename:
+
+```
+assets/colors/IMG_7281.jpg          the original, untouched
+assets/colors/w640/IMG_7281.jpg     …and the copies
+assets/colors/w1024/IMG_7281.jpg
+assets/colors/w1536/…  w2048/…  w2560/…
+```
+
+It runs from `sync-assets.sh`, before anything is uploaded — content is not
+part of a deploy any more, so that is the equivalent moment. Copies at or
+above a picture's own width are never made, so a small picture simply has
+none and is served whole.
+
+The server records which widths exist (`Work.widths`) and the manifest ships
+those **numbers**; the browser builds the path itself, the same rule that
+keeps a hand-edited `index.json` from putting `javascript:` behind an image.
+Real `<img>` elements get a `srcset` and let the browser choose; CSS
+backgrounds are picked in JavaScript, where `devicePixelRatio` is known.
+
+Two rules are worth keeping:
+
+- **The top of the ladder is the ceiling for anything on screen.** A display
+  wanting more than 2560px gets the 2560 copy, not the original: past that the
+  extra pixels are invisible on a photograph and cost half again as many bytes.
+- **The original is what the download link serves**, always, at full
+  resolution. There is a test for it.
+
+The ambient wash behind a picture is blurred past recognition, so it always
+takes the smallest copy no matter the screen. Menu thumbnails are 62px and
+take the smallest too — they used to load full-resolution originals.
+
+Roughly, for the lobby: 3960KB before, 964KB on a phone, 1563KB on a tablet,
+2239KB on a 2x laptop.
+
 ### Link previews
 
 Every page carries Open Graph tags, so a link pasted into a chat or a social
