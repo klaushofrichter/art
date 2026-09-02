@@ -126,6 +126,27 @@ anything under `## [Unreleased]` in `CHANGELOG.md`. The release step runs last
 no release, and the checkout uses `fetch-depth: 0` because the notes are
 computed from history and tags.
 
+## Node 26, and it is Current rather than LTS
+
+A deliberate choice, matching `../www-klaushofrichter`. Node 26 was still
+**Current** when it was picked (v26.8.1, `lts: false`); Node 24 "Krypton" was
+the LTS. Current gets security fixes but leaves support earlier than an LTS
+line would, which is the cost of the choice.
+
+The version lives in **three places that must move together**, and drifting
+apart is the failure mode to watch — `@types/node` was on `^20` against a Node
+24 container for months and nothing noticed, because `tsc` was happy and the
+container ran:
+
+- both `Dockerfile` stages (`node:26-alpine`)
+- `node-version:` in every workflow
+- `"@types/node"` in `package.json`
+
+Dependabot's docker and npm ecosystems will offer `node:27-alpine` and
+`@types/node@27` when they land, as separate ungrouped majors. Take them
+together or not at all, and re-make the Current-versus-LTS decision then
+rather than merging either on its own.
+
 ## Don't run Playwright on the self-hosted runner
 
 The runner container is capped at 512Mi
