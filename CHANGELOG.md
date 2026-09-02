@@ -13,6 +13,12 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
+- **Pictures are served as WebP** where the browser takes it — 9–24% smaller
+  than the JPEG beside them and, measured against a lossless reference,
+  slightly *better* quality rather than worse. A browser that cannot is sent
+  the JPEG exactly as before, and the download link still serves the
+  untouched original.
+
 - **Pictures are sized for the screen that asked.** A phone was being sent a
   3000px original to show in a 400px frame; it now gets a copy that fits, and
   the lobby costs 964KB instead of 3960KB. The original is untouched and is

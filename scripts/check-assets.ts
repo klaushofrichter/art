@@ -58,6 +58,12 @@ for (const room of rooms) {
           'so a shared link will show no preview image'
       );
     }
+    if (w.widths.length && !w.webp) {
+      console.warn(
+        `    ! ${w.file} has smaller copies but no WebP — ` +
+          'run scripts/make-derivatives.sh so browsers get the smaller format'
+      );
+    }
     if (w.width && w.width > 1400 && !w.widths.length) {
       console.warn(
         `    ! ${w.file} is ${w.width}px wide with no smaller copies — ` +

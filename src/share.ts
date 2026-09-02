@@ -1,4 +1,4 @@
-import { Room, Work } from './content';
+import { Room, Work, webpName } from './content';
 import { plainText } from './markdown';
 import { SITE_URL } from './site';
 
@@ -77,5 +77,15 @@ export function workDescription(room: Room, work: Work): string {
 export function srcset(roomId: string, work: Work): string {
   const at = (w: number) =>
     `/assets/${encodeURIComponent(roomId)}/w${w}/${encodeURIComponent(work.file)}`;
+  return work.widths.map((w) => `${at(w)} ${w}w`).join(', ');
+}
+
+/** The same, in WebP. Empty when this picture has no WebP copies, which is
+ *  the signal to leave the <source> out rather than write an empty one. */
+export function webpSrcset(roomId: string, work: Work): string {
+  if (!work.webp) return '';
+  const name = webpName(work.file);
+  const at = (w: number) =>
+    `/assets/${encodeURIComponent(roomId)}/w${w}/${encodeURIComponent(name)}`;
   return work.widths.map((w) => `${at(w)} ${w}w`).join(', ');
 }

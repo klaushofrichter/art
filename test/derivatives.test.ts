@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { createApp } from '../src/app';
 import { ASSETS, rooms } from './setup';
-import { srcset } from '../src/share';
+import { srcset, webpSrcset } from '../src/share';
 import { imageSize } from '../src/imagesize';
 
 const app = () => createApp(rooms, ASSETS);
@@ -148,5 +148,74 @@ describe('the copies are served', () => {
 describe('a width directory is not mistaken for a room', () => {
   it('loads the same rooms whether or not copies exist beside the pictures', () => {
     expect(rooms.map((r) => r.id)).toEqual(['shapes', 'prints', 'about']);
+  });
+});
+
+describe('WebP beside the resized copies', () => {
+  it('records webp only when every width has one', () => {
+    expect(wide.widths).toEqual([640]);
+    expect(wide.webp).toBe(true);
+    // 600px wide, below the smallest rung, so no copies and no webp
+    expect(tall.widths).toEqual([]);
+    expect(tall.webp).toBe(false);
+  });
+
+  it('never claims a webp whose file is missing', () => {
+    for (const room of rooms) {
+      for (const work of room.works) {
+        if (!work.webp) continue;
+        for (const w of work.widths) {
+          const p = path.join(ASSETS, room.id, `w${w}`, work.file.replace(/\.[A-Za-z0-9]+$/, '.webp'));
+          expect(fs.existsSync(p), p).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('builds a webp srcset from the same widths', () => {
+    expect(webpSrcset('shapes', wide)).toBe('/assets/shapes/w640/wide.webp 640w');
+  });
+
+  it('gives an empty webp srcset when there is none, so the source is omitted', () => {
+    expect(webpSrcset('shapes', tall)).toBe('');
+  });
+
+  it('leaves the original out of the webp set too', () => {
+    expect(webpSrcset('shapes', wide)).not.toContain('/assets/shapes/wide');
+  });
+
+  it('offers a webp source and a jpeg fallback on the purchase page', async () => {
+    const res = await request(app()).get('/buy/shapes/wide');
+    expect(res.text).toContain('<picture>');
+    expect(res.text).toContain('<source type="image/webp" srcset="/assets/shapes/w640/wide.webp 640w"');
+    // the <img> inside stays JPEG, which is what a browser without webp takes
+    expect(res.text).toContain('src="/assets/shapes/wide.jpg"');
+    expect(res.text).toContain('srcset="/assets/shapes/w640/wide.jpg 640w"');
+  });
+
+  it('writes no empty source for a picture with no webp', async () => {
+    const res = await request(app()).get('/buy/shapes/tall');
+    expect(res.text).not.toContain('srcset=""');
+    expect(res.text).not.toContain('image/webp');
+  });
+
+  it('serves the webp with the right content type', async () => {
+    const res = await request(app()).get('/assets/shapes/w640/wide.webp');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('image/webp');
+  });
+
+  it('is smaller than the jpeg it sits beside', async () => {
+    const w = await request(app()).get('/assets/shapes/w640/wide.webp');
+    const j = await request(app()).get('/assets/shapes/w640/wide.jpg');
+    expect(w.body.length).toBeLessThan(j.body.length);
+  });
+
+  it('ships the flag as a boolean, still no URLs', async () => {
+    const data = manifestOf((await request(app()).get('/')).text);
+    const work = data.find((r: any) => r.id === 'shapes').works.find((w: any) => w.slug === 'wide');
+    expect(work.webp).toBe(true);
+    expect(data.find((r: any) => r.id === 'shapes').coverWebp).toBe(true);
+    expect(JSON.stringify(data)).not.toContain('/assets/');
   });
 });
