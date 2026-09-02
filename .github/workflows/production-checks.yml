@@ -1,8 +1,12 @@
-name: Production PR checks
+name: PR checks
 
+# Both branches, not just production. PRs to main — Dependabot's, in particular
+# — previously ran nothing at all: build-push.yml triggers on push, and this
+# file only listened for production. Dependency bumps were landing on main
+# unverified and were first tested when someone opened the promotion PR.
 on:
   pull_request:
-    branches: [production]
+    branches: [main, production]
 
 jobs:
   test:
@@ -12,11 +16,16 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 24
+          node-version: 26
 
       - run: npm ci
 
       - run: npm test
+
+      # In the `test` job on purpose: `test` is a required status check on
+      # production, so a vulnerable dependency blocks the merge. As its own
+      # job it would be advisory and gate nothing.
+      - run: npm audit --audit-level=high
 
   e2e:
     # The Playwright suite runs here, on GitHub's runners, rather than in the
@@ -29,7 +38,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 24
+          node-version: 26
 
       - run: npm ci
 

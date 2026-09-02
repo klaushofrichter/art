@@ -111,6 +111,7 @@ jobs:
       # the release step below. The full Playwright suite runs on GitHub's own
       # runners in production-checks.yml, before the merge that gets here.
       - name: Smoke-test the public endpoints
+        id: smoke
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
@@ -144,10 +145,30 @@ jobs:
             || { echo "::error::page is missing the gallery root"; exit 1; }
           echo "public page ok"
 
+          # Hand the release step what this deploy actually observed, so the
+          # notes carry evidence rather than an assertion. Only what was
+          # measured here — the Playwright suite runs in another workflow on
+          # another commit, and quoting its numbers here would be borrowing
+          # someone else's proof.
+          {
+            echo "base=$BASE"
+            echo "served=$served"
+            echo "rooms=$rooms"
+            echo "works=$works"
+            echo "page=$page"
+            echo "checked_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Tag the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.ver.outputs.version }}
+          SMOKE_BASE: ${{ steps.smoke.outputs.base }}
+          SMOKE_SERVED: ${{ steps.smoke.outputs.served }}
+          SMOKE_ROOMS: ${{ steps.smoke.outputs.rooms }}
+          SMOKE_WORKS: ${{ steps.smoke.outputs.works }}
+          SMOKE_PAGE: ${{ steps.smoke.outputs.page }}
+          SMOKE_AT: ${{ steps.smoke.outputs.checked_at }}
         run: |
           set -euo pipefail
           TAG="v${VERSION}"
@@ -179,6 +200,15 @@ jobs:
             git log --no-merges --pretty='- %s' -20 >> /tmp/notes.md
           fi
           printf '\nImage: `ghcr.io/klaushofrichter/art:%s`\n' "$TAG" >> /tmp/notes.md
+          # What the deploy saw after the rollout, quoted from the smoke test
+          # rather than restated. If this section is missing from a release,
+          # the smoke test did not get far enough to write it.
+          printf '\n### Verified at release\n\n' >> /tmp/notes.md
+          printf -- '- `GET /health` on %s served `%s`\n' "$SMOKE_BASE" "$SMOKE_SERVED" >> /tmp/notes.md
+          printf -- '- Content loaded: %s rooms, %s works\n' "$SMOKE_ROOMS" "$SMOKE_WORKS" >> /tmp/notes.md
+          printf -- '- `GET /` returned HTTP %s with the gallery root and manifest present\n' "$SMOKE_PAGE" >> /tmp/notes.md
+          printf -- '- Checked at %s by [this run](%s/%s/actions/runs/%s)\n' \
+            "$SMOKE_AT" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> /tmp/notes.md
           gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
