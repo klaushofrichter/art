@@ -29,7 +29,6 @@ function manifest(rooms: Room[]) {
     // Which smaller copies exist. Numbers, not URLs — the browser builds the
     // path from a constant prefix and the width, same as everything else.
     coverWidths: r.coverWidths,
-    coverW: r.coverWidth,
     about: r.about,
     // Identifiers, not URLs. The browser builds every src and href from a
     // constant prefix plus an encoded id, so a hand-edited index.json cannot
@@ -39,10 +38,6 @@ function manifest(rooms: Room[]) {
       uid: w.uid,
       file: w.file,
       widths: w.widths,
-      // The original's own pixel size: the last candidate in a srcset, and
-      // what lets an <img> reserve its space before the picture arrives.
-      w: w.width,
-      h: w.height,
       title: w.title,
       date: w.date,
       artist: w.artist,

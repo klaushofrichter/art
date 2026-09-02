@@ -5,7 +5,10 @@ import { renderBuy } from '../views/buy';
 export function buyRouter(rooms: () => Room[]): Router {
   const router = Router();
   router.get('/buy/:room/:slug', (req: Request, res: Response) => {
-    const found = findWork(rooms(), req.params.room, req.params.slug);
+    // Express 5 types a route parameter as string | string[], so take only the
+    // single-string case — the same shape of guard as `?id=` in routes/index.
+    const one = (v: unknown): string => (typeof v === 'string' ? v : '');
+    const found = findWork(rooms(), one(req.params.room), one(req.params.slug));
     if (!found) {
       res.status(404).type('html').send(
         '<!DOCTYPE html><meta charset="utf-8"><title>Not found</title>' +
