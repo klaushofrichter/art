@@ -11,6 +11,11 @@ export interface Work {
    *  The browser picks one; the original is always there as the fallback and
    *  is what the download link serves. See scripts/make-derivatives.sh. */
   widths: number[];
+  /** Whether a WebP copy exists at every one of those widths. All or nothing:
+   *  a half-generated set would have the browser asking for files that are not
+   *  there. The original is never converted — it stays the file that was shot,
+   *  and it is what the download link serves. */
+  webp: boolean;
   /** Pixel size, when it could be read from the file's header. Used only for
    *  the og:image hints a link preview lays itself out with. */
   width?: number;
@@ -58,6 +63,7 @@ export interface Room {
   coverWidth?: number;
   coverHeight?: number;
   coverWidths: number[];
+  coverWebp: boolean;
   includes: string[];
   order: number;
   about?: AboutInfo;
@@ -115,6 +121,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     return [{
       file: w.file,
       widths: widthsFor(roomDir, w.file, availableWidths),
+      webp: hasWebp(roomDir, w.file, widthsFor(roomDir, w.file, availableWidths)),
       width: size?.width,
       height: size?.height,
       uid: typeof w.uid === 'string' ? w.uid : '',
@@ -151,6 +158,9 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     coverWidth: coverSize?.width,
     coverHeight: coverSize?.height,
     coverWidths: coverOk ? widthsFor(roomDir, coverFile as string, availableWidths) : [],
+    coverWebp: coverOk
+      ? hasWebp(roomDir, coverFile as string, widthsFor(roomDir, coverFile as string, availableWidths))
+      : false,
     includes: roomIncludes,
     order: typeof c.order === 'number' ? c.order : 50,
     about: raw.about,
@@ -176,6 +186,20 @@ function widthDirs(roomDir: string): number[] {
  *  missing — a picture too small to be worth shrinking has none at all. */
 function widthsFor(roomDir: string, file: string, dirs: number[]): number[] {
   return dirs.filter((w) => fs.existsSync(path.join(roomDir, `w${w}`, file)));
+}
+
+/** The WebP beside a resized copy keeps the basename and changes the
+ *  extension. Exported because the browser has to build the same name. */
+export function webpName(file: string): string {
+  return file.replace(/\.[A-Za-z0-9]+$/, '') + '.webp';
+}
+
+/** True only when every width has one, so the browser can switch format
+ *  wholesale rather than per width. */
+function hasWebp(roomDir: string, file: string, widths: number[]): boolean {
+  if (!widths.length) return false;
+  const name = webpName(file);
+  return widths.every((w) => fs.existsSync(path.join(roomDir, `w${w}`, name)));
 }
 
 export function loadRooms(assetsDir: string = ASSETS_DIR): Room[] {

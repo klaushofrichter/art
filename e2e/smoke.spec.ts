@@ -172,9 +172,9 @@ test('the About hero is shown, and is not one of the works', async ({ page }) =>
   await page.goto('/#about');
   await page.locator('.enter').last().click();
   const bg = await page.locator('.aboutroom .bg').evaluate((n) => getComputedStyle(n).backgroundImage);
-  // hero.jpg, at whatever size suits this screen — the point of the test is
-  // which picture it is, not which copy of it.
-  expect(bg).toMatch(/\/assets\/about\/(w\d+\/)?hero\.jpg/);
+  // hero, at whatever size and format suit this screen — the point of the
+  // test is which picture it is, not which copy of it.
+  expect(bg).toMatch(/\/assets\/about\/(w\d+\/)?hero\.(jpg|webp)/);
   // It is a hero, not stock: /health still counts 15 works across the rooms.
   const health = await (await page.request.get('/health')).json();
   expect(health.works).toBe(5);
@@ -823,4 +823,55 @@ test('the copies really are smaller than the original', async ({ page }) => {
   expect(full.status()).toBe(200);
   expect(small.status()).toBe(200);
   expect((await small.body()).length).toBeLessThan((await full.body()).length);
+});
+
+/* ---- WebP ---- */
+
+test.describe('a browser that takes WebP', () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 });
+
+  test('gets WebP for the covers, and the download stays the original', async ({ page }) => {
+    const seen: string[] = [];
+    page.on('response', (r) => {
+      if (/\/assets\//.test(r.url())) seen.push(new URL(r.url()).pathname);
+    });
+    await page.goto('/');
+    await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Shapes');
+    await page.waitForTimeout(1500);
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((s) => s.endsWith('.webp')), seen.join(' ')).toBe(true);
+
+    await page.locator('.enter').first().click();
+    await expect(page.locator('.slide .art').first()).toHaveAttribute('srcset', /\.webp/);
+    const href = await page.locator('a[download]').first().getAttribute('href');
+    expect(href).toMatch(/\.jpg$/);
+  });
+});
+
+test.describe('a browser that cannot', () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 });
+
+  test('is never sent a WebP', async ({ page }) => {
+    // Make the capability probe answer no, the way an old browser would.
+    await page.addInitScript(() => {
+      const real = HTMLCanvasElement.prototype.toDataURL;
+      HTMLCanvasElement.prototype.toDataURL = function (type?: string, ...rest: unknown[]) {
+        if (type === 'image/webp') return 'data:image/png;base64,';
+        return real.call(this, type as string, ...(rest as []));
+      };
+    });
+    const seen: string[] = [];
+    page.on('response', (r) => {
+      if (/\/assets\//.test(r.url())) seen.push(new URL(r.url()).pathname);
+    });
+    await page.goto('/');
+    await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Shapes');
+    await page.waitForTimeout(1500);
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.some((s) => s.endsWith('.webp')), seen.join(' ')).toBe(false);
+
+    await page.locator('.enter').first().click();
+    const set = await page.locator('.slide .art').first().getAttribute('srcset');
+    expect(set).not.toContain('.webp');
+  });
 });

@@ -68,11 +68,14 @@ keeping:
 ## Pictures are sized for the screen, and the original is for download
 
 `scripts/make-derivatives.sh` (run by `sync-assets.sh`) writes `w<width>/`
-copies beside each picture. `Work.widths` says which exist; the manifest ships
+copies beside each picture, each as both JPEG and WebP (quality 85, which
+measured smaller *and* higher-SSIM than the JPEG on every picture here). `Work.widths` says which exist; the manifest ships
 those numbers and the browser builds the path, because **no URL from content
-ever reaches a src**. Two rules: the largest copy is the ceiling for anything
-displayed — never the original, however large the screen — and the download
-link always serves the original at full resolution. Both are tested.
+ever reaches a src**. Three rules: the largest copy is the ceiling for anything displayed — never
+the original, however large the screen; `webp` is true only when every width
+has one, so the format switches wholesale; and the download link always
+serves the original at full resolution, never converted. All three are
+tested, including the path where the browser says it cannot take WebP.
 
 ## The About room is deliberately not a picture room
 

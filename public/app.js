@@ -123,12 +123,31 @@
   function pictureUrl(roomId, file) {
     return '/assets/' + encodeURIComponent(roomId) + '/' + encodeURIComponent(file);
   }
+  /* Does this browser take WebP? Asked once. Every engine that matters has
+     said yes for years, but the answer decides which files we ask for, so it
+     is measured rather than assumed. */
+  var WEBP = (function () {
+    try {
+      var c = document.createElement('canvas');
+      c.width = c.height = 1;
+      return c.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+    } catch (_) { return false; }
+  })();
+
+  /* The WebP beside a resized copy keeps the basename. Still a literal
+     prefix plus an encoded identifier — swapping the extension does not make
+     this a URL from content. */
+  function webpName(file) {
+    return file.replace(/\.[A-Za-z0-9]+$/, '') + '.webp';
+  }
+
   /* The same picture, shrunk to `w`. Built the same way — a literal prefix, a
      number, and encoded identifiers — so this is no more of a sink than the
-     line above. */
-  function sizedUrl(roomId, file, w) {
+     line above. `hasWebp` says a WebP exists at every width for this picture. */
+  function sizedUrl(roomId, file, w, hasWebp) {
+    var name = (hasWebp && WEBP) ? webpName(file) : file;
     return '/assets/' + encodeURIComponent(roomId) + '/w' + Number(w) +
-      '/' + encodeURIComponent(file);
+      '/' + encodeURIComponent(name);
   }
   /* The smallest copy that covers `cssPx` at this screen's density — or the
      largest that exists, if the screen wants more than we made.
@@ -137,28 +156,28 @@
      screen: past it the extra pixels are invisible on a photograph and cost
      half again as many bytes. The original is never displayed when a copy
      exists; it is what the download link serves, at full resolution. */
-  function bestUrl(roomId, file, widths, cssPx) {
+  function bestUrl(roomId, file, widths, cssPx, hasWebp) {
     var list = widths || [];
     if (!list.length) return pictureUrl(roomId, file);
     var need = Math.round(cssPx * (window.devicePixelRatio || 1));
     for (var i = 0; i < list.length; i++) {
-      if (list[i] >= need) return sizedUrl(roomId, file, list[i]);
+      if (list[i] >= need) return sizedUrl(roomId, file, list[i], hasWebp);
     }
-    return sizedUrl(roomId, file, list[list.length - 1]);
+    return sizedUrl(roomId, file, list[list.length - 1], hasWebp);
   }
 
   /* The smallest copy there is, whatever the screen. For a picture that is
      scaled up and blurred, density buys nothing. */
-  function smallestUrl(roomId, file, widths) {
+  function smallestUrl(roomId, file, widths, hasWebp) {
     return widths && widths.length
-      ? sizedUrl(roomId, file, widths[0])
+      ? sizedUrl(roomId, file, widths[0], hasWebp)
       : pictureUrl(roomId, file);
   }
   /* Every copy that exists, for an <img> to choose from itself. The original
      is deliberately not among them — see bestUrl. */
-  function srcsetFor(roomId, file, widths) {
+  function srcsetFor(roomId, file, widths, hasWebp) {
     return (widths || []).map(function (w) {
-      return sizedUrl(roomId, file, w) + ' ' + w + 'w';
+      return sizedUrl(roomId, file, w, hasWebp) + ' ' + w + 'w';
     }).join(', ');
   }
   function buyUrl(roomId, slug) {
@@ -438,7 +457,7 @@
   ROOMS.forEach(function (room) {
     var slide = el('div', 'slide');
     var coverUrl = room.coverFile
-      ? bestUrl(room.id, room.coverFile, room.coverWidths, window.innerWidth)
+      ? bestUrl(room.id, room.coverFile, room.coverWidths, window.innerWidth, room.coverWebp)
       : null;
     var p = el('div', 'lpanel' + (room.type === 'about' ? ' about' : '') +
       (coverUrl ? '' : ' nocover'));
@@ -479,7 +498,7 @@
   roomsBtn.type = 'button';
   var lobbyMenu = Menu('Lobby', ROOMS.map(function (r) {
     return {
-      src: r.coverFile ? bestUrl(r.id, r.coverFile, r.coverWidths, THUMB_PX) : null,
+      src: r.coverFile ? bestUrl(r.id, r.coverFile, r.coverWidths, THUMB_PX, r.coverWebp) : null,
       title: r.title,
       meta: r.type === 'about' ? 'Information' : r.works.length + ' works \u00b7 ' + r.subtitle
     };
@@ -603,13 +622,13 @@
       /* The picture fills the screen, so let the browser pick the copy that
          suits this display rather than always sending the original. The
          download link still points at the original — see downloadIcon. */
-      var set = srcsetFor(room.id, w.file, w.widths);
+      var set = srcsetFor(room.id, w.file, w.widths, w.webp);
       img.addEventListener('load', function () { alignArt(view, img); });
       /* src is set by show() below, so the picture on screen is not competing
          with every other picture in the room for the connection */
       urls.push(url);
       plates.push({ img: img, amb: amb, set: set,
-                    small: smallestUrl(room.id, w.file, w.widths) });
+                    small: smallestUrl(room.id, w.file, w.widths, w.webp) });
       plate.append(amb, img);
       slide.append(plate);
       rrail.append(slide);
@@ -643,7 +662,7 @@
     /* strict tree: no way sideways to another room from in here */
     var picsMenu = Menu(room.title, room.works.map(function (w) {
       return {
-        src: bestUrl(room.id, w.file, w.widths, THUMB_PX),
+        src: bestUrl(room.id, w.file, w.widths, THUMB_PX, w.webp),
         title: w.title,
         meta: niceDate(w.date),
         badge: w.status !== 'available' ? STATUS[w.status] : null
@@ -795,7 +814,7 @@
     lobby.hidden = true;
     var roomIndex = ROOMS.indexOf(room);
     var coverUrl = room.coverFile
-      ? bestUrl(room.id, room.coverFile, room.coverWidths, window.innerWidth)
+      ? bestUrl(room.id, room.coverFile, room.coverWidths, window.innerWidth, room.coverWebp)
       : null;
 
     var view = el('div', 'screen room');

@@ -281,11 +281,24 @@ A phone was being sent a 3000px original to show in a 400px frame.
 directory per width, keeping the filename:
 
 ```
-assets/colors/IMG_7281.jpg          the original, untouched
-assets/colors/w640/IMG_7281.jpg     …and the copies
-assets/colors/w1024/IMG_7281.jpg
-assets/colors/w1536/…  w2048/…  w2560/…
+assets/colors/IMG_7281.jpg           the original, untouched
+assets/colors/w640/IMG_7281.jpg      …the copies…
+assets/colors/w640/IMG_7281.webp     …and the same again in WebP
+assets/colors/w1024/…  w1536/…  w2048/…  w2560/…
 ```
+
+WebP is written at quality 85, which was chosen by measuring rather than by
+habit: across the collection it is 9–24% smaller than the JPEG beside it
+**and** scores higher SSIM against a lossless reference, so it is strictly
+better rather than a size-for-quality trade. Above 90 WebP comes out larger
+than the JPEG; below 82 it drops under it on quality.
+
+`Work.webp` is true only when a WebP exists at *every* width, so the browser
+switches format wholesale rather than per width. Real `<img>` elements get a
+`<picture>` with a WebP `<source>` and a JPEG `<img>` inside, which needs no
+JavaScript; CSS backgrounds are chosen in JavaScript, which asks the canvas
+once whether WebP encodes. Both paths are tested, including a browser that
+answers no.
 
 It runs from `sync-assets.sh`, before anything is uploaded — content is not
 part of a deploy any more, so that is the equivalent moment. Copies at or
@@ -304,7 +317,8 @@ Two rules are worth keeping:
   wanting more than 2560px gets the 2560 copy, not the original: past that the
   extra pixels are invisible on a photograph and cost half again as many bytes.
 - **The original is what the download link serves**, always, at full
-  resolution. There is a test for it.
+  resolution, and always the JPEG that was shot — it is never converted.
+  There is a test for it.
 
 The ambient wash behind a picture is blurred past recognition, so it always
 takes the smallest copy no matter the screen. Menu thumbnails are 62px and

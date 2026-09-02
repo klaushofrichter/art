@@ -3,7 +3,7 @@ import { escapeHtml, inlineMarkup, plainText } from '../markdown';
 import { page } from './layout';
 import { appVersion } from '../version';
 import { REPO_URL } from '../site';
-import { galleryImage, roomImage, workImage, workDescription, srcset } from '../share';
+import { galleryImage, roomImage, workImage, workDescription, srcset, webpSrcset } from '../share';
 
 const BLURB = 'Paintings and photographs by Klaus Hofrichter.';
 
@@ -29,6 +29,7 @@ function manifest(rooms: Room[]) {
     // Which smaller copies exist. Numbers, not URLs — the browser builds the
     // path from a constant prefix and the width, same as everything else.
     coverWidths: r.coverWidths,
+    coverWebp: r.coverWebp,
     about: r.about,
     // Identifiers, not URLs. The browser builds every src and href from a
     // constant prefix plus an encoded id, so a hand-edited index.json cannot
@@ -38,6 +39,7 @@ function manifest(rooms: Room[]) {
       uid: w.uid,
       file: w.file,
       widths: w.widths,
+      webp: w.webp,
       title: w.title,
       date: w.date,
       artist: w.artist,
@@ -71,7 +73,11 @@ function fallback(rooms: Room[]): string {
       // Without JavaScript this is a plain grid of thumbnails, so the
       // smallest copy is the right one to offer first.
       const set = srcset(r.id, w);
-      return `<li><a href="${buy}"><img src="${src}"${set ? ` srcset="${set}" sizes="(max-width: 700px) 45vw, 300px"` : ''} alt="${escapeHtml(w.title)}" loading="lazy">` +
+      const webp = webpSrcset(r.id, w);
+      const sizes = '(max-width: 700px) 45vw, 300px';
+      const img = `<img src="${src}"${set ? ` srcset="${set}" sizes="${sizes}"` : ''} alt="${escapeHtml(w.title)}" loading="lazy">`;
+      return `<li><a href="${buy}">` +
+        (webp ? `<picture><source type="image/webp" srcset="${webp}" sizes="${sizes}">${img}</picture>` : img) +
         `<span class="t">${escapeHtml(w.title)}</span></a></li>`;
     }).join('');
     return `<section><h2>${escapeHtml(r.title)}</h2><ul>${items}</ul></section>`;
