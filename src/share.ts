@@ -68,12 +68,14 @@ export function workDescription(room: Room, work: Work): string {
 
 /** A picture's smaller copies, as an <img srcset>. Built from a literal
  *  prefix, a number and encoded identifiers — never from anything content
- *  supplies — so it is no more of a sink than a plain src. The original goes
- *  last at its own width, and stays what the download link serves. */
+ *  supplies — so it is no more of a sink than a plain src.
+ *
+ *  The original is deliberately not among the candidates: the top of the
+ *  ladder is the ceiling for anything shown on screen, and the original is
+ *  what the download link serves. Empty when a picture has no copies, and
+ *  callers must then omit the attribute rather than write srcset="". */
 export function srcset(roomId: string, work: Work): string {
   const at = (w: number) =>
     `/assets/${encodeURIComponent(roomId)}/w${w}/${encodeURIComponent(work.file)}`;
-  // The original is deliberately absent: the ladder's top is the ceiling for
-  // anything shown on screen, and the original is what the download serves.
   return work.widths.map((w) => `${at(w)} ${w}w`).join(', ');
 }

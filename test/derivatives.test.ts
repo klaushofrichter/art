@@ -59,10 +59,23 @@ describe('what the browser is told', () => {
       .find((r: any) => r.id === 'shapes')
       .works.find((w: any) => w.slug === 'wide');
     expect(work.widths).toEqual([640]);
-    expect(work.w).toBe(800);
-    expect(work.h).toBe(600);
     // still no URL anywhere in the manifest
     expect(JSON.stringify(data)).not.toContain('/assets/');
+  });
+
+  it('ships no pixel sizes, because the client does not use them', async () => {
+    // They were the last candidate in a srcset and an <img> width/height
+    // attribute. Both went away — the original is no longer a candidate, and
+    // .plate .art is sized entirely by CSS — so shipping them was dead weight
+    // on every page and on all of the pre-rendered permalink variants.
+    const data = manifestOf((await request(app()).get('/')).text);
+    for (const room of data) {
+      expect(room, room.id).not.toHaveProperty('coverW');
+      for (const work of room.works) {
+        expect(work, work.slug).not.toHaveProperty('w');
+        expect(work, work.slug).not.toHaveProperty('h');
+      }
+    }
   });
 
   it('ships the cover widths for each room', async () => {
