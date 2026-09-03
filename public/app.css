@@ -100,16 +100,24 @@ body {
 /* ---- LOBBY ---- */
 .lpanel { position:relative; height:100%; overflow:hidden; display:flex; align-items:center; --mx:50%; --my:50%; }
 .lpanel .bg { position:absolute; inset:0; background-size:cover; background-position:center;
-  transform:scale(1.14); will-change:transform; filter:brightness(.57) saturate(.88);
+  transform:scale(1.14); will-change:transform; filter:contrast(1.06) saturate(1.02);
   opacity:0; transition:opacity .6s ease; }
 .lpanel .bg.in, .lpanel.nocover .bg { opacity:1; }
-/* The spotlight: near-white and low, with only a trace of warmth so it reads
-   as a gallery light rather than a coloured wash. */
+/* The spotlight takes shade away rather than adding light.
+   An earlier version laid a pale wash over the cover and lifted the whole
+   panel with it: the blacks went grey and the picture read flat. So the
+   cover is now shown at full brightness and the scrim is a single dark veil
+   over it, thinnest under the pointer and thickening outwards. Black at a
+   given alpha scales every channel by the same factor, so the picture keeps
+   its contrast wherever the veil is thin, and the pointer reveals rather
+   than illuminates. The veil warms very slightly towards the middle — a
+   lamp is warmer than the shadow it leaves — but never lightens.
+   The left band stays: it is what the caption is read against. */
 .lpanel .scrim { position:absolute; inset:0; pointer-events:none;
   background:
-    radial-gradient(50% 62% at var(--mx) var(--my), rgba(255,251,244,.14), rgba(255,251,244,0) 60%),
-    radial-gradient(86% 96% at var(--mx) var(--my), rgba(226,234,248,.055), rgba(226,234,248,0) 72%),
-    linear-gradient(to right, rgba(6,9,14,.93), rgba(6,9,14,.30) 58%, rgba(6,9,14,.54)); }
+    radial-gradient(62% 76% at var(--mx) var(--my),
+      rgba(18,14,8,.07), rgba(9,10,13,.50) 52%, rgba(6,9,14,.70) 100%),
+    linear-gradient(to right, rgba(6,9,14,.84), rgba(6,9,14,.10) 58%, rgba(6,9,14,.30)); }
 .lpanel .cap { position:relative; z-index:2; padding-left:6vw; max-width:60vw;
   transition:opacity .8s ease; }
 /* while the welcome card is up, the room waits its turn */

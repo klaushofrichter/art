@@ -13,11 +13,13 @@ is where notes are written *before* a release, not an archive of them.
      notes. Keep prose out of it unless you mean it to be published. -->
 ## [Unreleased]
 
-- **Pictures are served as WebP** where the browser takes it — 9–24% smaller
-  than the JPEG beside them and, measured against a lossless reference,
-  slightly *better* quality rather than worse. A browser that cannot is sent
-  the JPEG exactly as before, and the download link still serves the
-  untouched original.
+- **The lobby spotlight takes shade away instead of adding light.** It used to
+  dim and desaturate the whole cover and then lay a pale wash under the
+  pointer, which lifted the blacks and left the pictures looking flat. The
+  cover is now shown at full brightness under a dark veil that thins where the
+  pointer is, so the panel is darker overall, the lit spot is brighter, and the
+  picture keeps its contrast. The light's movement, the drift and the zoom are
+  unchanged.
 
 - **Pictures are sized for the screen that asked.** A phone was being sent a
   3000px original to show in a 400px frame; it now gets a copy that fits, and
