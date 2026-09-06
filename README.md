@@ -445,9 +445,9 @@ pictures), so a simple queue is enough.
 
 - **`main`** — development, unprotected. A push builds and pushes
   `ghcr.io/klaushofrichter/art:latest` and `:<sha>`, but does not deploy.
-- **`production`** — protected, PR-only from `main`, with `test` and `codeql`
-  as required checks. Merging deploys via an in-cluster self-hosted runner and
-  cuts a release.
+- **`production`** — protected, PR-only from `main`, with `test`, `codeql` and
+  `e2e` as required checks, enforced for admins too. Merging deploys via an
+  in-cluster self-hosted runner and cuts a release.
 
 Versions are generated at deploy time as `vYYYY.MM.DD.N` and baked in as
 `APP_VERSION`; `package.json` carries no version. The running build is shown at

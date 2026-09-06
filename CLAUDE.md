@@ -104,9 +104,19 @@ invisible behind the same cache.
   runner, which builds/pushes the image, updates
   `kube-setup/manifests/art/art-ksvc.yaml`'s image tag, and applies it.
 
-Required checks on `production` are `test` and `codeql`. The `e2e` job runs
-on PRs too but is deliberately not required, matching
-`../www-klaushofrichter`.
+Required checks on `production` are `test`, `codeql` and `e2e`. The `e2e`
+requirement is the one place this repo departs from
+`../www-klaushofrichter`, where the suite runs advisory: here the Playwright
+job reports under exactly that name on every PR to both branches, so
+requiring it costs nothing and closes the gap against `kube-setup`'s
+`docs/cluster-deployment-requirements.md` (requirement 4 — CodeQL and all
+tests, e2e included, must pass to qualify for deployment).
+
+Do not copy that to a sibling repo without checking the job reports a
+context of its own. `kauf-server` runs Playwright *inside* its `test` job and
+publishes no `e2e` context, so requiring the name there would wedge the
+branch permanently — every merge blocked waiting on a check that never
+arrives.
 
 ## Versioning and releases
 
