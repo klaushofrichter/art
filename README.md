@@ -274,6 +274,41 @@ The small uppercase mono labels are deliberately below Lighthouse's 12px
 threshold. That is the design, and the audit is a blunt instrument: contrast
 and tap targets both pass, and accessibility scores 100.
 
+### Rate limiting, and the address it keys on
+
+Browsing is limited to **300 requests per five minutes per visitor**
+(`src/ratelimit.ts`). A cold browse of the whole gallery is around 30 requests:
+the page, the bundle, the fonts, and one picture per work — the widths are a
+`srcset`, so a browser fetches one of them each, not all. Even the pathological
+case of fetching every URL the page names, all 155 width variants and all 15
+`/buy/` pages, comes to about 170 and still fits. A returning visitor costs far
+less again, because the fingerprinted assets are cached for a year. The window is per address, not global: a hundred
+people browsing at once each spend a fifth of their own budget and never meet.
+`RateLimit-Limit` and `RateLimit-Remaining` come back on every counted
+response.
+
+The interesting part is which address it counts. Nothing reaches this process
+directly — Traefik hands to Kourier, Kourier to Knative's queue-proxy sidecar,
+and only then to us — so without `trust proxy`, `req.ip` is the sidecar: one
+in-cluster address, the same for every visitor on the site. A limiter keyed on
+that is a single global bucket, and a busy afternoon would 429 people who had
+loaded three pages. It would test perfectly and fail only under load.
+
+So `app.set('trust proxy', …)` takes a **CIDR list** of the cluster's networks
+rather than a hop count. A count resolves the same address today and silently
+returns the wrong one the day the chain gains or loses a hop; a list walks past
+anything in-cluster and stops at the first address that is not ours.
+
+Because that is the one way this middleware could cause the outage it exists to
+prevent, it does not merely assume the setting is right. If the address it
+resolves is still one of ours, it **skips the request rather than counting it**
+and logs why once. Failing open costs nothing on a public gallery; failing
+closed would cost the site.
+
+`/health` is mounted **before** the limiter and so never reaches it. The
+readiness probe polls it from inside the cluster for the life of the pod, and a
+429 there marks the pod unready and has Knative restart it.
+
 ### Pictures are sized for the screen asking
 
 A phone was being sent a 3000px original to show in a 400px frame.
