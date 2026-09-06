@@ -355,3 +355,29 @@ describe('the typefaces are served from here', () => {
     }
   });
 });
+
+describe('the Demo badge', () => {
+  // It is in the shell rather than in app.js, so it cannot be missing from a
+  // page someone might act on — and the pages most likely to mislead are the
+  // ones with a price on them.
+  it.each(['/', '/buy/shapes/wide', '/terms', '/privacy'])(
+    'is on %s',
+    async (path) => {
+      const res = await request(app()).get(path);
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('class="demobadge"');
+      expect(res.text).toContain('>Demo</div>');
+    },
+  );
+
+  it('says what it means for anyone who stops on it', async () => {
+    const res = await request(app()).get('/');
+    expect(res.text).toContain('Nothing here can actually be bought yet');
+  });
+
+  it('reaches a reader with no JavaScript, being in the markup', async () => {
+    const res = await request(app()).get('/');
+    // Before the <div id="app"> the client would otherwise fill in.
+    expect(res.text.indexOf('demobadge')).toBeLessThan(res.text.indexOf('id="app"'));
+  });
+});

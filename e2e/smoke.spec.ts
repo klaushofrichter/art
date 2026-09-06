@@ -938,3 +938,38 @@ test.describe('the second axis: more photographs of one work', () => {
     await expect(page.locator('.viewcap')).toContainText('1 / 3');
   });
 });
+
+test.describe('the Demo badge', () => {
+  test('sits in the top right and stays there through full screen', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    const badge = page.locator('.demobadge');
+    await expect(badge).toBeVisible();
+    await expect(badge).toHaveText('Demo');
+
+    const box = (await badge.boundingBox())!;
+    const size = page.viewportSize()!;
+    expect(box.x + box.width).toBeGreaterThan(size.width * 0.8);
+    expect(box.y).toBeLessThan(size.height * 0.2);
+
+    // The picture is at its largest here, which is exactly when someone is
+    // most absorbed and least likely to remember the site is a sketch.
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.room')).toHaveClass(/bare/);
+    await expect(badge).toBeVisible();
+  });
+
+  test('never swallows a click meant for the picture behind it', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    const room = page.locator('.room');
+    await expect(room).not.toHaveClass(/bare/);
+    const box = (await page.locator('.demobadge').boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    // The click went through to the room, which is what clears the label.
+    await expect(room).toHaveClass(/bare/);
+  });
+
+  test('is on the purchase page too, above the fold', async ({ page }) => {
+    await page.goto('/buy/shapes/wide');
+    await expect(page.locator('.demobadge')).toBeVisible();
+  });
+});

@@ -324,6 +324,18 @@ The small uppercase mono labels are deliberately below Lighthouse's 12px
 threshold. That is the design, and the audit is a blunt instrument: contrast
 and tap targets both pass, and accessibility scores 100.
 
+### The Demo badge
+
+Every page carries a small **Demo** badge in the top right. It is written into
+the shell in `src/views/layout.ts`, not added by the client, so it is in the
+markup a crawler and a reader with no JavaScript both get, and no page can be
+built without one. It stays up in full screen — the moment someone is most
+absorbed in a picture is not the moment to stop saying the shop does not work
+— and it is `pointer-events:none`, so it can never swallow a click meant for
+the picture behind it. In the lobby the fill-the-screen button sits under it.
+
+Take it out when the site can take money.
+
 ### Rate limiting, and the address it keys on
 
 Browsing is limited to **300 requests per five minutes per visitor**
