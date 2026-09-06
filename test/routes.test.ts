@@ -77,7 +77,7 @@ describe('GET /buy/:room/:slug', () => {
     expect(res.status).toBe(200);
     expect(res.text).toContain('Wide');
     expect(res.text).toContain('$100');
-    expect(res.text).toContain('Enquire by email');
+    expect(res.text).toContain('Enquire about this picture');
   });
 
   it('shows no price for a sold work', async () => {
@@ -85,7 +85,7 @@ describe('GET /buy/:room/:slug', () => {
     expect(res.status).toBe(200);
     expect(res.text).toContain('Sold');
     expect(res.text).not.toContain('$150');
-    expect(res.text).not.toContain('Enquire by email');
+    expect(res.text).not.toContain('Enquire about this picture');
   });
 
   it('404s on an unknown picture', async () => {

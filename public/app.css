@@ -268,6 +268,52 @@ body {
   font-family:var(--mono); font-size:clamp(9px,1.25vh,12px); letter-spacing:.16em; color:rgba(237,231,218,.42); }
 .count b { color:var(--brass); font-weight:400; }
 
+
+/* ---- THE SECOND AXIS ----
+   Up and down move between works; left and right move around one work, and
+   only for a work that has more than one photograph. Both are hidden
+   outright otherwise (the element carries `hidden`), so nothing suggests a
+   picture has more to show when it does not.
+
+   Deliberately still there in `bare`, unlike the rest of the chrome: full
+   screen is exactly where someone reads brushwork, so taking the way through
+   the close-ups away at that moment would be backwards. */
+.viewnav { position:absolute; top:50%; transform:translateY(-50%); z-index:8;
+  width:2.6em; height:2.6em; display:flex; align-items:center; justify-content:center;
+  font-family:var(--display); font-size:clamp(15px,2.1vh,21px); line-height:1;
+  color:rgba(237,231,218,.62); background:rgba(9,13,20,.4);
+  -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px);
+  border:1px solid rgba(237,231,218,.13); border-radius:50%; cursor:pointer;
+  padding:0 0 .12em; transition:color .25s, border-color .25s, opacity .38s; }
+.viewnav:hover { color:var(--brass); border-color:rgba(201,162,39,.55); }
+/* `display:flex` above outranks the `display:none` a browser gives [hidden],
+   so without this the arrows stay on screen for every work that has nothing
+   behind them. */
+.viewnav[hidden] { display:none; }
+.viewnav.prev { left:2.6vw; }
+.viewnav.next { right:2.6vw; }
+/* The dots own the right edge at this height, so the forward arrow steps in
+   past them rather than sitting on top. */
+.room .viewnav.next { right:calc(2.6vw + 22px); }
+
+/* Above the picture, centred, where a wall label would be. The bottom of
+   the screen is spoken for from both sides — the description on the left,
+   the price and the counter on the right — and the top is empty in both the
+   full state and `bare`. */
+.viewcap { position:absolute; top:3.4vh; left:50%; transform:translateX(-50%);
+  z-index:7; pointer-events:none; max-width:44vw; text-align:center;
+  font-family:var(--mono); font-size:clamp(9px,1.25vh,12px); letter-spacing:.14em;
+  color:rgba(237,231,218,.42); }
+.viewcap b { color:var(--brass); font-weight:400; margin-right:.9em; letter-spacing:.16em; }
+
+@media (max-width: 720px) {
+  /* No hover to reveal them and less room to spare, so the arrows sit closer
+     in and the caption gets the width the sheet is not using. */
+  .viewnav.prev { left:1.6vw; }
+  .room .viewnav.next { right:calc(1.6vw + 18px); }
+  .viewcap { max-width:76vw; }
+}
+
 .room.bare .info, .room.bare .chrome, .room.bare .dots, .room.bare .count { opacity:0; pointer-events:none; }
 .room.bare .navstack { pointer-events:none; }
 .room.bare .backhint { opacity:1; }
@@ -358,8 +404,16 @@ body {
 .fallback img { width:100%; height:auto; display:block; }
 .fallback .t { font-family:var(--mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); margin-top:6px; }
 
-/* ---- purchase page: a document, not a gallery, so it scrolls ---- */
-body.buypage { overflow:auto; }
+/* ---- purchase page: a document, not a gallery, so it scrolls ----
+   `html, body { height:100% }` at the top of this file pins the body to
+   exactly one viewport, and a body's `overflow` is propagated to the
+   viewport rather than applied to the body itself — so `overflow:auto` here
+   made a scroller out of something that could never have anything to
+   scroll, and a document longer than the screen simply could not be
+   reached. It went unnoticed because both of these pages used to fit.
+   Document pages opt out of the fixed height and grow instead. */
+html:has(body.buypage), html:has(body.legalpage) { height:auto; }
+body.buypage { height:auto; min-height:100%; overflow:auto; }
 .buywrap { max-width:1100px; margin:0 auto; padding:clamp(28px,7vh,72px) clamp(20px,5vw,48px) 10vh; }
 .crumb { font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
   color:var(--mute); text-decoration:none; display:inline-block; margin-bottom:clamp(24px,5vh,48px); }
@@ -379,7 +433,26 @@ body.buypage { overflow:auto; }
 .buyside .includes li { font-family:var(--mono); font-size:12px; letter-spacing:.04em; color:var(--brass);
   padding-left:1.4em; position:relative; }
 .buyside .includes li::before { content:'+'; position:absolute; left:0; color:rgba(201,162,39,.6); }
-.buyside .price { font-family:var(--mono); font-size:clamp(22px,3vw,30px); color:var(--brass); letter-spacing:.04em; margin-bottom:.6em; }
+/* Price and what you get on one line, because they are one fact. They used
+   to be a price with the terms stacked somewhere above it, and a reader had
+   to assemble "$380, original, one of one" for themselves. */
+.buyside .priceline { display:flex; align-items:baseline; flex-wrap:wrap; gap:.5em .9em; margin-bottom:.6em; }
+.buyside .price { font-family:var(--mono); font-size:clamp(22px,3vw,30px); color:var(--brass); letter-spacing:.04em; }
+.buyside .edition { font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--mute); }
+.buyside .edition::before { content:'\00b7'; margin-right:.9em; color:rgba(201,162,39,.5); }
+
+/* The other photographs of the work: what it looks like framed, and what the
+   paint actually does close up. Both are things a flat scan cannot say. */
+.views { margin-top:clamp(40px,7vw,84px); }
+.views h2 { font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--mute); font-weight:400; margin:0 0 1.4em; }
+.viewgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:clamp(16px,2.4vw,32px); }
+.viewgrid figure { margin:0; }
+.viewgrid img { width:100%; height:auto; display:block; box-shadow:0 18px 44px rgba(0,0,0,.5); }
+.viewgrid picture { display:block; }
+.viewgrid figcaption { font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:var(--mute);
+  margin-top:.9em; }
 .buyside .fine { font-family:var(--mono); font-size:11.5px; line-height:1.8; color:var(--mute); margin:0 0 1.8em; max-width:40ch; }
 .buyside .pending-note { font-family:var(--mono); font-size:11.5px; line-height:1.8;
   color:var(--brass); margin:1.2em 0 0; max-width:40ch; }
@@ -390,7 +463,7 @@ body.buypage { overflow:auto; }
 /* ---- terms and privacy ---- */
 /* Long-form reading rather than a gallery: one narrow column, a plain
    measure, and nothing that moves. */
-body.legalpage { overflow:auto; }
+body.legalpage { height:auto; min-height:100%; overflow:auto; }
 .legalwrap { max-width:720px; margin:0 auto; padding:clamp(28px,7vh,72px) clamp(20px,6vw,32px) 14vh; }
 .legalwrap h1 { font-family:var(--display); font-weight:400; font-size:clamp(30px,5.5vw,46px);
   line-height:1.05; margin:0 0 .3em; }

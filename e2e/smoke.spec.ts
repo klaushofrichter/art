@@ -875,3 +875,66 @@ test.describe('a browser that cannot', () => {
     expect(set).not.toContain('.webp');
   });
 });
+
+test.describe('the second axis: more photographs of one work', () => {
+  test('a work with more than one shows the arrows and says where you are', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    await expect(page.locator('.info h2')).toHaveText('Wide');
+    await expect(page.locator('.viewnav.prev')).toBeVisible();
+    await expect(page.locator('.viewnav.next')).toBeVisible();
+    await expect(page.locator('.viewcap')).toContainText('1 / 3');
+    await expect(page.locator('.viewcap')).toContainText('The work');
+  });
+
+  test('a work with only its own picture shows nothing at all', async ({ page }) => {
+    // Not merely invisible: `display:flex` on the arrows outranks the
+    // `display:none` a browser gives [hidden], so this once left them on
+    // screen for every work in the gallery.
+    await page.goto('/#shapes/tall');
+    await expect(page.locator('.info h2')).toHaveText('Tall');
+    await expect(page.locator('.viewnav.prev')).toBeHidden();
+    await expect(page.locator('.viewnav.next')).toBeHidden();
+    await expect(page.locator('.viewcap')).toBeHidden();
+  });
+
+  test('right and left move through them and wrap', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    const art = page.locator('.room .rail > .slide').first().locator('.art');
+    await expect(page.locator('.viewcap')).toContainText('1 / 3');
+
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.viewcap')).toContainText('2 / 3');
+    await expect(page.locator('.viewcap')).toContainText('Framed, on the wall');
+    await expect(art).toHaveAttribute('src', /wide-framed\.jpg/);
+
+    // Backwards from the first wraps to the last rather than stopping dead.
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('.viewcap')).toContainText('3 / 3');
+    await expect(art).toHaveAttribute('src', /wide-detail\.jpg/);
+  });
+
+  test('the arrows do the same thing as the keys', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    await page.locator('.viewnav.next').click();
+    await expect(page.locator('.viewcap')).toContainText('2 / 3');
+    // Clicking a control must not also strip the label off the picture.
+    await expect(page.locator('.room')).not.toHaveClass(/bare/);
+  });
+
+  test('moving to another work comes back to that work’s own picture', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    const art = page.locator('.room .rail > .slide').first().locator('.art');
+    await page.keyboard.press('ArrowRight');
+    await expect(art).toHaveAttribute('src', /wide-framed\.jpg/);
+
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('.info h2')).toHaveText('Tall');
+    await page.keyboard.press('ArrowUp');
+    await expect(page.locator('.info h2')).toHaveText('Wide');
+    // A plate is only ever loaded once, so without a deliberate reset this
+    // came back still showing the close-up.
+    await expect(art).toHaveAttribute('src', /wide\.jpg/);
+    await expect(page.locator('.viewcap')).toContainText('1 / 3');
+  });
+});
