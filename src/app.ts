@@ -8,6 +8,7 @@ import { healthRouter } from './routes/health';
 import { indexRouter } from './routes/index';
 import { buyRouter } from './routes/buy';
 import { legalRouter } from './routes/legal';
+import { TRUSTED_PROXIES, galleryLimiter } from './ratelimit';
 
 export type GalleryApp = Express & {
   /** Re-read the content from disk. Returns false and keeps what it has if
@@ -34,6 +35,12 @@ export function createApp(
   const app = express() as GalleryApp;
   app.disable('x-powered-by');
 
+  // Nothing reaches this process directly: Traefik hands to Kourier, Kourier
+  // to the queue-proxy sidecar, and only then to us. Without this, `req.ip`
+  // is that sidecar — one in-cluster address shared by every visitor on the
+  // site. See ratelimit.ts for why the list is CIDRs and not a hop count.
+  app.set('trust proxy', TRUSTED_PROXIES);
+
   // The pages, the stylesheet and the script are text and were going out raw —
   // about 72KB on a cold visit. `compression` skips types that are already
   // compressed, so the pictures are left alone.
@@ -56,7 +63,15 @@ export function createApp(
     }
   };
 
+  // Ahead of the limiter on purpose. The readiness probe polls /health from
+  // inside the cluster for the life of the pod; a 429 there marks the pod
+  // unready and Knative restarts it, so the probe must not share a budget
+  // with anything. Being mounted first, it never reaches the limiter at all.
   app.use(healthRouter(() => current));
+
+  // Everything a visitor actually fetches — pages, pictures, the bundle —
+  // is counted, which is what the sizing in ratelimit.ts is measured against.
+  app.use(galleryLimiter());
 
   // The pictures and the client bundle are immutable for the life of an
   // image — a new deploy is a new container, so caching them hard is safe.
