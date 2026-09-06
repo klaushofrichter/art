@@ -465,25 +465,34 @@ hold it for 48 hours, and its permalink, so a reply can be about one specific
 work.
 
 Sending one marks that picture **Sale pending** — but only in the sender's own
-browser. There is no server-side state to write to: the status in
-`index.json` is baked into the image. A second visitor still sees the picture
-as available, and two people can both enquire. It is a reminder to the person
-who asked, not a reservation, and it clears itself after the same 48 hours the
-email asks for. A real hold needs the persistence that arrives with payment. Deciding that is the next piece of work. The intent is one picture at a
-time rather than a basket, so the options are roughly: a payment link per
-picture (Stripe Payment Links or similar, no server state), a hosted checkout
-session (needs a secret and a webhook to mark a picture sold), or keeping the
-enquiry-and-invoice flow as it is. Whichever is chosen, `status` in
-`index.json` stays the source of truth for what is still for sale, and marking
-something sold remains a commit and a redeploy.
+browser. There is no server-side state to write to. A second visitor still
+sees the picture as available, and two people can both enquire. It is a
+reminder to the person who asked, not a reservation, and it clears itself
+after the same 48 hours the email asks for. A real hold needs persistence the
+site does not have.
+
+Deciding what to do about that is the next piece of work. The intent is one
+picture at a time rather than a basket, so the options are roughly: a payment
+link per picture (Stripe Payment Links or similar, no server state), a hosted
+checkout session (needs a secret and a webhook to mark a picture sold), or
+keeping the enquiry-and-invoice flow as it is. The first of those is already
+wired: every work carries a `purchase_url`, and `/buy/:room/:slug` redirects
+to it whenever it differs from the canonical path, so pointing one at a real
+payment link is a content edit and nothing else. Today they all hold the
+canonical path, so nothing redirects.
+
+Whichever is chosen, `status` in `index.json` stays the source of truth for
+what is still for sale — and marking something sold is an edit on the content
+volume, not a commit. The server re-reads the directory every
+`CONTENT_WATCH_MS` (10s by default) and re-renders in place, so a sale takes
+effect without a deploy.
 
 Also open:
 
-- **Image sizes.** The pictures are full-resolution originals, ~1 MB each.
-  Generating web-sized derivatives at build time would cut first load
-  substantially — it is the single biggest remaining win.
-- **One low-resolution source.** `assets/food/IMG_8275.jpg` is 269 × 202 and
-  visibly soft now that pictures scale up; it wants re-exporting.
+- **One low-resolution source.** `assets/food/IMG_8275.jpg` is 269 × 202 —
+  smaller than the narrowest derivative width, so it is the one picture with
+  no sized copies at all and the only one still served as its original. It is
+  visibly soft wherever it is scaled up, and wants re-exporting.
 - **Placeholder metadata.** Titles, dates and prices are invented and want
   replacing with real ones.
 - **No analytics or error reporting**, deliberately, so nothing is known about
