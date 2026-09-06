@@ -134,7 +134,12 @@ the deploy's smoke test checks — a deploy that shipped a broken `index.json`
 would show the wrong counts rather than passing quietly.
 
 Release notes come from the commits since the previous release, preceded by
-anything under `## [Unreleased]` in `CHANGELOG.md`. The release step runs last
+anything under `## [Unreleased]` in `CHANGELOG.md`. **Empty that section as
+part of promoting.** The deploy reads the file and never writes to it, so
+anything left behind is published again with the next release — that has
+happened three times now. Leave the heading with nothing under it rather
+than a placeholder line: the `awk` that extracts the block prints every
+non-blank line it finds, so "nothing yet" becomes the release notes. The release step runs last
 (after the rollout check and the curl smoke test), so a failed deploy produces
 no release, and the checkout uses `fetch-depth: 0` because the notes are
 computed from history and tags.
