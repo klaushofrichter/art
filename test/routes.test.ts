@@ -366,7 +366,7 @@ describe('the Demo badge', () => {
       const res = await request(app()).get(path);
       expect(res.status).toBe(200);
       expect(res.text).toContain('class="demobadge"');
-      expect(res.text).toContain('>Demo</div>');
+      expect(res.text).toContain('<span>Demo</span>');
     },
   );
 

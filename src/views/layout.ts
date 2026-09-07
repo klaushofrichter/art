@@ -75,7 +75,7 @@ ${o.head || ''}
      client script, so it is in the markup a crawler and a reader with no
      JavaScript both get, and so no page can be built without it. -->
 <div class="demobadge" role="note"
-     title="A work in progress. Nothing here can actually be bought yet, and the pictures and prices are placeholders.">Demo</div>
+     aria-label="Demo site. Nothing here can actually be bought yet, and the pictures and prices are placeholders."><span>Demo</span></div>
 ${o.body}
 ${(o.scripts || []).map((s) => `<script src="${assetUrl(s)}" defer></script>`).join('\n')}
 <!-- v${appVersion()} -->

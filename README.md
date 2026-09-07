@@ -326,13 +326,21 @@ and tap targets both pass, and accessibility scores 100.
 
 ### The Demo badge
 
-Every page carries a small **Demo** badge in the top right. It is written into
+Every page carries a **Demo** ribbon across the top right corner — bone with
+dark text, the one thing on the site allowed to be loud. It is written into
 the shell in `src/views/layout.ts`, not added by the client, so it is in the
 markup a crawler and a reader with no JavaScript both get, and no page can be
-built without one. It stays up in full screen — the moment someone is most
-absorbed in a picture is not the moment to stop saying the shop does not work
-— and it is `pointer-events:none`, so it can never swallow a click meant for
-the picture behind it. In the lobby the fill-the-screen button sits under it.
+built without one. It stays up in full screen: the moment someone is most
+absorbed in a picture is not the moment to stop saying the shop does not
+work. It is `pointer-events:none`, so it can never swallow a click meant for
+the picture behind it.
+
+The fill-the-screen button sits **below** it rather than on top of it, and
+that is not a preference. `#app` is `position:fixed`, which opens a stacking
+context, so the button's `z-index` is trapped inside `#app` and can never
+paint above a sibling of it however large the number — and lifting `#app`
+instead would bury the ribbon under the whole gallery. The offsets on `.c-tr`
+are fixed pixels because the ribbon is a fixed size too.
 
 Take it out when the site can take money.
 

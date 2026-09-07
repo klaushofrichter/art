@@ -252,23 +252,40 @@ body {
   border:1px solid rgba(237,231,218,.13); border-radius:2px; padding:.7em 1em; cursor:pointer;
   text-decoration:none; transition:color .25s,border-color .25s,opacity .38s; }
 .chrome:hover { color:var(--brass); border-color:rgba(201,162,39,.55); }
-/* Below the Demo badge, which owns this corner on every page. The offset is
-   the badge's own height plus a gap; it is a number because the badge is a
-   sibling in the body rather than a box this one can size itself against. */
-.c-tr { top:calc(3.4vh + 38px); right:3vw; }
+/* Clear of the Demo ribbon, which crosses this corner on every page, rather
+   than on top of it: #app is position:fixed and so opens a stacking context,
+   which traps this button's z-index inside it — it can never paint above a
+   sibling of #app however high the number goes, and lifting #app instead
+   would bury the ribbon under the whole gallery. A fixed offset because the
+   ribbon is a fixed size too, so the gap should not breathe with the window. */
+.c-tr { top:170px; right:3vw; }
+@media (max-width: 720px) { .c-tr { top:124px; } }
 
-/* The site takes enquiries and shows prices, and none of it is real yet. The
-   corner it sits in is the one the eye checks for status, and it stays
-   through full screen: the pages someone could act on are exactly the ones
-   with a price on them, so this is not something to hide when the art gets
-   big. Deaf to the pointer so it can never swallow a click meant for the
-   picture behind it. */
-.demobadge { position:fixed; top:3.4vh; right:3vw; z-index:30; pointer-events:none;
-  font-family:var(--mono); font-size:clamp(9px,1.25vh,11px); letter-spacing:.2em;
-  text-transform:uppercase; color:var(--brass);
-  background:rgba(9,13,20,.5); -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px);
-  border:1px solid rgba(201,162,39,.42); border-radius:2px; padding:.62em 1em; }
-@media (max-width: 720px) { .demobadge { top:2.2vh; right:2.6vw; } }
+/* The site shows prices, offers a hold and has an enquiry button, and none
+   of it works yet. A corner ribbon rather than a discreet chip: someone
+   arriving on a purchase page from a link should not have to look for this.
+   It is the one thing on the site allowed to be loud — bone against the ink
+   everything else is drawn in.
+
+   Clipped by a square at the corner, so the band's ends are cut off by the
+   edges of the page and it reads as a ribbon laid over the corner rather
+   than a rectangle floating near it. Deaf to the pointer, so it can never
+   swallow a click meant for the picture behind it. */
+.demobadge { position:fixed; top:0; right:0; width:190px; height:190px;
+  overflow:hidden; pointer-events:none; z-index:30; }
+/* Far enough out from the corner that the band is at full width where the
+   word sits — nearer in, the clipped tip squeezes it. */
+.demobadge span { position:absolute; top:52px; right:-58px; width:250px;
+  transform:rotate(45deg); display:block; text-align:center; padding:.85em 0;
+  background:var(--bone); color:var(--ink);
+  font-family:var(--mono); font-size:13px; font-weight:500;
+  letter-spacing:.34em; text-indent:.34em; text-transform:uppercase;
+  box-shadow:0 8px 26px rgba(0,0,0,.5); }
+@media (max-width: 720px) {
+  .demobadge { width:140px; height:140px; }
+  .demobadge span { top:38px; right:-52px; width:190px; font-size:11px; letter-spacing:.24em;
+    text-indent:.24em; padding:.7em 0; }
+}
 .chrome.icon { padding:.72em; line-height:0; }
 .chrome.icon svg { width:1.15em; height:1.15em; display:block; fill:none; stroke:currentColor;
   stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }

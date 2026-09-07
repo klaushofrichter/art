@@ -414,12 +414,40 @@ test('the lobby offers full screen, opposite the navigation', async ({ page }) =
   await expect(fs).toBeVisible();
   await expect(fs).toHaveAttribute('aria-label', 'Fill the screen');
 
-  // opposite the nav stack: right half, top of the window
+  // opposite the nav stack: right half, top of the window. Lower than it
+  // once was, because the Demo ribbon crosses this corner and the button
+  // sits clear below it rather than under it.
   const box = (await fs.boundingBox())!;
   const nav = (await page.locator('.navstack').boundingBox())!;
   expect(box.x).toBeGreaterThan(600);
-  expect(box.y).toBeLessThan(120);
+  expect(box.y).toBeLessThan(200);
   expect(box.x).toBeGreaterThan(nav.x);
+
+  // and genuinely clear of the Demo ribbon rather than behind it. Measured
+  // against the ribbon's own painted edge: its bounding box is no use here,
+  // because the band is rotated 45deg and the box is the square around it,
+  // far bigger than the strip actually covering this corner.
+  const covered = await page.evaluate(() => {
+    const btn = document.querySelector('.c-tr')!.getBoundingClientRect();
+    const band = document.querySelector('.demobadge span')!;
+    const r = band.getBoundingClientRect();
+    // Four corners of the rotated band, in page coordinates.
+    const cx = r.x + r.width / 2, cy = r.y + r.height / 2;
+    const w = (band as HTMLElement).offsetWidth / 2;
+    const h = (band as HTMLElement).offsetHeight / 2;
+    const c = Math.cos(Math.PI / 4), s2 = Math.sin(Math.PI / 4);
+    const pts = [[-w, -h], [w, -h], [w, h], [-w, h]]
+      .map(([x, y]) => [cx + x * c - y * s2, cy + x * s2 + y * c]);
+    // Does any corner of the button fall inside that quadrilateral?
+    const inside = (px: number, py: number) => pts.every(([ax, ay], i) => {
+      const [bx, by] = pts[(i + 1) % 4];
+      return (bx - ax) * (py - ay) - (by - ay) * (px - ax) <= 0;
+    });
+    return [[btn.left, btn.top], [btn.right, btn.top],
+            [btn.right, btn.bottom], [btn.left, btn.bottom]]
+      .some(([px, py]) => inside(px, py));
+  });
+  expect(covered).toBe(false);
 
   // it really asks the browser, and the icon follows the browser's answer
   await fs.click();

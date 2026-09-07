@@ -26,10 +26,11 @@ is where notes are written *before* a release, not an archive of them.
      Currently empty. Last released: v2026.09.06.1. -->
 ## [Unreleased]
 
-- **A Demo badge on every page.** The site shows prices and takes enquiries
-  and none of it works yet, so every page says so in the top right. It is in
-  the markup rather than added by the client, so it cannot be missing from a
-  page someone might act on, and it stays through full screen.
+- **A Demo ribbon on every page.** The site shows prices and takes enquiries
+  and none of it works yet, so every page says so across the top right
+  corner. It is in the markup rather than added by the client, so it cannot
+  be missing from a page someone might act on, and it stays through full
+  screen.
 
 - **A work can have more than one photograph.** A flat scan cannot show how
   big a painting is or what the paint does, so `views` in `index.json` adds
