@@ -252,7 +252,40 @@ body {
   border:1px solid rgba(237,231,218,.13); border-radius:2px; padding:.7em 1em; cursor:pointer;
   text-decoration:none; transition:color .25s,border-color .25s,opacity .38s; }
 .chrome:hover { color:var(--brass); border-color:rgba(201,162,39,.55); }
-.c-tr { top:3.4vh; right:3vw; }
+/* Clear of the Demo ribbon, which crosses this corner on every page, rather
+   than on top of it: #app is position:fixed and so opens a stacking context,
+   which traps this button's z-index inside it — it can never paint above a
+   sibling of #app however high the number goes, and lifting #app instead
+   would bury the ribbon under the whole gallery. A fixed offset because the
+   ribbon is a fixed size too, so the gap should not breathe with the window. */
+.c-tr { top:170px; right:3vw; }
+@media (max-width: 720px) { .c-tr { top:124px; } }
+
+/* The site shows prices, offers a hold and has an enquiry button, and none
+   of it works yet. A corner ribbon rather than a discreet chip: someone
+   arriving on a purchase page from a link should not have to look for this.
+   It is the one thing on the site allowed to be loud — bone against the ink
+   everything else is drawn in.
+
+   Clipped by a square at the corner, so the band's ends are cut off by the
+   edges of the page and it reads as a ribbon laid over the corner rather
+   than a rectangle floating near it. Deaf to the pointer, so it can never
+   swallow a click meant for the picture behind it. */
+.demobadge { position:fixed; top:0; right:0; width:190px; height:190px;
+  overflow:hidden; pointer-events:none; z-index:30; }
+/* Far enough out from the corner that the band is at full width where the
+   word sits — nearer in, the clipped tip squeezes it. */
+.demobadge span { position:absolute; top:52px; right:-58px; width:250px;
+  transform:rotate(45deg); display:block; text-align:center; padding:.85em 0;
+  background:var(--bone); color:var(--ink);
+  font-family:var(--mono); font-size:13px; font-weight:500;
+  letter-spacing:.34em; text-indent:.34em; text-transform:uppercase;
+  box-shadow:0 8px 26px rgba(0,0,0,.5); }
+@media (max-width: 720px) {
+  .demobadge { width:140px; height:140px; }
+  .demobadge span { top:38px; right:-52px; width:190px; font-size:11px; letter-spacing:.24em;
+    text-indent:.24em; padding:.7em 0; }
+}
 .chrome.icon { padding:.72em; line-height:0; }
 .chrome.icon svg { width:1.15em; height:1.15em; display:block; fill:none; stroke:currentColor;
   stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
@@ -267,6 +300,57 @@ body {
 .count { position:absolute; right:3vw; bottom:5vh; z-index:7; pointer-events:none;
   font-family:var(--mono); font-size:clamp(9px,1.25vh,12px); letter-spacing:.16em; color:rgba(237,231,218,.42); }
 .count b { color:var(--brass); font-weight:400; }
+
+
+/* ---- THE SECOND AXIS ----
+   Up and down move between works; left and right move around one work, and
+   only for a work that has more than one photograph. Both are hidden
+   outright otherwise (the element carries `hidden`), so nothing suggests a
+   picture has more to show when it does not.
+
+   Deliberately still there in `bare`, unlike the rest of the chrome: full
+   screen is exactly where someone reads brushwork, so taking the way through
+   the close-ups away at that moment would be backwards. */
+.viewnav { position:absolute; top:50%; transform:translateY(-50%); z-index:8;
+  width:2.6em; height:2.6em; display:flex; align-items:center; justify-content:center;
+  font-family:var(--display); font-size:clamp(15px,2.1vh,21px); line-height:1;
+  color:rgba(237,231,218,.62); background:rgba(9,13,20,.4);
+  -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px);
+  border:1px solid rgba(237,231,218,.13); border-radius:50%; cursor:pointer;
+  padding:0 0 .12em; transition:color .25s, border-color .25s, opacity .38s; }
+.viewnav:hover { color:var(--brass); border-color:rgba(201,162,39,.55); }
+/* `display:flex` above outranks the `display:none` a browser gives [hidden],
+   so without this the arrows stay on screen for every work that has nothing
+   behind them. */
+.viewnav[hidden] { display:none; }
+.viewnav.prev { left:2.6vw; }
+.viewnav.next { right:2.6vw; }
+/* The dots own the right edge at this height, so the forward arrow steps in
+   past them rather than sitting on top. */
+.room .viewnav.next { right:calc(2.6vw + 22px); }
+
+/* Above the picture, centred, where a wall label would be. The bottom of
+   the screen is spoken for from both sides — the description on the left,
+   the price and the counter on the right — and the top is empty in both the
+   full state and `bare`. */
+.viewcap { position:absolute; top:3.4vh; left:50%; transform:translateX(-50%);
+  z-index:7; pointer-events:none; max-width:44vw; text-align:center;
+  font-family:var(--mono); font-size:clamp(9px,1.25vh,12px); letter-spacing:.14em;
+  color:rgba(237,231,218,.62);
+  /* The same backing the arrows carry, and for a reason they do not have: in
+     full screen this sits on the picture rather than beside it, and a pale
+     one left it unreadable. */
+  background:rgba(9,13,20,.4); -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px);
+  border-radius:2px; padding:.5em .9em; }
+.viewcap b { color:var(--brass); font-weight:400; margin-right:.9em; letter-spacing:.16em; }
+
+@media (max-width: 720px) {
+  /* No hover to reveal them and less room to spare, so the arrows sit closer
+     in and the caption gets the width the sheet is not using. */
+  .viewnav.prev { left:1.6vw; }
+  .room .viewnav.next { right:calc(1.6vw + 18px); }
+  .viewcap { max-width:76vw; }
+}
 
 .room.bare .info, .room.bare .chrome, .room.bare .dots, .room.bare .count { opacity:0; pointer-events:none; }
 .room.bare .navstack { pointer-events:none; }
@@ -358,8 +442,16 @@ body {
 .fallback img { width:100%; height:auto; display:block; }
 .fallback .t { font-family:var(--mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); margin-top:6px; }
 
-/* ---- purchase page: a document, not a gallery, so it scrolls ---- */
-body.buypage { overflow:auto; }
+/* ---- purchase page: a document, not a gallery, so it scrolls ----
+   `html, body { height:100% }` at the top of this file pins the body to
+   exactly one viewport, and a body's `overflow` is propagated to the
+   viewport rather than applied to the body itself — so `overflow:auto` here
+   made a scroller out of something that could never have anything to
+   scroll, and a document longer than the screen simply could not be
+   reached. It went unnoticed because both of these pages used to fit.
+   Document pages opt out of the fixed height and grow instead. */
+html:has(body.buypage), html:has(body.legalpage) { height:auto; }
+body.buypage { height:auto; min-height:100%; overflow:auto; }
 .buywrap { max-width:1100px; margin:0 auto; padding:clamp(28px,7vh,72px) clamp(20px,5vw,48px) 10vh; }
 .crumb { font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
   color:var(--mute); text-decoration:none; display:inline-block; margin-bottom:clamp(24px,5vh,48px); }
@@ -379,7 +471,26 @@ body.buypage { overflow:auto; }
 .buyside .includes li { font-family:var(--mono); font-size:12px; letter-spacing:.04em; color:var(--brass);
   padding-left:1.4em; position:relative; }
 .buyside .includes li::before { content:'+'; position:absolute; left:0; color:rgba(201,162,39,.6); }
-.buyside .price { font-family:var(--mono); font-size:clamp(22px,3vw,30px); color:var(--brass); letter-spacing:.04em; margin-bottom:.6em; }
+/* Price and what you get on one line, because they are one fact. They used
+   to be a price with the terms stacked somewhere above it, and a reader had
+   to assemble "$380, original, one of one" for themselves. */
+.buyside .priceline { display:flex; align-items:baseline; flex-wrap:wrap; gap:.5em .9em; margin-bottom:.6em; }
+.buyside .price { font-family:var(--mono); font-size:clamp(22px,3vw,30px); color:var(--brass); letter-spacing:.04em; }
+.buyside .edition { font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--mute); }
+.buyside .edition::before { content:'\00b7'; margin-right:.9em; color:rgba(201,162,39,.5); }
+
+/* The other photographs of the work: what it looks like framed, and what the
+   paint actually does close up. Both are things a flat scan cannot say. */
+.views { margin-top:clamp(40px,7vw,84px); }
+.views h2 { font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--mute); font-weight:400; margin:0 0 1.4em; }
+.viewgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:clamp(16px,2.4vw,32px); }
+.viewgrid figure { margin:0; }
+.viewgrid img { width:100%; height:auto; display:block; box-shadow:0 18px 44px rgba(0,0,0,.5); }
+.viewgrid picture { display:block; }
+.viewgrid figcaption { font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:var(--mute);
+  margin-top:.9em; }
 .buyside .fine { font-family:var(--mono); font-size:11.5px; line-height:1.8; color:var(--mute); margin:0 0 1.8em; max-width:40ch; }
 .buyside .pending-note { font-family:var(--mono); font-size:11.5px; line-height:1.8;
   color:var(--brass); margin:1.2em 0 0; max-width:40ch; }
@@ -390,7 +501,7 @@ body.buypage { overflow:auto; }
 /* ---- terms and privacy ---- */
 /* Long-form reading rather than a gallery: one narrow column, a plain
    measure, and nothing that moves. */
-body.legalpage { overflow:auto; }
+body.legalpage { height:auto; min-height:100%; overflow:auto; }
 .legalwrap { max-width:720px; margin:0 auto; padding:clamp(28px,7vh,72px) clamp(20px,6vw,32px) 14vh; }
 .legalwrap h1 { font-family:var(--display); font-weight:400; font-size:clamp(30px,5.5vw,46px);
   line-height:1.05; margin:0 0 .3em; }

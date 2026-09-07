@@ -70,6 +70,12 @@ ${PRELOAD_FONTS.map((f) => `<link rel="preload" href="${f}" as="font" type="font
 ${o.head || ''}
 </head>
 <body${o.bodyClass ? ` class="${o.bodyClass}"` : ''}>
+<!-- On every page, because the pages someone is most likely to be misled by
+     are the ones with a price on them. Here in the shell rather than in the
+     client script, so it is in the markup a crawler and a reader with no
+     JavaScript both get, and so no page can be built without it. -->
+<div class="demobadge" role="note"
+     aria-label="Demo site. Nothing here can actually be bought yet, and the pictures and prices are placeholders."><span>Demo</span></div>
 ${o.body}
 ${(o.scripts || []).map((s) => `<script src="${assetUrl(s)}" defer></script>`).join('\n')}
 <!-- v${appVersion()} -->

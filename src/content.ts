@@ -5,6 +5,29 @@ import { imageSize } from './imagesize';
 export type Status = 'available' | 'sold' | 'reserved' | 'nfs';
 const STATUSES: Status[] = ['available', 'sold', 'reserved', 'nfs'];
 
+/** Another photograph of the same work: the piece framed on a wall, or a
+ *  close-up of the brushwork. Sized and served exactly like a picture,
+ *  because that is what it is — but never a work in its own right. It has no
+ *  slug, no price and no status, and it is deliberately absent from the
+ *  lobby, the rail and the link preview, all of which speak for the work as
+ *  a whole. */
+export interface View {
+  file: string;
+  widths: number[];
+  webp: boolean;
+  /** Pixel size, so the grid on the purchase page can reserve the right shape
+   *  before the picture arrives. These are lazily loaded and below the fold,
+   *  and without an intrinsic size each figure is zero-high until it loads —
+   *  the captions stack up against each other and then everything jumps. */
+  width?: number;
+  height?: number;
+  /** What this view shows. Read aloud by the alt text and printed under the
+   *  picture, because an unlabelled extra photograph is just clutter — the
+   *  point is to say "this is the texture" or "this is it on a wall". */
+  caption: string;
+  kind: 'detail' | 'framed' | 'other';
+}
+
 export interface Work {
   file: string;
   /** Widths of the smaller copies that exist beside this picture, ascending.
@@ -30,6 +53,12 @@ export interface Work {
   artist?: string;
   medium?: string;
   dimensions?: string;
+  /** "Original, one of one", "Archival print, edition of 25" — what the buyer
+   *  is actually getting. A short phrase rather than a flag, because Colors is
+   *  one-of-one paintings and Dogs and Food are prints, and the difference
+   *  matters more to a buyer than anything else on the page. Free text: only
+   *  the person who made the work knows what is true of it. */
+  edition?: string;
   description?: string;
   price?: number;
   currency: string;
@@ -38,6 +67,10 @@ export interface Work {
   /** What a buyer gets beyond the picture itself — signing, extras. Merged
    *  from the collection's list and anything the work adds. */
   includes: string[];
+  /** Further photographs of this same work, in the order they are shown.
+   *  Empty for most works, and the client draws no extra navigation at all
+   *  when it is — see `views` in public/app.js. */
+  views: View[];
 }
 
 export interface AboutInfo {
@@ -132,12 +165,14 @@ function readRoom(dir: string, assetsDir: string): Room | null {
       artist: w.artist,
       medium: w.medium,
       dimensions: w.dimensions,
+      edition: typeof w.edition === 'string' ? w.edition : undefined,
       description: w.description,
       price: typeof w.price === 'number' ? w.price : undefined,
       currency: w.currency || 'USD',
       status,
       purchaseUrl: w.purchase_url || `/buy/${c.id}/${slug}`,
       includes: [...roomIncludes, ...strings(w.includes)],
+      views: readViews(w.views, dir, assetsDir, roomDir, availableWidths),
     }];
   });
 
@@ -166,6 +201,40 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     about: raw.about,
     works,
   };
+}
+
+/** The extra photographs of a work. A view that names a file which is not
+ *  on disk is dropped with a warning rather than throwing: the same rule the
+ *  works themselves follow, and for the same reason — a missing supporting
+ *  photograph is not worth taking the gallery down for, and the work still
+ *  has its own picture to show. */
+function readViews(
+  raw: any,
+  dir: string,
+  assetsDir: string,
+  roomDir: string,
+  availableWidths: number[],
+): View[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((v: any): View[] => {
+    if (!v || typeof v.file !== 'string') return [];
+    if (!fs.existsSync(path.join(assetsDir, dir, v.file))) {
+      console.warn(`content: ${dir}/${v.file} listed as a view but not on disk — skipped`);
+      return [];
+    }
+    const widths = widthsFor(roomDir, v.file, availableWidths);
+    const kind = v.kind === 'detail' || v.kind === 'framed' ? v.kind : 'other';
+    const size = imageSize(path.join(assetsDir, dir, v.file));
+    return [{
+      file: v.file,
+      widths,
+      webp: hasWebp(roomDir, v.file, widths),
+      width: size?.width,
+      height: size?.height,
+      caption: typeof v.caption === 'string' ? v.caption : '',
+      kind,
+    }];
+  });
 }
 
 /** The width directories a room has, e.g. [640, 1024] from w640/ and w1024/.

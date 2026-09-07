@@ -26,3 +26,27 @@ is where notes are written *before* a release, not an archive of them.
      Currently empty. Last released: v2026.09.06.1. -->
 ## [Unreleased]
 
+- **A Demo ribbon on every page.** The site shows prices and takes enquiries
+  and none of it works yet, so every page says so across the top right
+  corner. It is in the markup rather than added by the client, so it cannot
+  be missing from a page someone might act on, and it stays through full
+  screen.
+
+- **A work can have more than one photograph.** A flat scan cannot show how
+  big a painting is or what the paint does, so `views` in `index.json` adds
+  further shots of the same work — framed on a wall, or a close-up of the
+  brushwork. In a room they sit on the horizontal axis: left and right, a
+  swipe sideways, or two arrows at the edges of the picture, with a caption
+  saying which of them you are looking at. Up and down still move between
+  works, and a work with no extra photographs shows no arrows at all. On the
+  purchase page they are simply laid out under the picture.
+- **The price now says what you are buying.** `$380 · Original · one of one`
+  on one line, from a new optional `edition` field, instead of a price with
+  the terms stacked somewhere above it. The enquiry button says what it does
+  rather than how it does it.
+- **Fixed: the purchase and legal pages could not be scrolled.** `height:100%`
+  pinned the body to one viewport and the `overflow` it declared was
+  propagated to the viewport rather than applied to the body, so anything
+  past the fold was unreachable. It had gone unnoticed because every one of
+  those pages happened to fit.
+

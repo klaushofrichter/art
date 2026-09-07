@@ -74,7 +74,12 @@ export function workDescription(room: Room, work: Work): string {
  *  ladder is the ceiling for anything shown on screen, and the original is
  *  what the download link serves. Empty when a picture has no copies, and
  *  callers must then omit the attribute rather than write srcset="". */
-export function srcset(roomId: string, work: Work): string {
+/** A picture that has sized copies — a work or one of its views. Structural
+ *  on purpose: a view is a photograph beside the work, not a lesser Work, and
+ *  duplicating these two functions to say so would be worse. */
+type Sized = Pick<Work, 'file' | 'widths' | 'webp'>;
+
+export function srcset(roomId: string, work: Sized): string {
   const at = (w: number) =>
     `/assets/${encodeURIComponent(roomId)}/w${w}/${encodeURIComponent(work.file)}`;
   return work.widths.map((w) => `${at(w)} ${w}w`).join(', ');
@@ -82,7 +87,7 @@ export function srcset(roomId: string, work: Work): string {
 
 /** The same, in WebP. Empty when this picture has no WebP copies, which is
  *  the signal to leave the <source> out rather than write an empty one. */
-export function webpSrcset(roomId: string, work: Work): string {
+export function webpSrcset(roomId: string, work: Sized): string {
   if (!work.webp) return '';
   const name = webpName(work.file);
   const at = (w: number) =>

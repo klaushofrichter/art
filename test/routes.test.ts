@@ -77,7 +77,7 @@ describe('GET /buy/:room/:slug', () => {
     expect(res.status).toBe(200);
     expect(res.text).toContain('Wide');
     expect(res.text).toContain('$100');
-    expect(res.text).toContain('Enquire by email');
+    expect(res.text).toContain('Enquire about this picture');
   });
 
   it('shows no price for a sold work', async () => {
@@ -85,7 +85,7 @@ describe('GET /buy/:room/:slug', () => {
     expect(res.status).toBe(200);
     expect(res.text).toContain('Sold');
     expect(res.text).not.toContain('$150');
-    expect(res.text).not.toContain('Enquire by email');
+    expect(res.text).not.toContain('Enquire about this picture');
   });
 
   it('404s on an unknown picture', async () => {
@@ -353,5 +353,31 @@ describe('the typefaces are served from here', () => {
     for (const need of ['Archivo/400', 'Archivo/600', 'Bodoni Moda/400', 'IBM Plex Mono/400', 'IBM Plex Mono/500']) {
       expect(faces, need).toContain(need);
     }
+  });
+});
+
+describe('the Demo badge', () => {
+  // It is in the shell rather than in app.js, so it cannot be missing from a
+  // page someone might act on — and the pages most likely to mislead are the
+  // ones with a price on them.
+  it.each(['/', '/buy/shapes/wide', '/terms', '/privacy'])(
+    'is on %s',
+    async (path) => {
+      const res = await request(app()).get(path);
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('class="demobadge"');
+      expect(res.text).toContain('<span>Demo</span>');
+    },
+  );
+
+  it('says what it means for anyone who stops on it', async () => {
+    const res = await request(app()).get('/');
+    expect(res.text).toContain('Nothing here can actually be bought yet');
+  });
+
+  it('reaches a reader with no JavaScript, being in the markup', async () => {
+    const res = await request(app()).get('/');
+    // Before the <div id="app"> the client would otherwise fill in.
+    expect(res.text.indexOf('demobadge')).toBeLessThan(res.text.indexOf('id="app"'));
   });
 });
