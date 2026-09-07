@@ -694,6 +694,25 @@
     }
     function setMini(v) { miniOn = v; mini.classList.toggle('on', v); }
 
+    /* A second of warm colour as the arrows arrive, so a visitor finds out
+       there is more of this picture without having to be told. Restarted by
+       hand — re-adding a class the element already carries does not replay
+       an animation, and reading offsetWidth between the two is what forces
+       the style to be recomputed in between. */
+    function announceNav() {
+      [vprev, vnext].forEach(function (b) {
+        b.classList.remove('arriving');
+        void b.offsetWidth;
+        b.classList.add('arriving');
+        /* Taken off again once it has played. The animation is filled both
+           ways, so left on it would pin these colours over the hover state
+           for as long as the room is open. The timer is for the case where
+           animationend never comes at all. */
+        clearTimeout(b._attn);
+        b._attn = setTimeout(function () { b.classList.remove('arriving'); }, 1600);
+      });
+    }
+
     /* The frames of one work: its own picture first, then any further
        photographs of it. A work with no views has exactly one frame, which
        is what keeps the axis invisible for almost everything in the room. */
@@ -729,8 +748,15 @@
     }
 
     /* The caption and the arrows, for whichever work is in front. */
+    var navWasUp = false;
     function paintFrame(w, frames) {
       var many = frames.length > 1;
+      /* Only on the way up. Paging between two works that both have views
+         never takes the arrows away, so lighting them each time would be a
+         nag; going past a work with none puts them away and earns the next
+         appearance its moment. */
+      if (many && !navWasUp) announceNav();
+      navWasUp = many;
       vprev.hidden = vnext.hidden = !many;
       vcap.hidden = !many;
       if (!many) return;
@@ -873,6 +899,9 @@
     picsBtn.onclick = function (ev) { ev.stopPropagation(); picsMenu.toggle(); };
     vprev.onclick = function (ev) { ev.stopPropagation(); showFrame(frame - 1); };
     vnext.onclick = function (ev) { ev.stopPropagation(); showFrame(frame + 1); };
+    [vprev, vnext].forEach(function (b) {
+      b.addEventListener('animationend', function () { b.classList.remove('arriving'); });
+    });
 
     function leave() {
       view.remove();

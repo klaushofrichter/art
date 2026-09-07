@@ -37,7 +37,9 @@ is where notes are written *before* a release, not an archive of them.
   further shots of the same work — framed on a wall, or a close-up of the
   brushwork. In a room they sit on the horizontal axis: left and right, a
   swipe sideways, or two arrows at the edges of the picture, with a caption
-  saying which of them you are looking at. Up and down still move between
+  saying which of them you are looking at. The arrows glow warm for a second
+  as they arrive so they are not missed, and only then — paging between two
+  works that both have views never re-lights them. Up and down still move between
   works, and a work with no extra photographs shows no arrows at all. On the
   purchase page they are simply laid out under the picture.
 - **The price now says what you are buying.** `$380 · Original · one of one`
