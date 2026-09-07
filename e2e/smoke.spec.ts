@@ -950,6 +950,52 @@ test.describe('the second axis: more photographs of one work', () => {
     await expect(page.locator('.room')).not.toHaveClass(/bare/);
   });
 
+  test('the arrows announce themselves when they first appear', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    // Wide has views, so they arrive with the room and say so.
+    await expect(page.locator('.viewnav.next')).toHaveClass(/arriving/);
+  });
+
+  test('but not again for a view change within the same work', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    const next = page.locator('.viewnav.next');
+    await expect(next).toHaveClass(/arriving/);
+    // Let the second of colour finish, so what follows is not just its tail.
+    await page.waitForTimeout(1200);
+    await expect(next).not.toHaveClass(/arriving/);
+
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.viewcap')).toContainText('2 / 3');
+    await expect(next).not.toHaveClass(/arriving/);
+  });
+
+  test('nor when both works either side of a step have them', async ({ page }) => {
+    // Both prints carry a view, so stepping between them never takes the
+    // arrows away — and a control that lit up on every step would nag.
+    await page.goto('/#prints/first-print');
+    const next = page.locator('.viewnav.next');
+    await expect(next).toHaveClass(/arriving/);
+    await page.waitForTimeout(1200);
+
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('.info h2')).toHaveText('Second Print');
+    await expect(next).toBeVisible();
+    await expect(next).not.toHaveClass(/arriving/);
+  });
+
+  test('and again once a work without them has put them away', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    await page.waitForTimeout(1200);
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('.info h2')).toHaveText('Tall');
+    await expect(page.locator('.viewnav.next')).toBeHidden();
+
+    await page.keyboard.press('ArrowUp');
+    await expect(page.locator('.info h2')).toHaveText('Wide');
+    // Earned its moment again: they really did go away in between.
+    await expect(page.locator('.viewnav.next')).toHaveClass(/arriving/);
+  });
+
   test('moving to another work comes back to that work’s own picture', async ({ page }) => {
     await page.goto('/#shapes/wide');
     const art = page.locator('.room .rail > .slide').first().locator('.art');

@@ -24,7 +24,14 @@
       "description": "Available, and says what comes with it.",
       "price": 50,
       "currency": "USD",
-      "status": "available"
+      "status": "available",
+      "views": [
+        {
+          "file": "one-detail.jpg",
+          "kind": "detail",
+          "caption": "Detail of one"
+        }
+      ]
     },
     {
       "file": "two.jpg",
@@ -35,7 +42,14 @@
       "medium": "Solid colour",
       "dimensions": "240 × 180 px",
       "description": "Deliberately small, and not for sale.",
-      "status": "nfs"
+      "status": "nfs",
+      "views": [
+        {
+          "file": "two-detail.jpg",
+          "kind": "detail",
+          "caption": "Detail of two"
+        }
+      ]
     }
   ]
 }

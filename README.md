@@ -200,6 +200,15 @@ meaning the next work. A work with no views shows no arrows and no caption at
 all, so nothing suggests there is more where there is not. Moving to another
 work always returns to that work's own picture.
 
+The arrows carry a second of warm colour **as they arrive**, so a visitor
+finds out there is more of this picture without being told. Only on the way
+up, though: paging from one work with views to another never takes the arrows
+away, and a control that lit up on every step would be a nag rather than a
+hint. Stepping past a work with none puts them away and earns the next
+appearance its moment. The class comes off again when the animation ends —
+left on, a filled animation would pin those colours over the hover state for
+as long as the room is open.
+
 On the **purchase page** they are simply laid out under the picture, with
 their captions. No slider: this is the page someone reads while deciding
 whether to spend money, and a buyer wants the framed shot and the brushwork in
