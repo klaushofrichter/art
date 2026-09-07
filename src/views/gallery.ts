@@ -45,6 +45,7 @@ function manifest(rooms: Room[]) {
       artist: w.artist,
       medium: w.medium,
       dimensions: w.dimensions,
+      edition: w.edition,
       description: w.description,
       // A sold or not-for-sale picture ships no price at all, rather than a
       // price the page is trusted to hide.
@@ -52,6 +53,15 @@ function manifest(rooms: Room[]) {
       currency: w.currency,
       status: w.status,
       includes: w.includes,
+      // Filenames and numbers, like everything else here. Omitted entirely
+      // when there are none, so the manifest does not grow an empty array
+      // per work and the client can test the field itself.
+      views: w.views.length
+        ? w.views.map((v) => ({
+            file: v.file, widths: v.widths, webp: v.webp,
+            caption: v.caption, kind: v.kind,
+          }))
+        : undefined,
     })),
   }));
 }

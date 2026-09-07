@@ -154,14 +154,64 @@ pictures.
       "medium": "Acrylic on canvas, gilt frame",
       "dimensions": "10 × 8 in",
       "description": "Worked *wet into wet*…",
+      "edition": "Original · one of one",       // optional, see below
       "price": 340,
       "currency": "USD",
       "status": "available",
-      "purchase_url": "/buy/colors/undertow"   // optional, see below
+      "purchase_url": "/buy/colors/undertow",  // optional, see below
+      "views": [                               // optional, see below
+        { "file": "IMG_8356.jpg", "kind": "framed",
+          "caption": "Framed, on the wall" }
+      ]
     }
   ]
 }
 ```
+
+### More than one photograph of a work
+
+A flat scan cannot say how big a painting is, what the frame looks like, or
+what the paint actually does. `views` adds further photographs of the *same*
+work:
+
+```jsonc
+"views": [
+  { "file": "IMG_8356.jpg", "kind": "framed", "caption": "Framed, on the wall" },
+  { "file": "IMG_8358.jpg", "kind": "detail", "caption": "Detail — upper left" }
+]
+```
+
+A view is a picture in every mechanical sense — it gets the same width ladder
+and the same WebP copies from `make-derivatives.sh`, so just drop the files in
+the room folder beside everything else. It is not a work: no slug, no price,
+no status, no permalink. It never appears in the lobby, never in the rail, and
+never as the `og:image` of a link preview, all of which speak for the work as
+a whole.
+
+`kind` is `framed`, `detail` or `other`; `caption` is what the picture is, and
+is worth writing, because it is both the alt text and the label on screen. A
+view whose file is missing is dropped with a warning rather than throwing —
+the same rule works follow, and a supporting photograph is worth even less of
+an outage.
+
+In a **room**, views live on the horizontal axis: left and right, a swipe
+sideways, or the two arrows at the edges of the picture. Up and down go on
+meaning the next work. A work with no views shows no arrows and no caption at
+all, so nothing suggests there is more where there is not. Moving to another
+work always returns to that work's own picture.
+
+On the **purchase page** they are simply laid out under the picture, with
+their captions. No slider: this is the page someone reads while deciding
+whether to spend money, and a buyer wants the framed shot and the brushwork in
+front of them at once rather than behind a control they have to discover.
+
+### Original or print
+
+`edition` is a short free-text phrase — "Original · one of one", "Archival
+print" — shown beside the price and again in the details. Colors is one-of-one
+paintings and Dogs and Food are prints, and the difference matters more to a
+buyer than anything else on the page; `medium` alone does not say it. It is
+free text because only the person who made the work knows what is true of it.
 
 ### What a purchase includes
 
@@ -273,6 +323,26 @@ licences.
 The small uppercase mono labels are deliberately below Lighthouse's 12px
 threshold. That is the design, and the audit is a blunt instrument: contrast
 and tap targets both pass, and accessibility scores 100.
+
+### The Demo badge
+
+Every page carries a **Demo** ribbon across the top right corner — bone with
+dark text, the one thing on the site allowed to be loud. It is written into
+the shell in `src/views/layout.ts`, not added by the client, so it is in the
+markup a crawler and a reader with no JavaScript both get, and no page can be
+built without one. It stays up in full screen: the moment someone is most
+absorbed in a picture is not the moment to stop saying the shop does not
+work. It is `pointer-events:none`, so it can never swallow a click meant for
+the picture behind it.
+
+The fill-the-screen button sits **below** it rather than on top of it, and
+that is not a preference. `#app` is `position:fixed`, which opens a stacking
+context, so the button's `z-index` is trapped inside `#app` and can never
+paint above a sibling of it however large the number — and lifting `#app`
+instead would bury the ribbon under the whole gallery. The offsets on `.c-tr`
+are fixed pixels because the ribbon is a fixed size too.
+
+Take it out when the site can take money.
 
 ### Rate limiting, and the address it keys on
 

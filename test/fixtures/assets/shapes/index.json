@@ -20,7 +20,25 @@
       "description": "Landscape, **wider** than it is tall.",
       "price": 100,
       "currency": "USD",
-      "status": "available"
+      "status": "available",
+      "edition": "Original, one of one",
+      "views": [
+        {
+          "file": "wide-framed.jpg",
+          "kind": "framed",
+          "caption": "Framed, on the wall"
+        },
+        {
+          "file": "wide-detail.jpg",
+          "kind": "detail",
+          "caption": "Detail — the corner"
+        },
+        {
+          "file": "gone.jpg",
+          "kind": "detail",
+          "caption": "A view whose file is not here"
+        }
+      ]
     },
     {
       "file": "tall.jpg",

@@ -646,6 +646,21 @@
       dots.append(d);
     });
     var count = el('div', 'count');
+    /* The second axis. A work is usually one photograph, but a painting can
+       also have a shot of it framed on a wall and a close-up of the
+       brushwork — things a buyer cannot get from the flat scan. Those live
+       left and right of the picture, while up and down keep meaning the next
+       work. The whole axis is absent for a work with nothing extra to show:
+       no arrows, no caption, no hint that anything is missing. */
+    var vprev = el('button', 'viewnav prev fade-idle no-drag', '\u2039');
+    var vnext = el('button', 'viewnav next fade-idle no-drag', '\u203a');
+    vprev.type = 'button'; vnext.type = 'button';
+    vprev.title = 'Previous view'; vnext.title = 'Next view';
+    /* Says what this photograph is and how many there are. Sonali's feedback
+       was that three affordances already on the page went unnoticed, so an
+       unlabelled gesture would be found by nobody — the caption is the part
+       that makes the arrows worth having. */
+    var vcap = el('div', 'viewcap');
     var backhint = el('div', 'backhint');
     backhint.append(
       el('span', 'by-key', 'Space for the title \u00b7 Return or Esc to go back'),
@@ -657,7 +672,7 @@
     var roomNav = el('div', 'navstack');
     roomNav.append(back, picsBtn);
     picsBtn.type = 'button';
-    view.append(info, mini, dots, count, backhint, roomNav);
+    view.append(info, mini, dots, count, backhint, roomNav, vprev, vnext, vcap);
 
     /* strict tree: no way sideways to another room from in here */
     var picsMenu = Menu(room.title, room.works.map(function (w) {
@@ -678,6 +693,53 @@
       alignAll(view);
     }
     function setMini(v) { miniOn = v; mini.classList.toggle('on', v); }
+
+    /* The frames of one work: its own picture first, then any further
+       photographs of it. A work with no views has exactly one frame, which
+       is what keeps the axis invisible for almost everything in the room. */
+    function framesOf(w) {
+      return [{ file: w.file, widths: w.widths, webp: w.webp, caption: '' }]
+        .concat(w.views || []);
+    }
+    var frame = 0;
+
+    /* Swap the picture in place. The rail does not move, the plate does not
+       change, and the ambient wash stays on the work's own picture so the
+       room's colour does not jump between views of the same painting. */
+    function showFrame(n) {
+      var i = roomRail.index();
+      var w = room.works[i];
+      var frames = framesOf(w);
+      if (frames.length < 2) return false;
+      /* Wraps, because with three views a dead end at either side is only
+         annoying — there is no order to lose your place in. */
+      frame = (n + frames.length) % frames.length;
+      var f = frames[frame];
+      var slot = plates[i];
+      var set = srcsetFor(room.id, f.file, f.widths, f.webp);
+      if (set) { slot.img.sizes = '100vw'; slot.img.srcset = set; }
+      else slot.img.removeAttribute('srcset');
+      slot.img.src = pictureUrl(room.id, f.file);
+      slot.img.alt = f.caption ? w.title + ' \u2014 ' + f.caption : w.title;
+      /* showPicture() only ever loads a plate once, so without this a work
+         left on a close-up would still be showing it when you came back. */
+      slot.shifted = frame !== 0;
+      paintFrame(w, frames);
+      return true;
+    }
+
+    /* The caption and the arrows, for whichever work is in front. */
+    function paintFrame(w, frames) {
+      var many = frames.length > 1;
+      vprev.hidden = vnext.hidden = !many;
+      vcap.hidden = !many;
+      if (!many) return;
+      var f = frames[frame];
+      clear(vcap).append(
+        el('b', null, String(frame + 1) + ' / ' + String(frames.length)),
+        document.createTextNode(f.caption || 'The work')
+      );
+    }
 
     function paint(i) {
       var w = room.works[i];
@@ -701,6 +763,9 @@
       var dl = el('dl');
       if (w.medium) dl.append(el('dt', null, 'Medium'), el('dd', null, w.medium));
       if (w.dimensions) dl.append(el('dt', null, 'Size'), el('dd', null, w.dimensions));
+      /* An original and a print are different things to buy, and the medium
+         line alone does not say which this is. */
+      if (w.edition) dl.append(el('dt', null, 'Edition'), el('dd', null, w.edition));
       /* What a buyer gets that a visitor cannot just download. Only where the
          work can still be had — it reads as a promise, not a description. */
       if (w.includes && w.includes.length && (w.status === 'available' || w.status === 'reserved')) {
@@ -737,6 +802,18 @@
       line.append(downloadIcon(room.id, w));
       right.append(line);
       clear(sheet).append(left, right);
+
+      /* A new work always opens on its own picture. Landing on the third
+         close-up of something you have not seen whole would be nonsense. */
+      frame = 0;
+      var slot = plates[i];
+      if (slot && slot.shifted) {
+        if (slot.set) { slot.img.sizes = '100vw'; slot.img.srcset = slot.set; }
+        slot.img.src = urls[i];
+        slot.img.alt = w.title;
+        slot.shifted = false;
+      }
+      paintFrame(w, framesOf(w));
     }
 
     function showPicture(i, done) {
@@ -762,14 +839,40 @@
     });
     paint(0);
 
+    /* Sideways on a touch screen, for the same reason the arrow keys are:
+       the rail reads clientY only, so a horizontal drag moves it nowhere and
+       the gesture was going spare. The rail has the pointer captured by the
+       time these fire, but capture retargets rather than stops the event, so
+       it still reaches this element on the way up. */
+    var swipe = null, lastSwipe = -Infinity;
+    view.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('.no-drag') || e.target.closest('.menu')) { swipe = null; return; }
+      swipe = { x: e.clientX, y: e.clientY };
+    });
+    view.addEventListener('pointerup', function (e) {
+      if (!swipe) return;
+      var dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+      swipe = null;
+      /* Committed to one axis: a long enough throw, and clearly more across
+         than down, so a slightly untidy vertical page never lands here. */
+      if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+      if (showFrame(frame + (dx < 0 ? 1 : -1))) lastSwipe = performance.now();
+    });
+
     /* a click anywhere clears the text; another brings it back */
     view.addEventListener('click', function (e) {
       if (e.target.closest('.no-drag') || e.target.closest('.menu')) return;
       if (roomRail.draggedRecently()) return;
+      /* A swipe that changed the view must not also strip the label off:
+         the rail only counts vertical travel, so it does not know one
+         happened. */
+      if (performance.now() - lastSwipe < 400) return;
       setBare(!bare);
     });
     back.onclick = function (ev) { ev.stopPropagation(); leave(); };
     picsBtn.onclick = function (ev) { ev.stopPropagation(); picsMenu.toggle(); };
+    vprev.onclick = function (ev) { ev.stopPropagation(); showFrame(frame - 1); };
+    vnext.onclick = function (ev) { ev.stopPropagation(); showFrame(frame + 1); };
 
     function leave() {
       view.remove();
@@ -793,6 +896,10 @@
       if (e.key === 'Enter') { if (!picsMenu.isOpen()) setBare(!bare); return true; }
       if (e.key === 'ArrowDown' || e.key === 'PageDown') { roomRail.step(1); return true; }
       if (e.key === 'ArrowUp' || e.key === 'PageUp') { roomRail.step(-1); return true; }
+      /* Left and right were never bound to anything: the rail is vertical on
+         every input it takes, so the horizontal axis was free for this. */
+      if (e.key === 'ArrowRight') return showFrame(frame + 1);
+      if (e.key === 'ArrowLeft') return showFrame(frame - 1);
       if (e.key === 't' || e.key === 'T' || e.key === 'p' || e.key === 'P') { picsMenu.toggle(); return true; }
       return false;
     };
