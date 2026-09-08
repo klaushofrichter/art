@@ -496,6 +496,22 @@ link.
 URLs carry a content hash; without it a deploy would never reach a returning
 visitor.
 
+**The pictures are not.** They live on a volume and are replaced without a
+deploy, and their URLs do not change when they are — `make-derivatives.sh`
+rewrites a derivative in place under the same filename. They get an hour, plus
+a week of `stale-while-revalidate` so a repeat visit is still served instantly
+while a fresh copy is fetched behind it. A re-shot picture then reaches
+everyone within the hour instead of being pinned for a year.
+
+**`/assets` serves pictures and nothing else.** Only `.jpg`, `.jpeg`, `.png`
+and `.webp` are answered; everything else in a room directory is a 404. That
+directory is filled by a content sync rather than by this repository, and it
+holds `index.json` — the whole manifest, every uid and `purchase_url`, the
+contact address, and the prices of sold work that the page deliberately never
+serialises. It is an allowlist rather than a rule about `index.json`, so an
+editor backup or a stray note does not become public by being copied next to
+a picture.
+
 The pages themselves are `Cache-Control: no-cache` — cached, but revalidated
 every time, which the ETag makes a 304 with no body. A page names the
 fingerprinted assets it needs, so serving a stale one would point at stale

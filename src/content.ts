@@ -159,7 +159,11 @@ function readRoom(dir: string, assetsDir: string): Room | null {
       height: size?.height,
       uid: typeof w.uid === 'string' ? w.uid : '',
       slug,
-      src: `/assets/${c.id}/${encodeURIComponent(w.file)}`,
+      // The id is encoded, not trusted. It is read from a file on a volume
+      // and is deliberately not required to match the folder it came from
+      // (see Room.dir), so it is arbitrary text — and this string is put
+      // straight into a src attribute on the purchase page.
+      src: `/assets/${encodeURIComponent(c.id)}/${encodeURIComponent(w.file)}`,
       title: w.title || w.file,
       date: w.date || '',
       artist: w.artist,
@@ -170,7 +174,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
       price: typeof w.price === 'number' ? w.price : undefined,
       currency: w.currency || 'USD',
       status,
-      purchaseUrl: w.purchase_url || `/buy/${c.id}/${slug}`,
+      purchaseUrl: w.purchase_url || `/buy/${encodeURIComponent(c.id)}/${slug}`,
       includes: [...roomIncludes, ...strings(w.includes)],
       views: readViews(w.views, dir, assetsDir, roomDir, availableWidths),
     }];
@@ -188,7 +192,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     title: c.title || c.id,
     subtitle: c.subtitle || '',
     description: c.description || '',
-    cover: coverOk ? `/assets/${c.id}/${encodeURIComponent(coverFile as string)}` : null,
+    cover: coverOk ? `/assets/${encodeURIComponent(c.id)}/${encodeURIComponent(coverFile as string)}` : null,
     coverFile: coverOk ? (coverFile as string) : null,
     coverWidth: coverSize?.width,
     coverHeight: coverSize?.height,
@@ -198,8 +202,38 @@ function readRoom(dir: string, assetsDir: string): Room | null {
       : false,
     includes: roomIncludes,
     order: typeof c.order === 'number' ? c.order : 50,
-    about: raw.about,
+    about: readAbout(raw.about),
     works,
+  };
+}
+
+/** The About room's text, taken to the shape the rest of the code expects.
+ *  It used to be passed through exactly as parsed, so `body` being a string
+ *  rather than a list of them — an easy thing to write by hand — reached
+ *  `about.body.map(...)` in the no-JavaScript fallback and threw a
+ *  TypeError from the middle of rendering the page. At boot that is a
+ *  readiness failure with a stack trace instead of a sentence, and on reload
+ *  it costs the edit rather than the site, but neither is a good way to find
+ *  out that a quotation mark is in the wrong place. */
+function readAbout(raw: any): AboutInfo | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const body = Array.isArray(raw.body)
+    ? raw.body.filter((p: unknown): p is string => typeof p === 'string')
+    : typeof raw.body === 'string'
+      ? [raw.body]          // one paragraph, written without the brackets
+      : [];
+  const email = raw.contact && typeof raw.contact.email === 'string'
+    ? raw.contact.email
+    : null;
+  return {
+    name: typeof raw.name === 'string' ? raw.name : '',
+    role: typeof raw.role === 'string' ? raw.role : undefined,
+    body,
+    // A contact with no address is not a contact; it would render a mailto:
+    // link to the word "undefined".
+    contact: email
+      ? { email, note: typeof raw.contact.note === 'string' ? raw.contact.note : undefined }
+      : undefined,
   };
 }
 

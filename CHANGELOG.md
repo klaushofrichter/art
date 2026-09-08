@@ -23,14 +23,31 @@ is where notes are written *before* a release, not an archive of them.
      write a placeholder under the heading: the awk prints every non-blank
      line it finds there, so "nothing yet" would be published as the notes.
 
-     Currently holds the arrows note. Last released: v2026.09.06.3. -->
+     Currently holds the review fixes. Last released: v2026.09.07.1. -->
 ## [Unreleased]
 
-- **The view arrows announce themselves as they arrive.** Two small arrows at
-  the edges of a picture were easy to miss, and a work having more than one
-  photograph is the exception rather than the rule, so nobody was going to
-  find the axis by accident. They now carry a second of warm amber as they
-  appear — and only then: paging between two works that both have views never
-  takes them away, and re-lighting them at every step would nag rather than
-  hint.
+- **Fixed: `/assets/<room>/index.json` was public.** The pictures are served
+  out of the same directory the manifest sits in, so the whole of it was
+  fetchable — every uid and `purchase_url`, the contact address, and the
+  prices of sold work the page deliberately never sends. `/assets` now serves
+  picture files only.
+- **Fixed: the content watcher could take the site down.** A dangling symlink,
+  or a file disappearing while a content sync swapped the tree, threw out of
+  the timer and ended the process. It also read the directory a second time
+  after a reload had already succeeded, outside the guard that exists to
+  survive a bad edit.
+- **Pictures are no longer cached for a year.** They are replaced by a sync
+  rather than a deploy and their URLs do not change when they are, so a
+  re-shot picture never reached anyone who had seen the old one. An hour now,
+  with a week of `stale-while-revalidate` so repeat visits stay instant.
+- **Fixed: a room id from content could break out of an HTML attribute.**
+  `collection.id` is arbitrary text — it is not required to match the folder
+  it was read from — and it reached the purchase page's crumb link unescaped.
+- **An About block that is not quite the right shape no longer throws.** A
+  `body` written as one string rather than a list used to fail in the middle
+  of rendering the page.
+- **Fixed: a deploy could fail on a healthy release.** The smoke test compared
+  the served version exactly once, immediately after `kubectl wait` returned —
+  which it can do while the previous revision is still answering. It now waits
+  for the new version rather than for the first 200.
 

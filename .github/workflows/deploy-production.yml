@@ -117,18 +117,31 @@ jobs:
         run: |
           set -euo pipefail
           BASE=https://art.klaushofrichter.net
-          for i in $(seq 1 10); do
+          # Wait for the *new* build, not merely for a 200. `kubectl wait`
+          # above reads Ready off the Service, and Ready stays true from the
+          # previous generation until the Knative reconciler has observed
+          # this one — so a wait issued straight after `apply` can return
+          # while the old revision is still the one answering. With
+          # min-scale: 1 that old pod is up and serving, so the first 200
+          # here is quite likely to carry the previous version. Checking the
+          # version once, outside the loop, turned that ordinary race into a
+          # failed deploy and a skipped release.
+          # sed, not jq: the self-hosted runner has no jq installed.
+          served=""
+          for i in $(seq 1 20); do
             code=$(curl -s -o /tmp/health.json -w "%{http_code}" "$BASE/health" || true)
-            [ "$code" = "200" ] && echo "health ok" && break
-            echo "health not ready (HTTP ${code}), retry ${i}/10"; sleep 6
+            if [ "$code" = "200" ]; then
+              served=$(sed -n 's/.*"version":"\([^"]*\)".*/\1/p' /tmp/health.json)
+              [ "$served" = "$VERSION" ] && echo "version ok: $served" && break
+              echo "serving ${served:-unknown}, waiting for ${VERSION} (${i}/20)"
+            else
+              echo "health not ready (HTTP ${code}), retry ${i}/20"
+            fi
+            sleep 6
           done
           [ "$code" = "200" ] || { echo "::error::/health did not return 200"; exit 1; }
-          # The deployed build must be the one this run just stamped.
-          # sed, not jq: the self-hosted runner has no jq installed.
-          served=$(sed -n 's/.*"version":"\([^"]*\)".*/\1/p' /tmp/health.json)
           [ "$served" = "$VERSION" ] \
-            || { echo "::error::/health reports ${served}, expected ${VERSION}"; exit 1; }
-          echo "version ok: $served"
+            || { echo "::error::/health still reports ${served} after 2 minutes, expected ${VERSION}"; exit 1; }
           # The gallery is only as good as the content it loaded, so check the
           # counts rather than just a 200. A shipped-but-broken index.json
           # would otherwise deploy quietly.

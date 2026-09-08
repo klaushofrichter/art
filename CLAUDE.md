@@ -94,6 +94,21 @@ Without it a deploy would never reach anyone who had visited before. The
 hard caching is disabled outside production, or local edits would be
 invisible behind the same cache.
 
+**The pictures under `/assets` do not get that treatment and must not.** They
+are replaced by a sync rather than a deploy, and their URLs are stable across
+the change, so pinning them left a re-shot picture unreachable for a year.
+They get `max-age=3600, stale-while-revalidate=604800` instead. If you ever
+want the year back, fingerprint the picture URLs first — the manifest would
+have to carry a per-work version number, which is a number and so stays
+within the rule below.
+
+`/assets` also serves **pictures only** — an extension allowlist in
+`src/app.ts`. The room directory holds `index.json` next to them, and serving
+that directory wholesale published the entire manifest: every uid and
+`purchase_url`, the contact address, and the sold prices that
+`views/gallery.ts` goes out of its way to withhold. Keep it an allowlist: the
+directory's contents come from a content sync, not from this repository.
+
 ## Branches
 
 - `main` — normal development, unprotected. Push here builds and pushes

@@ -59,7 +59,7 @@ export function renderBuy(room: Room, work: Work): string {
     image: workImage(room, work),
     scripts: ['pending.js'],
     body: `<main class="buywrap">
-  <a class="crumb" href="/#${room.id}/${work.slug}">&larr; Back to ${escapeHtml(room.title)}</a>
+  <a class="crumb" href="/#${encodeURIComponent(room.id)}/${encodeURIComponent(work.slug)}">&larr; Back to ${escapeHtml(room.title)}</a>
   <div class="buygrid">
     <picture>${
       webpSrcset(room.id, work)
