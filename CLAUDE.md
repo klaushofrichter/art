@@ -94,6 +94,37 @@ Without it a deploy would never reach anyone who had visited before. The
 hard caching is disabled outside production, or local edits would be
 invisible behind the same cache.
 
+**The pictures are fingerprinted too, and that is what lets them be cached.**
+`sizedFrom` in `content.ts` builds a ten-character token per picture from the
+size and mtime of the original *and every derivative of it*, and every URL
+that names the file carries it as `?v=`. It reads a picture's widths, WebP
+coverage and version in one pass — a work, a view and a room's cover all come
+back as the same `Sized` shape, which is what `share.ts`'s URL helpers and the
+client's take. The derivatives are folded in
+because they change on their own: a `FORCE=1` rebuild or a different
+`QUALITY` rewrites the copies and leaves the original untouched.
+
+It is size and mtime rather than a content hash because the originals run to
+tens of megabytes and this is recomputed on every reload, while the question
+being asked is only "did somebody replace this file". `tar` preserves mtimes,
+so `sync-assets.sh` carries the same token to the volume instead of churning
+every URL on arrival — copying content around *without* preserving mtimes
+costs one cache generation, which is a miss, not a bug.
+
+The token is a cache key, not a lookup: `/assets` ignores the query, so an old
+URL still serves the current file. **Do not remove the `?v=` from any picture
+URL.** The pictures are replaced by a content sync under the same filename, so
+without it the year-long `immutable` cache means a re-shot picture never
+reaches anyone who has already seen the old one — which is exactly what it did
+until this was added.
+
+`/assets` also serves **pictures only** — an extension allowlist in
+`src/app.ts`. The room directory holds `index.json` next to them, and serving
+that directory wholesale published the entire manifest: every uid and
+`purchase_url`, the contact address, and the sold prices that
+`views/gallery.ts` goes out of its way to withhold. Keep it an allowlist: the
+directory's contents come from a content sync, not from this repository.
+
 ## Branches
 
 - `main` — normal development, unprotected. Push here builds and pushes
@@ -135,7 +166,10 @@ would show the wrong counts rather than passing quietly.
 
 Release notes come from the commits since the previous release, preceded by
 anything under `## [Unreleased]` in `CHANGELOG.md`. **Empty that section as
-part of promoting.** The deploy reads the file and never writes to it, so
+part of promoting** — `scripts/check-changelog.sh` now fails the `test` check
+on a PR into `production` if it still holds lines the last release already
+published, because writing this down twice did not stop it happening five
+times. The deploy reads the file and never writes to it, so
 anything left behind is published again with the next release — that has
 happened three times now. Leave the heading with nothing under it rather
 than a placeholder line: the `awk` that extracts the block prints every

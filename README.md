@@ -200,6 +200,15 @@ meaning the next work. A work with no views shows no arrows and no caption at
 all, so nothing suggests there is more where there is not. Moving to another
 work always returns to that work's own picture.
 
+The arrows carry a second of warm colour **as they arrive**, so a visitor
+finds out there is more of this picture without being told. Only on the way
+up, though: paging from one work with views to another never takes the arrows
+away, and a control that lit up on every step would be a nag rather than a
+hint. Stepping past a work with none puts them away and earns the next
+appearance its moment. The class comes off again when the animation ends —
+left on, a filled animation would pin those colours over the hover state for
+as long as the room is open.
+
 On the **purchase page** they are simply laid out under the picture, with
 their captions. No slider: this is the page someone reads while deciding
 whether to spend money, and a buyer wants the framed shot and the brushwork in
@@ -487,6 +496,29 @@ link.
 URLs carry a content hash; without it a deploy would never reach a returning
 visitor.
 
+**The pictures carry one too**, for a different reason. They live on a volume
+and are replaced without a deploy, always under the same filename —
+`make-derivatives.sh` rewrites a derivative in place — so nothing about the
+path says the bytes changed. `versionOf` in `src/content.ts` builds a
+ten-character token from the size and mtime of the original and of every
+derivative of it, and each picture URL carries it as `?v=`. Change a picture
+and its URL changes with it, which is what makes a year of `immutable`
+caching safe rather than a way of pinning the old one forever.
+
+The derivatives are folded into the token because they can change alone: a
+`FORCE=1` rebuild or a different quality setting rewrites the copies and never
+touches the original. And it is a cache key rather than a lookup — `/assets`
+ignores the query, so an old link still serves the current file.
+
+**`/assets` serves pictures and nothing else.** Only `.jpg`, `.jpeg`, `.png`
+and `.webp` are answered; everything else in a room directory is a 404. That
+directory is filled by a content sync rather than by this repository, and it
+holds `index.json` — the whole manifest, every uid and `purchase_url`, the
+contact address, and the prices of sold work that the page deliberately never
+serialises. It is an allowlist rather than a rule about `index.json`, so an
+editor backup or a stray note does not become public by being copied next to
+a picture.
+
 The pages themselves are `Cache-Control: no-cache` — cached, but revalidated
 every time, which the ETag makes a 304 with no body. A page names the
 fingerprinted assets it needs, so serving a stale one would point at stale
@@ -518,6 +550,12 @@ pictures), so a simple queue is enough.
 - **`production`** — protected, PR-only from `main`, with `test`, `codeql` and
   `e2e` as required checks, enforced for admins too. Merging deploys via an
   in-cluster self-hosted runner and cuts a release.
+
+Release notes are whatever sits under `## [Unreleased]` in `CHANGELOG.md`,
+then the commits since the last release. The deploy reads that section and
+never writes to it, so emptying it is part of promoting;
+`scripts/check-changelog.sh` fails a PR into `production` that would republish
+the previous release's notes.
 
 Versions are generated at deploy time as `vYYYY.MM.DD.N` and baked in as
 `APP_VERSION`; `package.json` carries no version. The running build is shown at

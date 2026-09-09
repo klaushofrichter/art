@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { createHash } from 'crypto';
 import { imageSize } from './imagesize';
 
 export type Status = 'available' | 'sold' | 'reserved' | 'nfs';
@@ -11,16 +12,7 @@ const STATUSES: Status[] = ['available', 'sold', 'reserved', 'nfs'];
  *  slug, no price and no status, and it is deliberately absent from the
  *  lobby, the rail and the link preview, all of which speak for the work as
  *  a whole. */
-export interface View {
-  file: string;
-  widths: number[];
-  webp: boolean;
-  /** Pixel size, so the grid on the purchase page can reserve the right shape
-   *  before the picture arrives. These are lazily loaded and below the fold,
-   *  and without an intrinsic size each figure is zero-high until it loads —
-   *  the captions stack up against each other and then everything jumps. */
-  width?: number;
-  height?: number;
+export interface View extends Sized {
   /** What this view shows. Read aloud by the alt text and printed under the
    *  picture, because an unlabelled extra photograph is just clutter — the
    *  point is to say "this is the texture" or "this is it on a wall". */
@@ -28,8 +20,7 @@ export interface View {
   kind: 'detail' | 'framed' | 'other';
 }
 
-export interface Work {
-  file: string;
+export interface Work extends Sized {
   /** Widths of the smaller copies that exist beside this picture, ascending.
    *  The browser picks one; the original is always there as the fallback and
    *  is what the download link serves. See scripts/make-derivatives.sh. */
@@ -91,12 +82,13 @@ export interface Room {
   title: string;
   subtitle: string;
   description: string;
-  cover: string | null;
-  coverFile: string | null;
-  coverWidth?: number;
-  coverHeight?: number;
-  coverWidths: number[];
-  coverWebp: boolean;
+  /** The picture that fronts the room in the lobby. The same shape as a work
+   *  or a view, rather than six parallel `cover*` scalars — the client had to
+   *  reassemble those into this shape anyway before it could use any of the
+   *  shared URL helpers on them. Null for a room with no cover on disk. */
+  cover: Sized | null;
+  /** Ready-made URL for the full-size cover, for the link preview. */
+  coverUrl: string | null;
   includes: string[];
   order: number;
   about?: AboutInfo;
@@ -140,26 +132,22 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     if (!w || typeof w.file !== 'string') {
       throw new Error(`${dir}/index.json: a work is missing "file"`);
     }
-    // A picture listed but not shipped shouldn't take the whole site down.
-    if (!fs.existsSync(path.join(assetsDir, dir, w.file))) {
-      console.warn(`content: ${dir}/${w.file} listed in index.json but not on disk — skipped`);
-      return [];
-    }
+    if (!onDisk(assetsDir, dir, w.file, 'listed in index.json')) return [];
     const status: Status = STATUSES.includes(w.status) ? w.status : 'available';
     let slug = slugify(w.title || w.file);
     const base = slug;
     for (let n = 2; seen.has(slug); n++) slug = `${base}-${n}`;
     seen.add(slug);
-    const size = imageSize(path.join(assetsDir, dir, w.file));
+    const pic = sizedWithPixels(roomDir, path.join(assetsDir, dir, w.file), w.file, availableWidths);
     return [{
-      file: w.file,
-      widths: widthsFor(roomDir, w.file, availableWidths),
-      webp: hasWebp(roomDir, w.file, widthsFor(roomDir, w.file, availableWidths)),
-      width: size?.width,
-      height: size?.height,
+      ...pic,
       uid: typeof w.uid === 'string' ? w.uid : '',
       slug,
-      src: `/assets/${c.id}/${encodeURIComponent(w.file)}`,
+      // The id is encoded, not trusted. It is read from a file on a volume
+      // and is deliberately not required to match the folder it came from
+      // (see Room.dir), so it is arbitrary text — and this string is put
+      // straight into a src attribute on the purchase page.
+      src: `/assets/${encodeURIComponent(c.id)}/${encodeURIComponent(w.file)}?v=${pic.v}`,
       title: w.title || w.file,
       date: w.date || '',
       artist: w.artist,
@@ -170,7 +158,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
       price: typeof w.price === 'number' ? w.price : undefined,
       currency: w.currency || 'USD',
       status,
-      purchaseUrl: w.purchase_url || `/buy/${c.id}/${slug}`,
+      purchaseUrl: w.purchase_url || `/buy/${encodeURIComponent(c.id)}/${slug}`,
       includes: [...roomIncludes, ...strings(w.includes)],
       views: readViews(w.views, dir, assetsDir, roomDir, availableWidths),
     }];
@@ -178,7 +166,9 @@ function readRoom(dir: string, assetsDir: string): Room | null {
 
   const coverFile = typeof c.cover === 'string' ? c.cover : null;
   const coverOk = coverFile && fs.existsSync(path.join(assetsDir, dir, coverFile));
-  const coverSize = coverOk ? imageSize(path.join(assetsDir, dir, coverFile as string)) : null;
+  const cover = coverOk
+    ? sizedWithPixels(roomDir, path.join(assetsDir, dir, coverFile as string), coverFile as string, availableWidths)
+    : null;
 
   return {
     id: c.id,
@@ -188,18 +178,44 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     title: c.title || c.id,
     subtitle: c.subtitle || '',
     description: c.description || '',
-    cover: coverOk ? `/assets/${c.id}/${encodeURIComponent(coverFile as string)}` : null,
-    coverFile: coverOk ? (coverFile as string) : null,
-    coverWidth: coverSize?.width,
-    coverHeight: coverSize?.height,
-    coverWidths: coverOk ? widthsFor(roomDir, coverFile as string, availableWidths) : [],
-    coverWebp: coverOk
-      ? hasWebp(roomDir, coverFile as string, widthsFor(roomDir, coverFile as string, availableWidths))
-      : false,
+    cover,
+    coverUrl: cover
+      ? `/assets/${encodeURIComponent(c.id)}/${encodeURIComponent(cover.file)}?v=${cover.v}`
+      : null,
     includes: roomIncludes,
     order: typeof c.order === 'number' ? c.order : 50,
-    about: raw.about,
+    about: readAbout(raw.about),
     works,
+  };
+}
+
+/** The About room's text, taken to the shape the rest of the code expects.
+ *  It used to be passed through exactly as parsed, so `body` being a string
+ *  rather than a list of them — an easy thing to write by hand — reached
+ *  `about.body.map(...)` in the no-JavaScript fallback and threw a
+ *  TypeError from the middle of rendering the page. At boot that is a
+ *  readiness failure with a stack trace instead of a sentence, and on reload
+ *  it costs the edit rather than the site, but neither is a good way to find
+ *  out that a quotation mark is in the wrong place. */
+function readAbout(raw: any): AboutInfo | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const body = Array.isArray(raw.body)
+    ? raw.body.filter((p: unknown): p is string => typeof p === 'string')
+    : typeof raw.body === 'string'
+      ? [raw.body]          // one paragraph, written without the brackets
+      : [];
+  const email = raw.contact && typeof raw.contact.email === 'string'
+    ? raw.contact.email
+    : null;
+  return {
+    name: typeof raw.name === 'string' ? raw.name : '',
+    role: typeof raw.role === 'string' ? raw.role : undefined,
+    body,
+    // A contact with no address is not a contact; it would render a mailto:
+    // link to the word "undefined".
+    contact: email
+      ? { email, note: typeof raw.contact.note === 'string' ? raw.contact.note : undefined }
+      : undefined,
   };
 }
 
@@ -218,19 +234,10 @@ function readViews(
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((v: any): View[] => {
     if (!v || typeof v.file !== 'string') return [];
-    if (!fs.existsSync(path.join(assetsDir, dir, v.file))) {
-      console.warn(`content: ${dir}/${v.file} listed as a view but not on disk — skipped`);
-      return [];
-    }
-    const widths = widthsFor(roomDir, v.file, availableWidths);
+    if (!onDisk(assetsDir, dir, v.file, 'listed as a view')) return [];
     const kind = v.kind === 'detail' || v.kind === 'framed' ? v.kind : 'other';
-    const size = imageSize(path.join(assetsDir, dir, v.file));
     return [{
-      file: v.file,
-      widths,
-      webp: hasWebp(roomDir, v.file, widths),
-      width: size?.width,
-      height: size?.height,
+      ...sizedWithPixels(roomDir, path.join(assetsDir, dir, v.file), v.file, availableWidths),
       caption: typeof v.caption === 'string' ? v.caption : '',
       kind,
     }];
@@ -251,10 +258,34 @@ function widthDirs(roomDir: string): number[] {
   }
 }
 
-/** Of those, the ones that actually hold this picture. A derivative can be
- *  missing — a picture too small to be worth shrinking has none at all. */
-function widthsFor(roomDir: string, file: string, dirs: number[]): number[] {
-  return dirs.filter((w) => fs.existsSync(path.join(roomDir, `w${w}`, file)));
+/** Everything the rest of the code needs to know about one picture file:
+ *  which smaller copies exist, whether WebP covers all of them, and a token
+ *  that changes when any of it does.
+ *
+ *  One pass, and one syscall per candidate file. This used to be three
+ *  separate walks over the same paths — existsSync to find the widths,
+ *  existsSync again for the WebP beside each, then statSync over the lot to
+ *  build the version — which asked the filesystem the same questions twice
+ *  and assembled the answers by hand at each of the three call sites.
+ *
+ *  The version is size and mtime rather than a hash of the contents: the
+ *  originals here run to tens of megabytes and this is recomputed on every
+ *  content reload, while the question being asked is only "did somebody
+ *  replace this file", which a stat already answers. `tar` preserves mtimes,
+ *  so a sync carries the same token to the volume rather than churning every
+ *  URL on arrival.
+ *
+ *  Every derivative is folded in, not just the original, because they change
+ *  on their own: a FORCE=1 rebuild or a different QUALITY rewrites the copies
+ *  and leaves the original untouched. */
+/** A picture that index.json names but the sync did not carry. Warn and skip
+ *  it rather than throwing: a missing file must never take down a gallery
+ *  that is otherwise fine, and the same rule holds for a work and for one of
+ *  its views — which is why it is said here once rather than at both. */
+function onDisk(assetsDir: string, dir: string, file: string, listedAs: string): boolean {
+  if (fs.existsSync(path.join(assetsDir, dir, file))) return true;
+  console.warn(`content: ${dir}/${file} ${listedAs} but not on disk — skipped`);
+  return false;
 }
 
 /** The WebP beside a resized copy keeps the basename and changes the
@@ -263,12 +294,52 @@ export function webpName(file: string): string {
   return file.replace(/\.[A-Za-z0-9]+$/, '') + '.webp';
 }
 
-/** True only when every width has one, so the browser can switch format
- *  wholesale rather than per width. */
-function hasWebp(roomDir: string, file: string, widths: number[]): boolean {
-  if (!widths.length) return false;
+export interface Sized {
+  file: string;
+  widths: number[];
+  webp: boolean;
+  v: string;
+  width?: number;
+  height?: number;
+}
+
+function sizedFrom(roomDir: string, file: string, dirs: number[]): Omit<Sized, 'width' | 'height'> {
+  const stamp = (p: string): string | null => {
+    try {
+      const st = fs.statSync(p);
+      return `${st.size}:${st.mtimeMs}`;
+    } catch {
+      return null;      // not there; ENOENT is the answer, not an error
+    }
+  };
+  const parts: string[] = [stamp(path.join(roomDir, file)) ?? ''];
   const name = webpName(file);
-  return widths.every((w) => fs.existsSync(path.join(roomDir, `w${w}`, name)));
+  const widths: number[] = [];
+  let webpEverywhere = true;
+  for (const w of dirs) {
+    const jpeg = stamp(path.join(roomDir, `w${w}`, file));
+    if (!jpeg) continue;              // this width was never made
+    widths.push(w);
+    parts.push(jpeg);
+    const wp = stamp(path.join(roomDir, `w${w}`, name));
+    // WebP is all or nothing, so the browser can switch format wholesale
+    // rather than per width.
+    if (wp) parts.push(wp);
+    else webpEverywhere = false;
+  }
+  return {
+    file,
+    widths,
+    webp: widths.length > 0 && webpEverywhere,
+    v: createHash('sha1').update(parts.join('|')).digest('hex').slice(0, 10),
+  };
+}
+
+/** The same, plus the pixel dimensions — which cost an open and a read, so
+ *  they are only taken where something actually needs them. */
+function sizedWithPixels(roomDir: string, absFile: string, file: string, dirs: number[]): Sized {
+  const size = imageSize(absFile);
+  return { ...sizedFrom(roomDir, file, dirs), width: size?.width, height: size?.height };
 }
 
 export function loadRooms(assetsDir: string = ASSETS_DIR): Room[] {

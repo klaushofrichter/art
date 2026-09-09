@@ -27,6 +27,17 @@ jobs:
       # job it would be advisory and gate nothing.
       - run: npm audit --audit-level=high
 
+      # Only on the way to production, because that is the merge that cuts a
+      # release and so the moment the notes are read. Five releases running,
+      # [Unreleased] was left holding the previous one's notes and published
+      # them a second time; it is written down in two places and was missed
+      # every time, which is the argument for checking it rather than asking.
+      - name: Refuse notes that have already been published
+        if: github.base_ref == 'production'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/check-changelog.sh
+
   e2e:
     # The Playwright suite runs here, on GitHub's runners, rather than in the
     # deploy: installing a browser on the in-cluster self-hosted runner

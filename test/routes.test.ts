@@ -180,7 +180,16 @@ describe('the manifest ships identifiers, not URLs', () => {
       expect(w.src).toBeUndefined();
       expect(w.purchaseUrl).toBeUndefined();
     }
-    for (const r of data) expect(r.cover).toBeUndefined();
+    for (const r of data) {
+      // The cover ships as identifiers now, the same shape as a work — so
+      // check it carries no URL rather than that it is absent, and that the
+      // ready-made URL the server keeps for link previews stays server-side.
+      expect(r.coverUrl).toBeUndefined();
+      if (r.cover) {
+        expect(r.cover.file).toBeTruthy();
+        expect(JSON.stringify(r.cover)).not.toContain('/assets/');
+      }
+    }
   });
 });
 
@@ -266,7 +275,8 @@ describe('the no-JavaScript fallback derives its URLs too', () => {
     expect(res.text).not.toContain('onerror=');
     // and it still links to the right place
     expect(res.text).toContain('href="/buy/shapes/wide"');
-    expect(res.text).toContain('src="/assets/shapes/wide.jpg"');
+    const wide = poisoned.find((r) => r.id === 'shapes')!.works[0];
+    expect(res.text).toContain(`src="/assets/shapes/wide.jpg?v=${wide.v}"`);
   });
 });
 

@@ -16,6 +16,12 @@ export type GalleryApp = Express & {
    *  that is already serving. Unlike at boot, where throwing is right because
    *  there is nothing to fall back to. */
   reloadContent(): boolean;
+  /** What the app is serving right now. The watcher used to answer that by
+   *  reading the directory a second time, which put a `loadRooms` outside
+   *  the try/catch above — the one place a bad edit was guaranteed to be
+   *  caught — and threw for its trouble if the content changed again in
+   *  between. */
+  rooms(): Room[];
 };
 
 export function createApp(
@@ -46,6 +52,8 @@ export function createApp(
   // compressed, so the pictures are left alone.
   app.use(compression());
 
+  app.rooms = () => current;
+
   app.reloadContent = () => {
     try {
       const next = loadRooms(assetsDir);
@@ -73,15 +81,43 @@ export function createApp(
   // is counted, which is what the sizing in ratelimit.ts is measured against.
   app.use(galleryLimiter());
 
-  // The pictures and the client bundle are immutable for the life of an
-  // image — a new deploy is a new container, so caching them hard is safe.
-  // Not in development, where the files change under a running process and
-  // a year-long cache would hide every edit.
-  const oneYear = process.env.NODE_ENV === 'production'
+  const production = process.env.NODE_ENV === 'production';
+
+  // A room directory holds more than pictures. `index.json` sits in it — the
+  // whole manifest, including every uid and purchase_url, the contact
+  // address, and the prices of sold work that views/gallery.ts deliberately
+  // never serialises into the page. Serving the pictures out of that
+  // directory was serving all of that with them.
+  //
+  // An allowlist rather than a rule about index.json, because the directory
+  // is filled by a content sync rather than by this repository: an editor
+  // backup, a stray note, a spreadsheet of prices, anything that happens to
+  // be in the folder when someone runs the script. None of it becomes public
+  // by being copied next to a picture.
+  const PICTURE = /\.(?:jpe?g|png|webp)$/i;
+  app.use('/assets', (req, res, next) => {
+    if (PICTURE.test(req.path)) return next();
+    // 404 rather than 403: whether a particular file is there is not
+    // something a refusal should confirm.
+    res.status(404).type('txt').send('Not found');
+  });
+
+  // Everything served from here carries a version in its URL — the client
+  // bundle a content hash (src/fingerprint.ts), the pictures a token built
+  // from their own size and mtime (versionOf in content.ts). So a file that
+  // changes is a URL that changes, and a URL that does not change can be
+  // pinned for as long as we like.
+  //
+  // That last part is not decoration. The pictures are replaced by a content
+  // sync rather than a deploy and always land under the same filename, so
+  // before they were versioned this cache meant a re-shot picture never
+  // reached anyone who had already seen the old one. Do not cache /assets
+  // hard again without checking the URLs still move.
+  const forever = production
     ? ({ maxAge: '365d', immutable: true } as const)
     : ({ maxAge: 0, etag: true } as const);
-  app.use('/assets', express.static(assetsDir, oneYear));
-  app.use(express.static(PUBLIC_DIR, oneYear));
+  app.use('/assets', express.static(assetsDir, forever));
+  app.use(express.static(PUBLIC_DIR, forever));
 
   // A page carries the fingerprinted URLs of the assets it needs, so it must
   // never be served from cache without checking first. A stale page points at

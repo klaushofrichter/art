@@ -339,7 +339,9 @@ test('the label offers the picture on screen at full resolution', async ({ page 
   await page.goto('/#shapes/wide');
   const dl = page.locator('.info .download');
   await expect(dl).toBeVisible();
-  await expect(dl).toHaveAttribute('href', '/assets/shapes/wide.jpg');
+  // Versioned, like every picture URL the client builds: /assets is pinned
+  // for a year, so a URL that never changed would pin a replaced picture too.
+  await expect(dl).toHaveAttribute('href', /^\/assets\/shapes\/wide\.jpg\?v=[a-f0-9]{10}$/);
   await expect(dl).toHaveAttribute('download', 'wide.jpg');
 
   // it follows the picture, and there is only ever one
@@ -642,7 +644,7 @@ test('the pictures actually load at the URLs the client builds', async ({ page }
   const art = page.locator('.plate .art').first();
   await expect(art).toBeVisible();
   await expect.poll(() => art.evaluate((n: HTMLImageElement) => n.naturalWidth)).toBeGreaterThan(0);
-  await expect(art).toHaveAttribute('src', '/assets/shapes/wide.jpg');
+  await expect(art).toHaveAttribute('src', /^\/assets\/shapes\/wide\.jpg\?v=[a-f0-9]{10}$/);
 });
 
 test('the buy link points at the canonical purchase page', async ({ page }) => {
@@ -872,7 +874,7 @@ test.describe('a browser that takes WebP', () => {
     await page.locator('.enter').first().click();
     await expect(page.locator('.slide .art').first()).toHaveAttribute('srcset', /\.webp/);
     const href = await page.locator('a[download]').first().getAttribute('href');
-    expect(href).toMatch(/\.jpg$/);
+    expect(href).toMatch(/\.jpg\?v=[a-f0-9]{10}$/);
   });
 });
 
@@ -948,6 +950,52 @@ test.describe('the second axis: more photographs of one work', () => {
     await expect(page.locator('.viewcap')).toContainText('2 / 3');
     // Clicking a control must not also strip the label off the picture.
     await expect(page.locator('.room')).not.toHaveClass(/bare/);
+  });
+
+  test('the arrows announce themselves when they first appear', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    // Wide has views, so they arrive with the room and say so.
+    await expect(page.locator('.viewnav.next')).toHaveClass(/arriving/);
+  });
+
+  test('but not again for a view change within the same work', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    const next = page.locator('.viewnav.next');
+    await expect(next).toHaveClass(/arriving/);
+    // Let the second of colour finish, so what follows is not just its tail.
+    await page.waitForTimeout(1200);
+    await expect(next).not.toHaveClass(/arriving/);
+
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.viewcap')).toContainText('2 / 3');
+    await expect(next).not.toHaveClass(/arriving/);
+  });
+
+  test('nor when both works either side of a step have them', async ({ page }) => {
+    // Both prints carry a view, so stepping between them never takes the
+    // arrows away — and a control that lit up on every step would nag.
+    await page.goto('/#prints/first-print');
+    const next = page.locator('.viewnav.next');
+    await expect(next).toHaveClass(/arriving/);
+    await page.waitForTimeout(1200);
+
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('.info h2')).toHaveText('Second Print');
+    await expect(next).toBeVisible();
+    await expect(next).not.toHaveClass(/arriving/);
+  });
+
+  test('and again once a work without them has put them away', async ({ page }) => {
+    await page.goto('/#shapes/wide');
+    await page.waitForTimeout(1200);
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('.info h2')).toHaveText('Tall');
+    await expect(page.locator('.viewnav.next')).toBeHidden();
+
+    await page.keyboard.press('ArrowUp');
+    await expect(page.locator('.info h2')).toHaveText('Wide');
+    // Earned its moment again: they really did go away in between.
+    await expect(page.locator('.viewnav.next')).toHaveClass(/arriving/);
   });
 
   test('moving to another work comes back to that work’s own picture', async ({ page }) => {

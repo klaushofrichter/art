@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { loadRooms, findWork } from '../src/content';
-import { ASSETS, rooms } from './setup';
+import { ASSETS, rooms, tempDir } from './setup';
 
 describe('loadRooms', () => {
   it('finds every room folder that has an index.json', () => {
@@ -24,7 +23,10 @@ describe('loadRooms', () => {
   it('builds a URL and a slug for each work', () => {
     const wide = rooms.find((r) => r.id === 'shapes')?.works[0];
     expect(wide?.slug).toBe('wide');
-    expect(wide?.src).toBe('/assets/shapes/wide.jpg');
+    // Versioned, so the year-long cache on /assets cannot strand a picture
+    // that was replaced under the same filename.
+    expect(wide?.v).toMatch(/^[a-f0-9]{10}$/);
+    expect(wide?.src).toBe(`/assets/shapes/wide.jpg?v=${wide?.v}`);
     expect(wide?.purchaseUrl).toBe('/buy/shapes/wide');
   });
 
@@ -55,7 +57,7 @@ describe('loadRooms', () => {
 
 describe('slug collisions', () => {
   it('counts rather than piling up suffixes', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-slug-'));
+    const dir = tempDir('art-slug');
     const room = path.join(dir, 'dup');
     fs.mkdirSync(room);
     for (const f of ['a.jpg', 'b.jpg', 'c.jpg']) fs.writeFileSync(path.join(room, f), 'x');

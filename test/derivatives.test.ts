@@ -30,7 +30,7 @@ describe('finding the smaller copies on disk', () => {
   });
 
   it('finds the room cover\'s copies too', () => {
-    expect(shapes.coverWidths).toEqual([640]);
+    expect(shapes.cover!.widths).toEqual([640]);
   });
 
   it('a copy really is the width it claims', () => {
@@ -80,18 +80,18 @@ describe('what the browser is told', () => {
 
   it('ships the cover widths for each room', async () => {
     const data = manifestOf((await request(app()).get('/')).text);
-    expect(data.find((r: any) => r.id === 'shapes').coverWidths).toEqual([640]);
+    expect(data.find((r: any) => r.id === 'shapes').cover.widths).toEqual([640]);
   });
 });
 
 describe('the srcset the server writes', () => {
   it('offers every copy at its own width', () => {
-    expect(srcset('shapes', wide)).toBe('/assets/shapes/w640/wide.jpg 640w');
+    expect(srcset('shapes', wide)).toBe(`/assets/shapes/w640/wide.jpg?v=${wide.v} 640w`);
   });
 
   it('leaves the original out — the ladder\'s top is the display ceiling', () => {
     const set = srcset('shapes', wide);
-    expect(set).not.toContain('/assets/shapes/wide.jpg');
+    expect(set).not.toContain('/assets/shapes/wide.jpg?');
     expect(set).not.toContain('800w');
   });
 
@@ -109,8 +109,8 @@ describe('the srcset the server writes', () => {
 describe('the pages that render an image themselves', () => {
   it('gives the purchase page a srcset and keeps the original as src', async () => {
     const res = await request(app()).get('/buy/shapes/wide');
-    expect(res.text).toContain('srcset="/assets/shapes/w640/wide.jpg 640w"');
-    expect(res.text).toContain('src="/assets/shapes/wide.jpg"');
+    expect(res.text).toContain(`srcset="/assets/shapes/w640/wide.jpg?v=${wide.v} 640w"`);
+    expect(res.text).toContain(`src="/assets/shapes/wide.jpg?v=${wide.v}"`);
     expect(res.text).toContain('sizes=');
   });
 
@@ -122,7 +122,7 @@ describe('the pages that render an image themselves', () => {
   it('gives the no-JavaScript fallback one too', async () => {
     const res = await request(app()).get('/');
     const noscript = (res.text.match(/<noscript>([\s\S]*?)<\/noscript>/) as RegExpMatchArray)[1];
-    expect(noscript).toContain('/assets/shapes/w640/wide.jpg 640w');
+    expect(noscript).toContain(`/assets/shapes/w640/wide.jpg?v=${wide.v} 640w`);
   });
 });
 
@@ -173,7 +173,7 @@ describe('WebP beside the resized copies', () => {
   });
 
   it('builds a webp srcset from the same widths', () => {
-    expect(webpSrcset('shapes', wide)).toBe('/assets/shapes/w640/wide.webp 640w');
+    expect(webpSrcset('shapes', wide)).toBe(`/assets/shapes/w640/wide.webp?v=${wide.v} 640w`);
   });
 
   it('gives an empty webp srcset when there is none, so the source is omitted', () => {
@@ -187,10 +187,10 @@ describe('WebP beside the resized copies', () => {
   it('offers a webp source and a jpeg fallback on the purchase page', async () => {
     const res = await request(app()).get('/buy/shapes/wide');
     expect(res.text).toContain('<picture>');
-    expect(res.text).toContain('<source type="image/webp" srcset="/assets/shapes/w640/wide.webp 640w"');
+    expect(res.text).toContain(`<source type="image/webp" srcset="/assets/shapes/w640/wide.webp?v=${wide.v} 640w"`);
     // the <img> inside stays JPEG, which is what a browser without webp takes
-    expect(res.text).toContain('src="/assets/shapes/wide.jpg"');
-    expect(res.text).toContain('srcset="/assets/shapes/w640/wide.jpg 640w"');
+    expect(res.text).toContain(`src="/assets/shapes/wide.jpg?v=${wide.v}"`);
+    expect(res.text).toContain(`srcset="/assets/shapes/w640/wide.jpg?v=${wide.v} 640w"`);
   });
 
   it('writes no empty source for a picture with no webp', async () => {
@@ -215,7 +215,7 @@ describe('WebP beside the resized copies', () => {
     const data = manifestOf((await request(app()).get('/')).text);
     const work = data.find((r: any) => r.id === 'shapes').works.find((w: any) => w.slug === 'wide');
     expect(work.webp).toBe(true);
-    expect(data.find((r: any) => r.id === 'shapes').coverWebp).toBe(true);
+    expect(data.find((r: any) => r.id === 'shapes').cover.webp).toBe(true);
     expect(JSON.stringify(data)).not.toContain('/assets/');
   });
 });

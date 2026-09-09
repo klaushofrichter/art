@@ -94,7 +94,8 @@ describe('the purchase page', () => {
 
   it('serves the WebP copies where a view has them and not where it does not', async () => {
     const res = await request(app()).get('/buy/shapes/wide');
-    expect(res.text).toContain('/assets/shapes/w640/wide-framed.webp 640w');
+    const framed = wide.views[0];
+    expect(res.text).toContain(`/assets/shapes/w640/wide-framed.webp?v=${framed.v} 640w`);
     expect(res.text).not.toContain('wide-detail.webp');
   });
 

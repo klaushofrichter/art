@@ -323,6 +323,23 @@ body {
    so without this the arrows stay on screen for every work that has nothing
    behind them. */
 .viewnav[hidden] { display:none; }
+
+/* The arrows announce themselves the moment they appear, then get out of the
+   way. A picture with more to show is the exception here rather than the
+   rule, so the arrows arriving is news — but only the first time: paging from
+   one work with views to another never hides them, and a control that lit up
+   on every step would be a nag rather than a hint. Ends on exactly the
+   resting values above, so there is no jump when the animation lets go.
+   The global prefers-reduced-motion rule collapses this to nothing. */
+@keyframes viewnav-arriving {
+  0%   { background:#E8912A; border-color:#F2B23F; color:#0B1017;
+         box-shadow:0 0 0 7px rgba(232,145,42,.30); }
+  55%  { background:#E8912A; border-color:#F2B23F; color:#0B1017;
+         box-shadow:0 0 0 3px rgba(232,145,42,.14); }
+  100% { background:rgba(9,13,20,.4); border-color:rgba(237,231,218,.13);
+         color:rgba(237,231,218,.62); box-shadow:0 0 0 0 rgba(232,145,42,0); }
+}
+.viewnav.arriving { animation:viewnav-arriving 1s ease-out both; }
 .viewnav.prev { left:2.6vw; }
 .viewnav.next { right:2.6vw; }
 /* The dots own the right edge at this height, so the forward arrow steps in
