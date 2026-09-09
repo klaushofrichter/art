@@ -496,6 +496,29 @@ link.
 URLs carry a content hash; without it a deploy would never reach a returning
 visitor.
 
+**The pictures carry one too**, for a different reason. They live on a volume
+and are replaced without a deploy, always under the same filename —
+`make-derivatives.sh` rewrites a derivative in place — so nothing about the
+path says the bytes changed. `versionOf` in `src/content.ts` builds a
+ten-character token from the size and mtime of the original and of every
+derivative of it, and each picture URL carries it as `?v=`. Change a picture
+and its URL changes with it, which is what makes a year of `immutable`
+caching safe rather than a way of pinning the old one forever.
+
+The derivatives are folded into the token because they can change alone: a
+`FORCE=1` rebuild or a different quality setting rewrites the copies and never
+touches the original. And it is a cache key rather than a lookup — `/assets`
+ignores the query, so an old link still serves the current file.
+
+**`/assets` serves pictures and nothing else.** Only `.jpg`, `.jpeg`, `.png`
+and `.webp` are answered; everything else in a room directory is a 404. That
+directory is filled by a content sync rather than by this repository, and it
+holds `index.json` — the whole manifest, every uid and `purchase_url`, the
+contact address, and the prices of sold work that the page deliberately never
+serialises. It is an allowlist rather than a rule about `index.json`, so an
+editor backup or a stray note does not become public by being copied next to
+a picture.
+
 The pages themselves are `Cache-Control: no-cache` — cached, but revalidated
 every time, which the ETag makes a 304 with no body. A page names the
 fingerprinted assets it needs, so serving a stale one would point at stale

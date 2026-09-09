@@ -21,7 +21,11 @@ export function buyRouter(rooms: () => Room[]): Router {
     // index.json may point a work at somewhere else entirely. The gallery
     // always links to this canonical path, so the redirect lives here rather
     // than in the browser — the client never handles a URL from content.
-    const canonical = `/buy/${found.room.id}/${found.work.slug}`;
+    // Built the same way content.ts builds the default purchaseUrl, encoding
+    // included — otherwise a room id that needs encoding makes every work in
+    // it look like it points somewhere else, and each one redirects to
+    // itself for ever.
+    const canonical = `/buy/${encodeURIComponent(found.room.id)}/${found.work.slug}`;
     if (found.work.purchaseUrl && found.work.purchaseUrl !== canonical) {
       res.redirect(302, found.work.purchaseUrl);
       return;

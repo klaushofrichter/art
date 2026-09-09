@@ -94,7 +94,8 @@ describe('a shared permalink previews what was shared', () => {
   it('shows the picture the id names, not the gallery cover', async () => {
     const m = meta((await request(app()).get('/?id=fixtall1')).text);
     expect(m['og:title']).toBe('Tall — Klaus Hofrichter');
-    expect(m['og:image']).toBe(absolute('/assets/shapes/tall.jpg'));
+    const tall = rooms.find((r) => r.id === 'shapes')!.works.find((w) => w.slug === 'tall')!;
+    expect(m['og:image']).toBe(absolute(`/assets/shapes/tall.jpg?v=${tall.v}`));
     expect(m['og:image:height']).toBe('900');
     expect(m['og:url']).toBe('https://art.klaushofrichter.net/?id=fixtall1');
   });

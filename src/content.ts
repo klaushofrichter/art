@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { createHash } from 'crypto';
 import { imageSize } from './imagesize';
 
 export type Status = 'available' | 'sold' | 'reserved' | 'nfs';
@@ -15,6 +16,8 @@ export interface View {
   file: string;
   widths: number[];
   webp: boolean;
+  /** Cache key for this picture and its copies — see versionOf. */
+  v: string;
   /** Pixel size, so the grid on the purchase page can reserve the right shape
    *  before the picture arrives. These are lazily loaded and below the fold,
    *  and without an intrinsic size each figure is zero-high until it loads —
@@ -30,6 +33,10 @@ export interface View {
 
 export interface Work {
   file: string;
+  /** Cache key for this picture and its copies — see versionOf. Every URL
+   *  that names the file carries it, which is what lets the pictures be
+   *  cached for a year despite being replaced under the same name. */
+  v: string;
   /** Widths of the smaller copies that exist beside this picture, ascending.
    *  The browser picks one; the original is always there as the fallback and
    *  is what the download link serves. See scripts/make-derivatives.sh. */
@@ -97,6 +104,7 @@ export interface Room {
   coverHeight?: number;
   coverWidths: number[];
   coverWebp: boolean;
+  coverV: string;
   includes: string[];
   order: number;
   about?: AboutInfo;
@@ -151,15 +159,23 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     for (let n = 2; seen.has(slug); n++) slug = `${base}-${n}`;
     seen.add(slug);
     const size = imageSize(path.join(assetsDir, dir, w.file));
+    const workWidths = widthsFor(roomDir, w.file, availableWidths);
+    const workWebp = hasWebp(roomDir, w.file, workWidths);
+    const workV = versionOf(roomDir, w.file, workWidths, workWebp);
     return [{
       file: w.file,
-      widths: widthsFor(roomDir, w.file, availableWidths),
-      webp: hasWebp(roomDir, w.file, widthsFor(roomDir, w.file, availableWidths)),
+      widths: workWidths,
+      webp: workWebp,
+      v: workV,
       width: size?.width,
       height: size?.height,
       uid: typeof w.uid === 'string' ? w.uid : '',
       slug,
-      src: `/assets/${c.id}/${encodeURIComponent(w.file)}`,
+      // The id is encoded, not trusted. It is read from a file on a volume
+      // and is deliberately not required to match the folder it came from
+      // (see Room.dir), so it is arbitrary text — and this string is put
+      // straight into a src attribute on the purchase page.
+      src: `/assets/${encodeURIComponent(c.id)}/${encodeURIComponent(w.file)}?v=${workV}`,
       title: w.title || w.file,
       date: w.date || '',
       artist: w.artist,
@@ -170,7 +186,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
       price: typeof w.price === 'number' ? w.price : undefined,
       currency: w.currency || 'USD',
       status,
-      purchaseUrl: w.purchase_url || `/buy/${c.id}/${slug}`,
+      purchaseUrl: w.purchase_url || `/buy/${encodeURIComponent(c.id)}/${slug}`,
       includes: [...roomIncludes, ...strings(w.includes)],
       views: readViews(w.views, dir, assetsDir, roomDir, availableWidths),
     }];
@@ -179,6 +195,9 @@ function readRoom(dir: string, assetsDir: string): Room | null {
   const coverFile = typeof c.cover === 'string' ? c.cover : null;
   const coverOk = coverFile && fs.existsSync(path.join(assetsDir, dir, coverFile));
   const coverSize = coverOk ? imageSize(path.join(assetsDir, dir, coverFile as string)) : null;
+  const coverWidths = coverOk ? widthsFor(roomDir, coverFile as string, availableWidths) : [];
+  const coverWebp = coverOk ? hasWebp(roomDir, coverFile as string, coverWidths) : false;
+  const coverV = coverOk ? versionOf(roomDir, coverFile as string, coverWidths, coverWebp) : '';
 
   return {
     id: c.id,
@@ -188,18 +207,49 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     title: c.title || c.id,
     subtitle: c.subtitle || '',
     description: c.description || '',
-    cover: coverOk ? `/assets/${c.id}/${encodeURIComponent(coverFile as string)}` : null,
+    cover: coverOk
+      ? `/assets/${encodeURIComponent(c.id)}/${encodeURIComponent(coverFile as string)}?v=${coverV}`
+      : null,
     coverFile: coverOk ? (coverFile as string) : null,
     coverWidth: coverSize?.width,
     coverHeight: coverSize?.height,
-    coverWidths: coverOk ? widthsFor(roomDir, coverFile as string, availableWidths) : [],
-    coverWebp: coverOk
-      ? hasWebp(roomDir, coverFile as string, widthsFor(roomDir, coverFile as string, availableWidths))
-      : false,
+    coverWidths,
+    coverWebp,
+    coverV,
     includes: roomIncludes,
     order: typeof c.order === 'number' ? c.order : 50,
-    about: raw.about,
+    about: readAbout(raw.about),
     works,
+  };
+}
+
+/** The About room's text, taken to the shape the rest of the code expects.
+ *  It used to be passed through exactly as parsed, so `body` being a string
+ *  rather than a list of them — an easy thing to write by hand — reached
+ *  `about.body.map(...)` in the no-JavaScript fallback and threw a
+ *  TypeError from the middle of rendering the page. At boot that is a
+ *  readiness failure with a stack trace instead of a sentence, and on reload
+ *  it costs the edit rather than the site, but neither is a good way to find
+ *  out that a quotation mark is in the wrong place. */
+function readAbout(raw: any): AboutInfo | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const body = Array.isArray(raw.body)
+    ? raw.body.filter((p: unknown): p is string => typeof p === 'string')
+    : typeof raw.body === 'string'
+      ? [raw.body]          // one paragraph, written without the brackets
+      : [];
+  const email = raw.contact && typeof raw.contact.email === 'string'
+    ? raw.contact.email
+    : null;
+  return {
+    name: typeof raw.name === 'string' ? raw.name : '',
+    role: typeof raw.role === 'string' ? raw.role : undefined,
+    body,
+    // A contact with no address is not a contact; it would render a mailto:
+    // link to the word "undefined".
+    contact: email
+      ? { email, note: typeof raw.contact.note === 'string' ? raw.contact.note : undefined }
+      : undefined,
   };
 }
 
@@ -225,10 +275,12 @@ function readViews(
     const widths = widthsFor(roomDir, v.file, availableWidths);
     const kind = v.kind === 'detail' || v.kind === 'framed' ? v.kind : 'other';
     const size = imageSize(path.join(assetsDir, dir, v.file));
+    const viewWebp = hasWebp(roomDir, v.file, widths);
     return [{
       file: v.file,
       widths,
-      webp: hasWebp(roomDir, v.file, widths),
+      webp: viewWebp,
+      v: versionOf(roomDir, v.file, widths, viewWebp),
       width: size?.width,
       height: size?.height,
       caption: typeof v.caption === 'string' ? v.caption : '',
@@ -261,6 +313,43 @@ function widthsFor(roomDir: string, file: string, dirs: number[]): number[] {
  *  extension. Exported because the browser has to build the same name. */
 export function webpName(file: string): string {
   return file.replace(/\.[A-Za-z0-9]+$/, '') + '.webp';
+}
+
+/** A short token that changes when this picture does — the same idea as
+ *  src/fingerprint.ts, applied to content instead of code.
+ *
+ *  It exists so the pictures can be cached hard. They are replaced by a
+ *  sync rather than a deploy and always land under the same filename, so
+ *  without something in the URL that moves with the bytes, a re-shot picture
+ *  never reaches anyone who has already seen the old one.
+ *
+ *  Size and mtime rather than a hash of the contents: the originals here run
+ *  to tens of megabytes and this is recomputed on every reload, while the
+ *  thing being detected is "somebody replaced this file", which a stat
+ *  already answers. `tar` preserves mtimes, so a sync carries the same token
+ *  to the volume rather than churning every URL on arrival.
+ *
+ *  Every derivative is folded in, not just the original, because they can
+ *  change on their own: a FORCE=1 rebuild or a different QUALITY rewrites
+ *  the copies while the original sits untouched. */
+function versionOf(roomDir: string, file: string, widths: number[], webp: boolean): string {
+  const parts: string[] = [];
+  const add = (p: string) => {
+    try {
+      const s = fs.statSync(p);
+      parts.push(`${s.size}:${s.mtimeMs}`);
+    } catch {
+      // A file that is not there contributes nothing rather than throwing.
+      // The version is a cache key, not an inventory.
+    }
+  };
+  add(path.join(roomDir, file));
+  const name = webpName(file);
+  for (const w of widths) {
+    add(path.join(roomDir, `w${w}`, file));
+    if (webp) add(path.join(roomDir, `w${w}`, name));
+  }
+  return createHash('sha1').update(parts.join('|')).digest('hex').slice(0, 10);
 }
 
 /** True only when every width has one, so the browser can switch format
