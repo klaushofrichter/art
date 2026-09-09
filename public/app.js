@@ -44,6 +44,10 @@
     return n;
   }
   function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); return n; }
+  /* niceDate and money are kept in step by hand with formatDate and
+     formatMoney in src/format.ts, the way webpName below is with its server
+     counterpart: the server renders the same dates and prices into the
+     purchase pages and the link previews, and the two must agree. */
   var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   function niceDate(d) {
     if (!d) return '';
@@ -120,17 +124,13 @@
      load the full-resolution original. */
   var THUMB_PX = 62;
 
-  /* A picture and the copies of it that exist. Works and views already have
-     this shape; a room's cover is spread across four fields and is put into
-     it by coverPic below. Every URL helper takes one of these rather than a
-     handful of loose arguments, so a caller cannot quietly leave the version
-     off and pin a stale picture in everyone's cache for a year. */
-  function coverPic(room) {
-    return room.coverFile
-      ? { file: room.coverFile, widths: room.coverWidths, webp: room.coverWebp, v: room.coverV }
-      : null;
-  }
-  /* The version token turns a picture that is replaced under the same
+  /* Works, views and room covers are all the same shape — a file, the widths
+     that exist beside it, whether WebP covers them, and a version. Every URL
+     helper takes one of those rather than a handful of loose arguments, so a
+     caller cannot quietly leave the version off and pin a stale picture in
+     everyone's cache for a year.
+
+     The version token turns a picture that is replaced under the same
      filename into a new URL, which is what lets /assets be cached hard. It
      is a hex string this server computed from a stat — never anything the
      content chose — so it cannot carry anything into the query string. */
@@ -471,8 +471,7 @@
 
   ROOMS.forEach(function (room) {
     var slide = el('div', 'slide');
-    var cover = coverPic(room);
-    var coverUrl = cover ? bestUrl(room.id, cover, window.innerWidth) : null;
+    var coverUrl = room.cover ? bestUrl(room.id, room.cover, window.innerWidth) : null;
     var p = el('div', 'lpanel' + (room.type === 'about' ? ' about' : '') +
       (coverUrl ? '' : ' nocover'));
     var bg = el('div', 'bg');
@@ -512,7 +511,7 @@
   roomsBtn.type = 'button';
   var lobbyMenu = Menu('Lobby', ROOMS.map(function (r) {
     return {
-      src: coverPic(r) ? bestUrl(r.id, coverPic(r), THUMB_PX) : null,
+      src: r.cover ? bestUrl(r.id, r.cover, THUMB_PX) : null,
       title: r.title,
       meta: r.type === 'about' ? 'Information' : r.works.length + ' works \u00b7 ' + r.subtitle
     };
@@ -610,6 +609,19 @@
     return false;
   }
   keyHandler = lobbyKeys;
+
+  /* Out of a room or the About room and back to the lobby, landing on the
+     panel you came from. Both exits do exactly this, and did it in two
+     identical copies before. */
+  function returnToLobby(view, roomIndex) {
+    view.remove();
+    liveRoom = null;
+    lobby.hidden = false;
+    lobby.focus({ preventScroll: true });
+    keyHandler = lobbyKeys;
+    lobbyRail.go(roomIndex);
+    syncLobby(roomIndex);
+  }
 
   /* ================= ROOM ================= */
   var liveRoom = null;
@@ -820,20 +832,23 @@
       var line = el('div', 'buyline');
       var pending = w.status === 'available' &&
         window.ArtPending && window.ArtPending.isPending(w.uid);
+      /* Three of the four branches below open with the same price, and it has
+         to be a fresh node each time — a node can only be in one place. */
+      function price() { return el('div', 'price', money(w.price, w.currency)); }
       if (pending && w.price != null) {
-        line.append(el('div', 'price', money(w.price, w.currency)));
+        line.append(price());
         /* the status is also the way back to the page it was sent from */
         var back = el('a', 'status pending no-drag', 'Sale pending');
         back.href = buyUrl(room.id, w.slug);
         line.append(back);
       } else if (w.status === 'available' && w.price != null) {
-        line.append(el('div', 'price', money(w.price, w.currency)));
+        line.append(price());
         var a = el('a', 'buy no-drag', 'Buy this picture');
         a.href = buyUrl(room.id, w.slug);
         line.append(a);
       } else if (w.status === 'reserved' && w.price != null) {
         /* price still shown, but it cannot be bought */
-        line.append(el('div', 'price', money(w.price, w.currency)), el('span', 'status', 'Reserved'));
+        line.append(price(), el('span', 'status', 'Reserved'));
       } else {
         /* sold and not-for-sale never show a price */
         line.append(el('span', 'status sold', STATUS[w.status] || 'Not for sale'));
@@ -917,15 +932,7 @@
       b.addEventListener('animationend', function () { b.classList.remove('arriving'); });
     });
 
-    function leave() {
-      view.remove();
-      liveRoom = null;
-      lobby.hidden = false;
-      lobby.focus({ preventScroll: true });
-      keyHandler = lobbyKeys;
-      lobbyRail.go(roomIndex);
-      syncLobby(roomIndex);
-    }
+    function leave() { returnToLobby(view, roomIndex); }
 
     keyHandler = function (e) {
       if (e.key === 'Escape') {
@@ -963,8 +970,7 @@
     if (liveRoom) liveRoom.remove();
     lobby.hidden = true;
     var roomIndex = ROOMS.indexOf(room);
-    var cover = coverPic(room);
-    var coverUrl = cover ? bestUrl(room.id, cover, window.innerWidth) : null;
+    var coverUrl = room.cover ? bestUrl(room.id, room.cover, window.innerWidth) : null;
 
     var view = el('div', 'screen room');
     var pane = el('div', 'aboutroom' + (coverUrl ? '' : ' nocover'));
@@ -982,15 +988,7 @@
     nav.append(back);
     view.append(nav);
 
-    function leave() {
-      view.remove();
-      liveRoom = null;
-      lobby.hidden = false;
-      lobby.focus({ preventScroll: true });
-      keyHandler = lobbyKeys;
-      lobbyRail.go(roomIndex);
-      syncLobby(roomIndex);
-    }
+    function leave() { returnToLobby(view, roomIndex); }
     back.onclick = function (ev) { ev.stopPropagation(); leave(); };
 
     /* Nothing to page through and no full screen, so Escape and Return both

@@ -25,15 +25,12 @@ function manifest(rooms: Room[]) {
     title: r.title,
     subtitle: r.subtitle,
     description: r.description,
-    coverFile: r.coverFile,
-    // Which smaller copies exist. Numbers, not URLs — the browser builds the
-    // path from a constant prefix and the width, same as everything else.
-    coverWidths: r.coverWidths,
-    coverWebp: r.coverWebp,
-    // The cache key for the cover, so the browser's URL for it moves when
-    // the picture does. A hex token this process computed from a stat, not
-    // anything content chose — see versionOf in content.ts.
-    coverV: r.coverV,
+    // A filename, some numbers and a hex cache key — never a URL. The
+    // browser builds the path from a constant prefix, same as it does for a
+    // work, and this is the same shape a work carries so it can.
+    cover: r.cover && {
+      file: r.cover.file, widths: r.cover.widths, webp: r.cover.webp, v: r.cover.v,
+    },
     about: r.about,
     // Identifiers, not URLs. The browser builds every src and href from a
     // constant prefix plus an encoded id, so a hand-edited index.json cannot

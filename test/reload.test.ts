@@ -1,23 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { loadRooms } from '../src/content';
-import { ASSETS } from './setup';
+import { tempAssets } from './setup';
 
 let dir: string;
 
-function copyFixtures(to: string) {
-  fs.cpSync(ASSETS, to, { recursive: true });
-}
-
 beforeEach(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-reload-'));
-  copyFixtures(dir);
+  dir = tempAssets('art-reload');
 });
-afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
 describe('reloading content under a running server', () => {
   it('picks up a change without a restart', async () => {

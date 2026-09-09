@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { createApp } from '../src/app';
-import { ASSETS, rooms } from './setup';
+import { ASSETS, rooms, tempAssets, tempDir } from './setup';
 import { imageSize } from '../src/imagesize';
 import { absolute } from '../src/share';
 
@@ -35,7 +35,7 @@ describe('reading a picture\'s size from its header', () => {
   });
 
   it('gives up quietly rather than throwing', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-size-'));
+    const dir = tempDir('art-size');
     const junk = path.join(dir, 'junk.jpg');
     fs.writeFileSync(junk, Buffer.from([0xff, 0xd8, 0x00, 0x01, 0x02]));
     expect(imageSize(junk)).toBeNull();
@@ -136,8 +136,7 @@ describe('a shared permalink previews what was shared', () => {
 
 describe('the previews follow the content', () => {
   it('a reload rebuilds them', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-share-'));
-    fs.cpSync(ASSETS, dir, { recursive: true });
+    const dir = tempAssets('art-share');
     const a = createApp(undefined, dir);
     expect(meta((await request(a).get('/?id=fixtall1')).text)['og:title']).toBe(
       'Tall — Klaus Hofrichter'

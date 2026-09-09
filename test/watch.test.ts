@@ -1,23 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { loadRooms } from '../src/content';
 import { signature, watchContent } from '../src/watch';
-import { ASSETS } from './setup';
+import { ASSETS, tempAssets } from './setup';
 
 let dir: string;
 const timers: (NodeJS.Timeout | null)[] = [];
 
 beforeEach(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-watch-'));
-  fs.cpSync(ASSETS, dir, { recursive: true });
+  dir = tempAssets('art-watch');
 });
 afterEach(() => {
   for (const t of timers.splice(0)) if (t) clearInterval(t);
-  fs.rmSync(dir, { recursive: true, force: true });
   vi.restoreAllMocks();
 });
 
