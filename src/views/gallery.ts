@@ -30,6 +30,10 @@ function manifest(rooms: Room[]) {
     // path from a constant prefix and the width, same as everything else.
     coverWidths: r.coverWidths,
     coverWebp: r.coverWebp,
+    // The cache key for the cover, so the browser's URL for it moves when
+    // the picture does. A hex token this process computed from a stat, not
+    // anything content chose — see versionOf in content.ts.
+    coverV: r.coverV,
     about: r.about,
     // Identifiers, not URLs. The browser builds every src and href from a
     // constant prefix plus an encoded id, so a hand-edited index.json cannot
@@ -40,6 +44,7 @@ function manifest(rooms: Room[]) {
       file: w.file,
       widths: w.widths,
       webp: w.webp,
+      v: w.v,
       title: w.title,
       date: w.date,
       artist: w.artist,
@@ -58,7 +63,7 @@ function manifest(rooms: Room[]) {
       // per work and the client can test the field itself.
       views: w.views.length
         ? w.views.map((v) => ({
-            file: v.file, widths: v.widths, webp: v.webp,
+            file: v.file, widths: v.widths, webp: v.webp, v: v.v,
             caption: v.caption, kind: v.kind,
           }))
         : undefined,
@@ -79,7 +84,7 @@ function fallback(rooms: Room[]): string {
     }
     const items = r.works.map((w) => {
       const buy = `/buy/${encodeURIComponent(r.id)}/${encodeURIComponent(w.slug)}`;
-      const src = `/assets/${encodeURIComponent(r.id)}/${encodeURIComponent(w.file)}`;
+      const src = `/assets/${encodeURIComponent(r.id)}/${encodeURIComponent(w.file)}?v=${w.v}`;
       // Without JavaScript this is a plain grid of thumbnails, so the
       // smallest copy is the right one to offer first.
       const set = srcset(r.id, w);

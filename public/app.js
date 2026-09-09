@@ -106,7 +106,7 @@
      whole room — there is no bulk download. */
   function downloadIcon(roomId, w) {
     var ext = (w.file.match(/\.[A-Za-z0-9]+$/) || ['.jpg'])[0];
-    var link = iconLink('download', pictureUrl(roomId, w.file),
+    var link = iconLink('download', pictureUrl(roomId, w),
       'Download ' + w.title + ' at full resolution',
       '<path d="M12 4v11"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4.5 19.5h15"/>');
     link.setAttribute('download', w.slug + ext);
@@ -120,8 +120,23 @@
      load the full-resolution original. */
   var THUMB_PX = 62;
 
-  function pictureUrl(roomId, file) {
-    return '/assets/' + encodeURIComponent(roomId) + '/' + encodeURIComponent(file);
+  /* A picture and the copies of it that exist. Works and views already have
+     this shape; a room's cover is spread across four fields and is put into
+     it by coverPic below. Every URL helper takes one of these rather than a
+     handful of loose arguments, so a caller cannot quietly leave the version
+     off and pin a stale picture in everyone's cache for a year. */
+  function coverPic(room) {
+    return room.coverFile
+      ? { file: room.coverFile, widths: room.coverWidths, webp: room.coverWebp, v: room.coverV }
+      : null;
+  }
+  /* The version token turns a picture that is replaced under the same
+     filename into a new URL, which is what lets /assets be cached hard. It
+     is a hex string this server computed from a stat — never anything the
+     content chose — so it cannot carry anything into the query string. */
+  function pictureUrl(roomId, pic) {
+    return '/assets/' + encodeURIComponent(roomId) + '/' + encodeURIComponent(pic.file) +
+      '?v=' + encodeURIComponent(pic.v);
   }
   /* Does this browser take WebP? Asked once. Every engine that matters has
      said yes for years, but the answer decides which files we ask for, so it
@@ -144,10 +159,10 @@
   /* The same picture, shrunk to `w`. Built the same way — a literal prefix, a
      number, and encoded identifiers — so this is no more of a sink than the
      line above. `hasWebp` says a WebP exists at every width for this picture. */
-  function sizedUrl(roomId, file, w, hasWebp) {
-    var name = (hasWebp && WEBP) ? webpName(file) : file;
+  function sizedUrl(roomId, pic, w) {
+    var name = (pic.webp && WEBP) ? webpName(pic.file) : pic.file;
     return '/assets/' + encodeURIComponent(roomId) + '/w' + Number(w) +
-      '/' + encodeURIComponent(name);
+      '/' + encodeURIComponent(name) + '?v=' + encodeURIComponent(pic.v);
   }
   /* The smallest copy that covers `cssPx` at this screen's density — or the
      largest that exists, if the screen wants more than we made.
@@ -156,28 +171,28 @@
      screen: past it the extra pixels are invisible on a photograph and cost
      half again as many bytes. The original is never displayed when a copy
      exists; it is what the download link serves, at full resolution. */
-  function bestUrl(roomId, file, widths, cssPx, hasWebp) {
-    var list = widths || [];
-    if (!list.length) return pictureUrl(roomId, file);
+  function bestUrl(roomId, pic, cssPx) {
+    var list = (pic && pic.widths) || [];
+    if (!list.length) return pictureUrl(roomId, pic);
     var need = Math.round(cssPx * (window.devicePixelRatio || 1));
     for (var i = 0; i < list.length; i++) {
-      if (list[i] >= need) return sizedUrl(roomId, file, list[i], hasWebp);
+      if (list[i] >= need) return sizedUrl(roomId, pic, list[i]);
     }
-    return sizedUrl(roomId, file, list[list.length - 1], hasWebp);
+    return sizedUrl(roomId, pic, list[list.length - 1]);
   }
 
   /* The smallest copy there is, whatever the screen. For a picture that is
      scaled up and blurred, density buys nothing. */
-  function smallestUrl(roomId, file, widths, hasWebp) {
-    return widths && widths.length
-      ? sizedUrl(roomId, file, widths[0], hasWebp)
-      : pictureUrl(roomId, file);
+  function smallestUrl(roomId, pic) {
+    return pic.widths && pic.widths.length
+      ? sizedUrl(roomId, pic, pic.widths[0])
+      : pictureUrl(roomId, pic);
   }
   /* Every copy that exists, for an <img> to choose from itself. The original
      is deliberately not among them — see bestUrl. */
-  function srcsetFor(roomId, file, widths, hasWebp) {
-    return (widths || []).map(function (w) {
-      return sizedUrl(roomId, file, w, hasWebp) + ' ' + w + 'w';
+  function srcsetFor(roomId, pic) {
+    return (pic.widths || []).map(function (w) {
+      return sizedUrl(roomId, pic, w) + ' ' + w + 'w';
     }).join(', ');
   }
   function buyUrl(roomId, slug) {
@@ -456,9 +471,8 @@
 
   ROOMS.forEach(function (room) {
     var slide = el('div', 'slide');
-    var coverUrl = room.coverFile
-      ? bestUrl(room.id, room.coverFile, room.coverWidths, window.innerWidth, room.coverWebp)
-      : null;
+    var cover = coverPic(room);
+    var coverUrl = cover ? bestUrl(room.id, cover, window.innerWidth) : null;
     var p = el('div', 'lpanel' + (room.type === 'about' ? ' about' : '') +
       (coverUrl ? '' : ' nocover'));
     var bg = el('div', 'bg');
@@ -498,7 +512,7 @@
   roomsBtn.type = 'button';
   var lobbyMenu = Menu('Lobby', ROOMS.map(function (r) {
     return {
-      src: r.coverFile ? bestUrl(r.id, r.coverFile, r.coverWidths, THUMB_PX, r.coverWebp) : null,
+      src: coverPic(r) ? bestUrl(r.id, coverPic(r), THUMB_PX) : null,
       title: r.title,
       meta: r.type === 'about' ? 'Information' : r.works.length + ' works \u00b7 ' + r.subtitle
     };
@@ -614,7 +628,7 @@
     room.works.forEach(function (w) {
       var slide = el('div', 'slide');
       var plate = el('div', 'plate');
-      var url = pictureUrl(room.id, w.file);
+      var url = pictureUrl(room.id, w);
       var amb = el('div', 'ambient');
       var img = el('img', 'art');
       img.alt = w.title;
@@ -622,13 +636,13 @@
       /* The picture fills the screen, so let the browser pick the copy that
          suits this display rather than always sending the original. The
          download link still points at the original — see downloadIcon. */
-      var set = srcsetFor(room.id, w.file, w.widths, w.webp);
+      var set = srcsetFor(room.id, w);
       img.addEventListener('load', function () { alignArt(view, img); });
       /* src is set by show() below, so the picture on screen is not competing
          with every other picture in the room for the connection */
       urls.push(url);
       plates.push({ img: img, amb: amb, set: set,
-                    small: smallestUrl(room.id, w.file, w.widths, w.webp) });
+                    small: smallestUrl(room.id, w) });
       plate.append(amb, img);
       slide.append(plate);
       rrail.append(slide);
@@ -677,7 +691,7 @@
     /* strict tree: no way sideways to another room from in here */
     var picsMenu = Menu(room.title, room.works.map(function (w) {
       return {
-        src: bestUrl(room.id, w.file, w.widths, THUMB_PX, w.webp),
+        src: bestUrl(room.id, w, THUMB_PX),
         title: w.title,
         meta: niceDate(w.date),
         badge: w.status !== 'available' ? STATUS[w.status] : null
@@ -735,10 +749,10 @@
       frame = (n + frames.length) % frames.length;
       var f = frames[frame];
       var slot = plates[i];
-      var set = srcsetFor(room.id, f.file, f.widths, f.webp);
+      var set = srcsetFor(room.id, f);
       if (set) { slot.img.sizes = '100vw'; slot.img.srcset = set; }
       else slot.img.removeAttribute('srcset');
-      slot.img.src = pictureUrl(room.id, f.file);
+      slot.img.src = pictureUrl(room.id, f);
       slot.img.alt = f.caption ? w.title + ' \u2014 ' + f.caption : w.title;
       /* showPicture() only ever loads a plate once, so without this a work
          left on a close-up would still be showing it when you came back. */
@@ -949,9 +963,8 @@
     if (liveRoom) liveRoom.remove();
     lobby.hidden = true;
     var roomIndex = ROOMS.indexOf(room);
-    var coverUrl = room.coverFile
-      ? bestUrl(room.id, room.coverFile, room.coverWidths, window.innerWidth, room.coverWebp)
-      : null;
+    var cover = coverPic(room);
+    var coverUrl = cover ? bestUrl(room.id, cover, window.innerWidth) : null;
 
     var view = el('div', 'screen room');
     var pane = el('div', 'aboutroom' + (coverUrl ? '' : ' nocover'));

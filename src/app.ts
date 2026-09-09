@@ -102,29 +102,22 @@ export function createApp(
     res.status(404).type('txt').send('Not found');
   });
 
-  // The pictures are replaced without a deploy — a sync writes them straight
-  // onto the volume, and make-derivatives.sh rewrites a derivative in place
-  // under the same filename. Their URLs therefore do not change when their
-  // contents do, so they cannot be pinned: a year of immutable caching left
-  // a re-shot picture unreachable for anyone who had seen the old one. An
-  // hour, and a week during which a stale copy may be shown while a fresh
-  // one is fetched behind it, keeps repeat browsing free without that.
+  // Everything served from here carries a version in its URL — the client
+  // bundle a content hash (src/fingerprint.ts), the pictures a token built
+  // from their own size and mtime (versionOf in content.ts). So a file that
+  // changes is a URL that changes, and a URL that does not change can be
+  // pinned for as long as we like.
   //
-  // The client bundle is the opposite case and keeps the year: its URL
-  // carries a content hash (src/fingerprint.ts), so a new build is a new URL
-  // and a returning visitor is never stuck on the old one.
-  const pictures = production
-    ? {
-        setHeaders(res: express.Response) {
-          res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=604800');
-        },
-      }
-    : ({ maxAge: 0, etag: true } as const);
-  const fingerprinted = production
+  // That last part is not decoration. The pictures are replaced by a content
+  // sync rather than a deploy and always land under the same filename, so
+  // before they were versioned this cache meant a re-shot picture never
+  // reached anyone who had already seen the old one. Do not cache /assets
+  // hard again without checking the URLs still move.
+  const forever = production
     ? ({ maxAge: '365d', immutable: true } as const)
     : ({ maxAge: 0, etag: true } as const);
-  app.use('/assets', express.static(assetsDir, pictures));
-  app.use(express.static(PUBLIC_DIR, fingerprinted));
+  app.use('/assets', express.static(assetsDir, forever));
+  app.use(express.static(PUBLIC_DIR, forever));
 
   // A page carries the fingerprinted URLs of the assets it needs, so it must
   // never be served from cache without checking first. A stale page points at

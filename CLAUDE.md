@@ -94,13 +94,26 @@ Without it a deploy would never reach anyone who had visited before. The
 hard caching is disabled outside production, or local edits would be
 invisible behind the same cache.
 
-**The pictures under `/assets` do not get that treatment and must not.** They
-are replaced by a sync rather than a deploy, and their URLs are stable across
-the change, so pinning them left a re-shot picture unreachable for a year.
-They get `max-age=3600, stale-while-revalidate=604800` instead. If you ever
-want the year back, fingerprint the picture URLs first — the manifest would
-have to carry a per-work version number, which is a number and so stays
-within the rule below.
+**The pictures are fingerprinted too, and that is what lets them be cached.**
+`versionOf` in `content.ts` builds a ten-character token per picture from the
+size and mtime of the original *and every derivative of it*, and every URL
+that names the file carries it as `?v=`. The derivatives are folded in
+because they change on their own: a `FORCE=1` rebuild or a different
+`QUALITY` rewrites the copies and leaves the original untouched.
+
+It is size and mtime rather than a content hash because the originals run to
+tens of megabytes and this is recomputed on every reload, while the question
+being asked is only "did somebody replace this file". `tar` preserves mtimes,
+so `sync-assets.sh` carries the same token to the volume instead of churning
+every URL on arrival — copying content around *without* preserving mtimes
+costs one cache generation, which is a miss, not a bug.
+
+The token is a cache key, not a lookup: `/assets` ignores the query, so an old
+URL still serves the current file. **Do not remove the `?v=` from any picture
+URL.** The pictures are replaced by a content sync under the same filename, so
+without it the year-long `immutable` cache means a re-shot picture never
+reaches anyone who has already seen the old one — which is exactly what it did
+until this was added.
 
 `/assets` also serves **pictures only** — an extension allowlist in
 `src/app.ts`. The room directory holds `index.json` next to them, and serving

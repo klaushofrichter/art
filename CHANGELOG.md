@@ -36,10 +36,11 @@ is where notes are written *before* a release, not an archive of them.
   the timer and ended the process. It also read the directory a second time
   after a reload had already succeeded, outside the guard that exists to
   survive a bad edit.
-- **Pictures are no longer cached for a year.** They are replaced by a sync
-  rather than a deploy and their URLs do not change when they are, so a
-  re-shot picture never reached anyone who had seen the old one. An hour now,
-  with a week of `stale-while-revalidate` so repeat visits stay instant.
+- **Fixed: a replaced picture never reached anyone who had seen the old one.**
+  Pictures are cached for a year, but they are replaced by a content sync
+  under the same filename, so the URL never changed and the old copy stayed
+  pinned. Every picture URL now carries a version built from the file and its
+  smaller copies, the way the stylesheet and the script already did.
 - **Fixed: a room id from content could break out of an HTML attribute.**
   `collection.id` is arbitrary text — it is not required to match the folder
   it was read from — and it reached the purchase page's crumb link unescaped.

@@ -38,7 +38,7 @@ function views(room: Room, work: Work): string {
           : ''
       }<img loading="lazy"${
         v.width && v.height ? ` width="${v.width}" height="${v.height}"` : ''
-      } src="/assets/${encodeURIComponent(room.id)}/${encodeURIComponent(v.file)}"${
+      } src="/assets/${encodeURIComponent(room.id)}/${encodeURIComponent(v.file)}?v=${v.v}"${
         srcset(room.id, v) ? ` srcset="${srcset(room.id, v)}" sizes="${SIZES}"` : ''
       } alt="${escapeHtml(work.title)}${v.caption ? ` — ${escapeHtml(v.caption)}` : ''}"></picture>
       ${v.caption ? `<figcaption>${escapeHtml(v.caption)}</figcaption>` : ''}

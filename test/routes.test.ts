@@ -266,7 +266,8 @@ describe('the no-JavaScript fallback derives its URLs too', () => {
     expect(res.text).not.toContain('onerror=');
     // and it still links to the right place
     expect(res.text).toContain('href="/buy/shapes/wide"');
-    expect(res.text).toContain('src="/assets/shapes/wide.jpg"');
+    const wide = poisoned.find((r) => r.id === 'shapes')!.works[0];
+    expect(res.text).toContain(`src="/assets/shapes/wide.jpg?v=${wide.v}"`);
   });
 });
 

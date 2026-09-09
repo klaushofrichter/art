@@ -496,12 +496,19 @@ link.
 URLs carry a content hash; without it a deploy would never reach a returning
 visitor.
 
-**The pictures are not.** They live on a volume and are replaced without a
-deploy, and their URLs do not change when they are — `make-derivatives.sh`
-rewrites a derivative in place under the same filename. They get an hour, plus
-a week of `stale-while-revalidate` so a repeat visit is still served instantly
-while a fresh copy is fetched behind it. A re-shot picture then reaches
-everyone within the hour instead of being pinned for a year.
+**The pictures carry one too**, for a different reason. They live on a volume
+and are replaced without a deploy, always under the same filename —
+`make-derivatives.sh` rewrites a derivative in place — so nothing about the
+path says the bytes changed. `versionOf` in `src/content.ts` builds a
+ten-character token from the size and mtime of the original and of every
+derivative of it, and each picture URL carries it as `?v=`. Change a picture
+and its URL changes with it, which is what makes a year of `immutable`
+caching safe rather than a way of pinning the old one forever.
+
+The derivatives are folded into the token because they can change alone: a
+`FORCE=1` rebuild or a different quality setting rewrites the copies and never
+touches the original. And it is a cache key rather than a lookup — `/assets`
+ignores the query, so an old link still serves the current file.
 
 **`/assets` serves pictures and nothing else.** Only `.jpg`, `.jpeg`, `.png`
 and `.webp` are answered; everything else in a room directory is a 404. That

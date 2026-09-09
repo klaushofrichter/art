@@ -24,7 +24,10 @@ describe('loadRooms', () => {
   it('builds a URL and a slug for each work', () => {
     const wide = rooms.find((r) => r.id === 'shapes')?.works[0];
     expect(wide?.slug).toBe('wide');
-    expect(wide?.src).toBe('/assets/shapes/wide.jpg');
+    // Versioned, so the year-long cache on /assets cannot strand a picture
+    // that was replaced under the same filename.
+    expect(wide?.v).toMatch(/^[a-f0-9]{10}$/);
+    expect(wide?.src).toBe(`/assets/shapes/wide.jpg?v=${wide?.v}`);
     expect(wide?.purchaseUrl).toBe('/buy/shapes/wide');
   });
 
