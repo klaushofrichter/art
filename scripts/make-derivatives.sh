@@ -92,7 +92,10 @@ echo "make-derivatives: ${made} made, ${kept} already current, ${skipped} skippe
 # What it bought, in the terms that matter: what a phone downloads instead.
 if command -v du >/dev/null 2>&1; then
   orig=$(find "$SRC" -type f \( -iname '*.jpg' -o -iname '*.png' \) -not -path '*/w[0-9]*/*' -exec du -k {} + 2>/dev/null | awk '{s+=$1} END {print s+0}')
-  small=$(find "$SRC" -type d -name 'w1024' -exec find {} -type f \; 2>/dev/null | xargs du -k 2>/dev/null | awk '{s+=$1} END {print s+0}')
+  # One find matching the path, and -exec du + rather than a pipe into
+  # xargs: a picture whose name has a space in it would reach du as two
+  # arguments, and the figure printed below would quietly be wrong.
+  small=$(find "$SRC" -type f -path '*/w1024/*' -exec du -k {} + 2>/dev/null | awk '{s+=$1} END {print s+0}')
   if [ "${small:-0}" -gt 0 ]; then
     echo "  originals ${orig}KB; the same pictures at 1024px ${small}KB"
   fi

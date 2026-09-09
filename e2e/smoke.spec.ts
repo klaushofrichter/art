@@ -339,7 +339,9 @@ test('the label offers the picture on screen at full resolution', async ({ page 
   await page.goto('/#shapes/wide');
   const dl = page.locator('.info .download');
   await expect(dl).toBeVisible();
-  await expect(dl).toHaveAttribute('href', '/assets/shapes/wide.jpg');
+  // Versioned, like every picture URL the client builds: /assets is pinned
+  // for a year, so a URL that never changed would pin a replaced picture too.
+  await expect(dl).toHaveAttribute('href', /^\/assets\/shapes\/wide\.jpg\?v=[a-f0-9]{10}$/);
   await expect(dl).toHaveAttribute('download', 'wide.jpg');
 
   // it follows the picture, and there is only ever one
@@ -642,7 +644,7 @@ test('the pictures actually load at the URLs the client builds', async ({ page }
   const art = page.locator('.plate .art').first();
   await expect(art).toBeVisible();
   await expect.poll(() => art.evaluate((n: HTMLImageElement) => n.naturalWidth)).toBeGreaterThan(0);
-  await expect(art).toHaveAttribute('src', '/assets/shapes/wide.jpg');
+  await expect(art).toHaveAttribute('src', /^\/assets\/shapes\/wide\.jpg\?v=[a-f0-9]{10}$/);
 });
 
 test('the buy link points at the canonical purchase page', async ({ page }) => {
@@ -872,7 +874,7 @@ test.describe('a browser that takes WebP', () => {
     await page.locator('.enter').first().click();
     await expect(page.locator('.slide .art').first()).toHaveAttribute('srcset', /\.webp/);
     const href = await page.locator('a[download]').first().getAttribute('href');
-    expect(href).toMatch(/\.jpg$/);
+    expect(href).toMatch(/\.jpg\?v=[a-f0-9]{10}$/);
   });
 });
 

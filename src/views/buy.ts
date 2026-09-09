@@ -38,7 +38,7 @@ function views(room: Room, work: Work): string {
           : ''
       }<img loading="lazy"${
         v.width && v.height ? ` width="${v.width}" height="${v.height}"` : ''
-      } src="/assets/${encodeURIComponent(room.id)}/${encodeURIComponent(v.file)}"${
+      } src="/assets/${encodeURIComponent(room.id)}/${encodeURIComponent(v.file)}?v=${v.v}"${
         srcset(room.id, v) ? ` srcset="${srcset(room.id, v)}" sizes="${SIZES}"` : ''
       } alt="${escapeHtml(work.title)}${v.caption ? ` — ${escapeHtml(v.caption)}` : ''}"></picture>
       ${v.caption ? `<figcaption>${escapeHtml(v.caption)}</figcaption>` : ''}
@@ -59,7 +59,7 @@ export function renderBuy(room: Room, work: Work): string {
     image: workImage(room, work),
     scripts: ['pending.js'],
     body: `<main class="buywrap">
-  <a class="crumb" href="/#${room.id}/${work.slug}">&larr; Back to ${escapeHtml(room.title)}</a>
+  <a class="crumb" href="/#${encodeURIComponent(room.id)}/${encodeURIComponent(work.slug)}">&larr; Back to ${escapeHtml(room.title)}</a>
   <div class="buygrid">
     <picture>${
       webpSrcset(room.id, work)
