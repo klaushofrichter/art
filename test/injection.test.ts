@@ -47,10 +47,18 @@ describe('a room id from content cannot break out of the markup', () => {
   it('encodes the id everywhere it becomes a URL', () => {
     const room = loadRooms(dir).find((r) => r.dir === 'shapes')!;
     expect(room.id).toBe(NASTY);           // read faithfully
-    expect(room.works[0].src).not.toContain('"');
+    // Strings, all of them — `expect(anObject).not.toContain(...)` passes
+    // silently, so asserting on a shape rather than a string would quietly
+    // stop testing anything. That is exactly what happened to the cover
+    // assertion below when Room.cover became a nested object and the URL
+    // moved to Room.coverUrl.
+    for (const url of [room.works[0].src, room.coverUrl, room.works[0].purchaseUrl]) {
+      expect(typeof url).toBe('string');
+      expect(url).not.toContain('"');
+      expect(url).not.toContain(' ');
+    }
     expect(room.works[0].src).toContain(encodeURIComponent(NASTY));
-    expect(room.cover).not.toContain('"');
-    expect(room.works[0].purchaseUrl).not.toContain('"');
+    expect(room.coverUrl).toContain(encodeURIComponent(NASTY));
   });
 });
 
