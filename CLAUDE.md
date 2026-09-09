@@ -166,7 +166,10 @@ would show the wrong counts rather than passing quietly.
 
 Release notes come from the commits since the previous release, preceded by
 anything under `## [Unreleased]` in `CHANGELOG.md`. **Empty that section as
-part of promoting.** The deploy reads the file and never writes to it, so
+part of promoting** — `scripts/check-changelog.sh` now fails the `test` check
+on a PR into `production` if it still holds lines the last release already
+published, because writing this down twice did not stop it happening five
+times. The deploy reads the file and never writes to it, so
 anything left behind is published again with the next release — that has
 happened three times now. Leave the heading with nothing under it rather
 than a placeholder line: the `awk` that extracts the block prints every
