@@ -95,9 +95,12 @@ hard caching is disabled outside production, or local edits would be
 invisible behind the same cache.
 
 **The pictures are fingerprinted too, and that is what lets them be cached.**
-`versionOf` in `content.ts` builds a ten-character token per picture from the
+`sizedFrom` in `content.ts` builds a ten-character token per picture from the
 size and mtime of the original *and every derivative of it*, and every URL
-that names the file carries it as `?v=`. The derivatives are folded in
+that names the file carries it as `?v=`. It reads a picture's widths, WebP
+coverage and version in one pass — a work, a view and a room's cover all come
+back as the same `Sized` shape, which is what `share.ts`'s URL helpers and the
+client's take. The derivatives are folded in
 because they change on their own: a `FORCE=1` rebuild or a different
 `QUALITY` rewrites the copies and leaves the original untouched.
 
@@ -163,7 +166,10 @@ would show the wrong counts rather than passing quietly.
 
 Release notes come from the commits since the previous release, preceded by
 anything under `## [Unreleased]` in `CHANGELOG.md`. **Empty that section as
-part of promoting.** The deploy reads the file and never writes to it, so
+part of promoting** — `scripts/check-changelog.sh` now fails the `test` check
+on a PR into `production` if it still holds lines the last release already
+published, because writing this down twice did not stop it happening five
+times. The deploy reads the file and never writes to it, so
 anything left behind is published again with the next release — that has
 happened three times now. Leave the heading with nothing under it rather
 than a placeholder line: the `awk` that extracts the block prints every

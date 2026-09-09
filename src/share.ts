@@ -1,4 +1,4 @@
-import { Room, Work, webpName } from './content';
+import { Room, Sized, Work, webpName } from './content';
 import { plainText } from './markdown';
 import { SITE_URL } from './site';
 
@@ -42,12 +42,12 @@ export function workImage(room: Room, work: Work): ShareImage {
 }
 
 export function roomImage(room: Room): ShareImage | null {
-  if (!room.cover) return null;
+  if (!room.cover || !room.coverUrl) return null;
   return {
-    url: absolute(room.cover),
+    url: absolute(room.coverUrl),
     alt: room.title,
-    width: room.coverWidth,
-    height: room.coverHeight,
+    width: room.cover.width,
+    height: room.cover.height,
     card: 'summary_large_image',
   };
 }
@@ -74,10 +74,6 @@ export function workDescription(room: Room, work: Work): string {
  *  ladder is the ceiling for anything shown on screen, and the original is
  *  what the download link serves. Empty when a picture has no copies, and
  *  callers must then omit the attribute rather than write srcset="". */
-/** A picture that has sized copies — a work or one of its views. Structural
- *  on purpose: a view is a photograph beside the work, not a lesser Work, and
- *  duplicating these two functions to say so would be worse. */
-type Sized = Pick<Work, 'file' | 'widths' | 'webp' | 'v'>;
 
 /** Every copy of a picture carries the same version token as the picture
  *  itself: the derivatives are regenerated from the original and folded into

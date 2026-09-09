@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { loadRooms, findWork } from '../src/content';
-import { ASSETS, rooms } from './setup';
+import { ASSETS, rooms, tempDir } from './setup';
 
 describe('loadRooms', () => {
   it('finds every room folder that has an index.json', () => {
@@ -58,7 +57,7 @@ describe('loadRooms', () => {
 
 describe('slug collisions', () => {
   it('counts rather than piling up suffixes', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-slug-'));
+    const dir = tempDir('art-slug');
     const room = path.join(dir, 'dup');
     fs.mkdirSync(room);
     for (const f of ['a.jpg', 'b.jpg', 'c.jpg']) fs.writeFileSync(path.join(room, f), 'x');

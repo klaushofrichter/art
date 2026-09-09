@@ -1,11 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { loadRooms } from '../src/content';
-import { ASSETS, rooms } from './setup';
+import { ASSETS, rooms, tempAssets } from './setup';
 
 const app = () => createApp(rooms, ASSETS);
 
@@ -43,8 +42,7 @@ describe('what /assets is allowed to serve', () => {
     // in the folder — an editor backup, a stray note, a spreadsheet of
     // prices — and none of it should become public because it was copied
     // next to a picture.
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-assets-'));
-    fs.cpSync(ASSETS, dir, { recursive: true });
+    const dir = tempAssets('art-assets');
     fs.writeFileSync(path.join(dir, 'shapes', 'notes.txt'), 'not for anyone');
     fs.writeFileSync(path.join(dir, 'shapes', 'index.json.bak'), '{"secret":1}');
 
@@ -53,7 +51,6 @@ describe('what /assets is allowed to serve', () => {
     expect((await request(live).get('/assets/shapes/index.json.bak')).status).toBe(404);
     // and the pictures in that same directory still work
     expect((await request(live).get('/assets/shapes/wide.jpg')).status).toBe(200);
-    fs.rmSync(dir, { recursive: true, force: true });
   });
 
   it('is not fooled by case or by a query string', async () => {
@@ -101,10 +98,8 @@ describe('a replaced picture reaches someone who has seen the old one', () => {
   // never seen again by a returning visitor.
   let dir: string;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-version-'));
-    fs.cpSync(ASSETS, dir, { recursive: true });
+    dir = tempAssets('art-version');
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
   const wideOf = (d: string) =>
     loadRooms(d).find((r) => r.id === 'shapes')!.works.find((w) => w.slug === 'wide')!;

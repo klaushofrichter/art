@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'child_process';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
-import { ASSETS } from './setup';
+import { ASSETS, tempAssets } from './setup';
 
 /** Run the content gate the way sync-assets.sh does, and report what a
  *  maintainer would actually see. */
@@ -30,8 +29,7 @@ describe('the content gate', () => {
     // It used to build the file path from collection.id, so a mismatch threw
     // an unhandled ENOENT out of statSync — the only gate content gets before
     // production died with a stack trace rather than naming the problem.
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-gate-'));
-    fs.cpSync(ASSETS, dir, { recursive: true });
+    const dir = tempAssets('art-gate');
     const file = path.join(dir, 'shapes', 'index.json');
     const json = JSON.parse(fs.readFileSync(file, 'utf8'));
     json.collection.id = 'not-shapes';
@@ -46,8 +44,7 @@ describe('the content gate', () => {
   });
 
   it('survives a picture disappearing while it runs', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-gate-'));
-    fs.cpSync(ASSETS, dir, { recursive: true });
+    const dir = tempAssets('art-gate');
     // Loadable, then gone: the manifest still lists it.
     const gone = path.join(dir, 'shapes', 'wide.jpg');
     const keep = fs.readFileSync(gone);
