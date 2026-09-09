@@ -53,7 +53,19 @@ jobs:
 
       - run: npm ci
 
-      - run: npx playwright install --with-deps chromium
+      # `--with-deps` runs `apt-get update`, which reads every source on the
+      # runner image — including Google's Chrome repository, which the image
+      # ships and this job has no use for. We want Ubuntu's shared libraries
+      # and nothing from Google. But one bad index fails the whole update and
+      # takes the job with it: on 2026-09-09 a Hash Sum mismatch on
+      # dl.google.com failed every e2e run for hours, and since e2e is a
+      # required check on production, it blocked releases as well as PRs.
+      # Nothing we depend on should be able to do that, so drop the source.
+      - name: Install Chromium for Playwright
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list \
+                     /etc/apt/sources.list.d/google-chrome.sources
+          npx playwright install --with-deps chromium
 
       - run: npm run build
 
