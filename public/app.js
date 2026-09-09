@@ -832,20 +832,23 @@
       var line = el('div', 'buyline');
       var pending = w.status === 'available' &&
         window.ArtPending && window.ArtPending.isPending(w.uid);
+      /* Three of the four branches below open with the same price, and it has
+         to be a fresh node each time — a node can only be in one place. */
+      function price() { return el('div', 'price', money(w.price, w.currency)); }
       if (pending && w.price != null) {
-        line.append(el('div', 'price', money(w.price, w.currency)));
+        line.append(price());
         /* the status is also the way back to the page it was sent from */
         var back = el('a', 'status pending no-drag', 'Sale pending');
         back.href = buyUrl(room.id, w.slug);
         line.append(back);
       } else if (w.status === 'available' && w.price != null) {
-        line.append(el('div', 'price', money(w.price, w.currency)));
+        line.append(price());
         var a = el('a', 'buy no-drag', 'Buy this picture');
         a.href = buyUrl(room.id, w.slug);
         line.append(a);
       } else if (w.status === 'reserved' && w.price != null) {
         /* price still shown, but it cannot be bought */
-        line.append(el('div', 'price', money(w.price, w.currency)), el('span', 'status', 'Reserved'));
+        line.append(price(), el('span', 'status', 'Reserved'));
       } else {
         /* sold and not-for-sale never show a price */
         line.append(el('span', 'status sold', STATUS[w.status] || 'Not for sale'));

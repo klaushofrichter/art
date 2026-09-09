@@ -132,11 +132,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     if (!w || typeof w.file !== 'string') {
       throw new Error(`${dir}/index.json: a work is missing "file"`);
     }
-    // A picture listed but not shipped shouldn't take the whole site down.
-    if (!fs.existsSync(path.join(assetsDir, dir, w.file))) {
-      console.warn(`content: ${dir}/${w.file} listed in index.json but not on disk — skipped`);
-      return [];
-    }
+    if (!onDisk(assetsDir, dir, w.file, 'listed in index.json')) return [];
     const status: Status = STATUSES.includes(w.status) ? w.status : 'available';
     let slug = slugify(w.title || w.file);
     const base = slug;
@@ -238,10 +234,7 @@ function readViews(
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((v: any): View[] => {
     if (!v || typeof v.file !== 'string') return [];
-    if (!fs.existsSync(path.join(assetsDir, dir, v.file))) {
-      console.warn(`content: ${dir}/${v.file} listed as a view but not on disk — skipped`);
-      return [];
-    }
+    if (!onDisk(assetsDir, dir, v.file, 'listed as a view')) return [];
     const kind = v.kind === 'detail' || v.kind === 'framed' ? v.kind : 'other';
     return [{
       ...sizedWithPixels(roomDir, path.join(assetsDir, dir, v.file), v.file, availableWidths),
@@ -285,6 +278,16 @@ function widthDirs(roomDir: string): number[] {
  *  Every derivative is folded in, not just the original, because they change
  *  on their own: a FORCE=1 rebuild or a different QUALITY rewrites the copies
  *  and leaves the original untouched. */
+/** A picture that index.json names but the sync did not carry. Warn and skip
+ *  it rather than throwing: a missing file must never take down a gallery
+ *  that is otherwise fine, and the same rule holds for a work and for one of
+ *  its views — which is why it is said here once rather than at both. */
+function onDisk(assetsDir: string, dir: string, file: string, listedAs: string): boolean {
+  if (fs.existsSync(path.join(assetsDir, dir, file))) return true;
+  console.warn(`content: ${dir}/${file} ${listedAs} but not on disk — skipped`);
+  return false;
+}
+
 /** The WebP beside a resized copy keeps the basename and changes the
  *  extension. Exported because the browser has to build the same name. */
 export function webpName(file: string): string {
