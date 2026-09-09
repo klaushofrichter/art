@@ -30,7 +30,7 @@ describe('finding the smaller copies on disk', () => {
   });
 
   it('finds the room cover\'s copies too', () => {
-    expect(shapes.coverWidths).toEqual([640]);
+    expect(shapes.cover!.widths).toEqual([640]);
   });
 
   it('a copy really is the width it claims', () => {
@@ -80,7 +80,7 @@ describe('what the browser is told', () => {
 
   it('ships the cover widths for each room', async () => {
     const data = manifestOf((await request(app()).get('/')).text);
-    expect(data.find((r: any) => r.id === 'shapes').coverWidths).toEqual([640]);
+    expect(data.find((r: any) => r.id === 'shapes').cover.widths).toEqual([640]);
   });
 });
 
@@ -215,7 +215,7 @@ describe('WebP beside the resized copies', () => {
     const data = manifestOf((await request(app()).get('/')).text);
     const work = data.find((r: any) => r.id === 'shapes').works.find((w: any) => w.slug === 'wide');
     expect(work.webp).toBe(true);
-    expect(data.find((r: any) => r.id === 'shapes').coverWebp).toBe(true);
+    expect(data.find((r: any) => r.id === 'shapes').cover.webp).toBe(true);
     expect(JSON.stringify(data)).not.toContain('/assets/');
   });
 });

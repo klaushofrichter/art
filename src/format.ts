@@ -4,6 +4,8 @@ const MONTHS = [
 ];
 
 /** "2024-03" -> "March 2024". A bare year is left as it is. */
+/** Also implemented in public/app.js as `niceDate` — the client renders the
+ *  same dates into the room label. Change one and change the other. */
 export function formatDate(date: string | undefined): string {
   if (!date) return '';
   const parts = String(date).split('-');
@@ -11,6 +13,8 @@ export function formatDate(date: string | undefined): string {
   return parts.length === 1 || !month ? parts[0] : `${month} ${parts[0]}`;
 }
 
+/** Also implemented in public/app.js as `money`, for the same reason as
+ *  formatDate above. */
 export function formatMoney(amount: number, currency = 'USD'): string {
   const symbol = currency === 'USD' ? '$' : '';
   const suffix = currency && currency !== 'USD' ? ` ${currency}` : '';

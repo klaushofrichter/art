@@ -26,6 +26,9 @@ QUALITY=3          # ffmpeg mjpeg scale, 2 is best; 3 keeps brushwork and grain
 # is strictly better rather than a size-for-quality trade. Above 90 WebP gets
 # larger than the JPEG; below 82 it drops under it on quality.
 WEBP_QUALITY=85
+# What counts as a picture. Named once: the size report at the bottom used to
+# carry its own copy of this list and could drift from what is processed.
+EXTS=(jpg jpeg png)
 
 cd "$(dirname "$0")/.."
 
@@ -47,10 +50,10 @@ for room in "$SRC"/*/; do
   [ -d "$room" ] || continue
   for file in "$room"*; do
     [ -f "$file" ] || continue
-    case "${file##*.}" in
-      jpg|jpeg|JPG|JPEG|png|PNG) ;;
-      *) continue ;;
-    esac
+    ext=$(printf '%s' "${file##*.}" | tr '[:upper:]' '[:lower:]')
+    keep=
+    for e in "${EXTS[@]}"; do [ "$ext" = "$e" ] && keep=1 && break; done
+    [ -n "$keep" ] || continue
     name=$(basename "$file")
     width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width \
               -of csv=p=0 "$file" 2>/dev/null || echo 0)
@@ -91,7 +94,12 @@ echo "make-derivatives: ${made} made, ${kept} already current, ${skipped} skippe
 
 # What it bought, in the terms that matter: what a phone downloads instead.
 if command -v du >/dev/null 2>&1; then
-  orig=$(find "$SRC" -type f \( -iname '*.jpg' -o -iname '*.png' \) -not -path '*/w[0-9]*/*' -exec du -k {} + 2>/dev/null | awk '{s+=$1} END {print s+0}')
+  name_args=()
+  for e in "${EXTS[@]}"; do
+    [ ${#name_args[@]} -eq 0 ] || name_args+=(-o)
+    name_args+=(-iname "*.${e}")
+  done
+  orig=$(find "$SRC" -type f \( "${name_args[@]}" \) -not -path '*/w[0-9]*/*' -exec du -k {} + 2>/dev/null | awk '{s+=$1} END {print s+0}')
   # One find matching the path, and -exec du + rather than a pipe into
   # xargs: a picture whose name has a space in it would reach du as two
   # arguments, and the figure printed below would quietly be wrong.

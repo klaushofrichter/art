@@ -95,9 +95,12 @@ hard caching is disabled outside production, or local edits would be
 invisible behind the same cache.
 
 **The pictures are fingerprinted too, and that is what lets them be cached.**
-`versionOf` in `content.ts` builds a ten-character token per picture from the
+`sizedFrom` in `content.ts` builds a ten-character token per picture from the
 size and mtime of the original *and every derivative of it*, and every URL
-that names the file carries it as `?v=`. The derivatives are folded in
+that names the file carries it as `?v=`. It reads a picture's widths, WebP
+coverage and version in one pass — a work, a view and a room's cover all come
+back as the same `Sized` shape, which is what `share.ts`'s URL helpers and the
+client's take. The derivatives are folded in
 because they change on their own: a `FORCE=1` rebuild or a different
 `QUALITY` rewrites the copies and leaves the original untouched.
 

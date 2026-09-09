@@ -1,11 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { loadRooms } from '../src/content';
-import { ASSETS } from './setup';
+import { tempAssets } from './setup';
 
 /** A room id that tries to climb out of an HTML attribute. `collection.id`
  *  and the folder it was read from are deliberately not enforced to match
@@ -16,14 +15,13 @@ const NASTY = 'shapes" onload="alert(1)';
 let dir: string;
 
 beforeEach(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'art-inject-'));
-  fs.cpSync(ASSETS, dir, { recursive: true });
+  dir = tempAssets('art-inject');
   const file = path.join(dir, 'shapes', 'index.json');
   const json = JSON.parse(fs.readFileSync(file, 'utf8'));
   json.collection.id = NASTY;
   fs.writeFileSync(file, JSON.stringify(json));
 });
-afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
 
 const live = () => createApp(loadRooms(dir), dir);
 
