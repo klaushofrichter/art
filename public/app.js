@@ -28,6 +28,22 @@
   var WHEEL_STEP = 48;      /* wheel delta needed to commit to a move */
   var WHEEL_LOCK = 520;     /* ms before the wheel may move again */
 
+  /* The light on a phone. A touch screen has nothing hovering over the
+     lobby, so the light and the cover drift used to sit still. There, the
+     light on the panel in view wanders instead: a slow path that never quite
+     repeats, kept inside a box clear of the edges, fed to the same springs a
+     pointer would move. It eases in from wherever the light is, so it never
+     jumps. Set AMBIENT to false to go back to a still light; nothing else
+     depends on it. */
+  var AMBIENT = true;
+  var AMBIENT_MARGIN_X = 25;  /* % of the panel's width the light's centre stays clear of each side */
+  var AMBIENT_MARGIN_Y = 30;  /* and of its height, top and bottom */
+  var AMBIENT_PERIOD = 11;    /* seconds for the main sideways sweep; smaller is faster */
+  var AMBIENT_EASE_IN = 2.5;  /* seconds to blend from where the light is into the path */
+  var AMBIENT_FPS = 30;       /* the light is a gradient over the whole panel, repainted per write */
+  var WANDER = AMBIENT && !REDUCE &&
+    window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
   function Spring(k, d) {
     return {
       x: 0, v: 0, t: 0,
@@ -358,25 +374,74 @@
      pictures are simply shown. */
   function attachLight(host, bg, scale, drift) {
     var sx = Spring(LIGHT_K, LIGHT_D), sy = Spring(LIGHT_K, LIGHT_D), raf = 0;
-    function paint() {
-      sx.step(); sy.step();
+    var wander = null, written = -Infinity;
+    function write() {
       host.style.setProperty('--mx', (50 + sx.x * 58) + '%');
       host.style.setProperty('--my', (50 + sy.x * 58) + '%');
       if (bg) {
         bg.style.transform = 'scale(' + scale + ') translate3d(' +
           (-sx.x * drift) + '%,' + (-sy.x * drift) + '%,0)';
       }
-      if (sx.rest() && sy.rest()) { raf = 0; return; }
+    }
+    function paint(now) {
+      if (wander) wander(now);
+      sx.step(); sy.step();
+      /* A pointer light comes to rest and stops painting; a wandering one
+         never does, so it would repaint the panel every frame for as long
+         as the lobby is open. At this speed thirty writes a second look the
+         same as sixty. The springs still step every frame. */
+      if (!wander || now - written >= 1000 / AMBIENT_FPS - 2) { written = now; write(); }
+      if (!wander && sx.rest() && sy.rest()) { raf = 0; return; }
       raf = requestAnimationFrame(paint);
     }
     function run() { if (!raf) raf = requestAnimationFrame(paint); }
     host.addEventListener('pointermove', function (e) {
+      if (wander) return;
       var r = host.getBoundingClientRect();
       sx.t = (e.clientX - r.left) / r.width - 0.5;
       sy.t = (e.clientY - r.top) / r.height - 0.5;
       run();
     });
-    host.addEventListener('pointerleave', function () { sx.t = 0; sy.t = 0; run(); });
+    host.addEventListener('pointerleave', function () {
+      if (wander) return;
+      sx.t = 0; sy.t = 0; run();
+    });
+
+    /* The path, in the springs' units, where ±0.5 would put the light's
+       centre at 21% and 79% (see write). Two sines per axis at unrelated
+       periods, weighted to sum to at most 1, so the box is a hard bound. */
+    function Wander() {
+      var x0 = sx.t, y0 = sy.t, t = 0, last = null;
+      var ax = (50 - AMBIENT_MARGIN_X) / 58, ay = (50 - AMBIENT_MARGIN_Y) / 58;
+      var w = 2 * Math.PI / AMBIENT_PERIOD;
+      return function (now) {
+        /* A clock that only runs while frames do, so a tab that comes back
+           from the background carries on from where it was rather than
+           leaping ahead along the path. */
+        if (last !== null) t += Math.min(now - last, 100) / 1000;
+        last = now;
+        var px = ax * (0.7 * Math.sin(w * t) + 0.3 * Math.sin(w * t / 2.6 + 1.1));
+        var py = ay * (0.7 * Math.sin(w * t / 1.37 + 0.6) + 0.3 * Math.sin(w * t / 3.1 + 2.3));
+        var e = Math.min(1, t / AMBIENT_EASE_IN);
+        e = e * e * (3 - 2 * e);
+        sx.t = x0 + (px - x0) * e;
+        sy.t = y0 + (py - y0) * e;
+      };
+    }
+    return {
+      wander: function (on) {
+        if (on === !!wander) return;
+        wander = on ? Wander() : null;
+        run();
+      }
+    };
+  }
+
+  /* Only the panel in view wanders, and none while a room is open. */
+  var lights = [];
+  function wanderAt(i) {
+    if (!WANDER) return;
+    lights.forEach(function (l, j) { if (l) l.wander(j === i); });
   }
 
   /* When a picture's shape leaves a bar above and below it, that slack is
@@ -498,7 +563,7 @@
     cap.append(btn);
     p.append(cap);
 
-    if (!REDUCE) attachLight(p, coverUrl ? bg : null, 1.14, 1.3);
+    lights.push(REDUCE ? null : attachLight(p, coverUrl ? bg : null, 1.14, 1.3));
     slide.append(p);
     rail.append(slide);
   });
@@ -538,6 +603,7 @@
     ldots.append(d);
   });
   function syncLobby(i) {
+    wanderAt(i);
     lobbyMenu.mark(i);
     Array.prototype.forEach.call(ldots.children, function (d, j) { d.classList.toggle('on', j === i); });
     var r = ROOMS[i];
@@ -632,6 +698,7 @@
     if (liveRoom) liveRoom.remove();
     if (!room.works.length) return;
     lobby.hidden = true;
+    wanderAt(-1);
     var roomIndex = ROOMS.indexOf(room);
 
     var view = el('div', 'screen room');
@@ -969,6 +1036,7 @@
     lobbyMenu.close();
     if (liveRoom) liveRoom.remove();
     lobby.hidden = true;
+    wanderAt(-1);
     var roomIndex = ROOMS.indexOf(room);
     var coverUrl = room.cover ? bestUrl(room.id, room.cover, window.innerWidth) : null;
 
