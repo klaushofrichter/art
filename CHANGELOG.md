@@ -26,5 +26,3 @@ is where notes are written *before* a release, not an archive of them.
      Currently empty. Last released: v2026.09.09.1. -->
 ## [Unreleased]
 
-- On a phone, the lobby's light now drifts slowly on its own instead of sitting still.
-
