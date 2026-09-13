@@ -37,6 +37,12 @@ cover is cropped and drifts against the pointer under a soft white light —
 both driven by springs on an animation-frame loop rather than CSS transitions,
 which is what keeps the motion smooth rather than choppy.
 
+On a phone there is no pointer to follow, so the light on the panel in view
+wanders by itself — slowly, inside a box clear of the edges, easing in rather
+than jumping, and repainting at most 30 times a second. It stops while a room
+is open and is skipped entirely for anyone who asks for reduced motion.
+`AMBIENT = false` at the top of `public/app.js` switches it off.
+
 Entering a room is deliberate: the **Enter the room** button, the side menu, or
 `Return`. Clicking a panel does nothing.
 

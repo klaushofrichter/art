@@ -1049,3 +1049,78 @@ test.describe('the Demo badge', () => {
     await expect(page.locator('.demobadge')).toBeVisible();
   });
 });
+
+/* The wandering light. Emulated as a phone rather than asserted on the
+   constants, because what is being tested is the detection as much as the
+   motion: a touch screen with nothing to hover gets it, a mouse does not. */
+const lightAt = (page: import('@playwright/test').Page) =>
+  page.locator('.lpanel').first().evaluate((n) => {
+    const s = (n as HTMLElement).style;
+    return { x: s.getPropertyValue('--mx'), y: s.getPropertyValue('--my') };
+  });
+
+test.describe('the lobby light on a phone', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+  test('wanders on its own, inside its box', async ({ page }) => {
+    await page.goto('/');
+    const seen: { x: number; y: number }[] = [];
+    for (let i = 0; i < 25; i++) {
+      const { x, y } = await lightAt(page);
+      if (x) seen.push({ x: parseFloat(x), y: parseFloat(y) });
+      await page.waitForTimeout(160);
+    }
+    // visibly moving within the first few seconds
+    const xs = seen.map((p) => p.x), ys = seen.map((p) => p.y);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(4);
+    // and never out towards an edge (margins 25% and 30%, a little overshoot allowed)
+    for (const p of seen) {
+      expect(p.x).toBeGreaterThan(23);
+      expect(p.x).toBeLessThan(77);
+      expect(p.y).toBeGreaterThan(28);
+      expect(p.y).toBeLessThan(72);
+    }
+  });
+
+  test('it eases in rather than jumping', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForTimeout(250);
+    const { x, y } = await lightAt(page);
+    // a quarter of a second in, the light has barely left the centre
+    expect(Math.abs(parseFloat(x || '50') - 50)).toBeLessThan(3);
+    expect(Math.abs(parseFloat(y || '50') - 50)).toBeLessThan(3);
+  });
+
+  test('it stops while a room is open', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForTimeout(1500);
+    await page.locator('.enter').first().click();
+    await expect(page.locator('.room')).toBeVisible();
+    await page.waitForTimeout(3000);   // let the spring settle on its last target
+    const before = await lightAt(page);
+    await page.waitForTimeout(1500);
+    const after = await lightAt(page);
+    // a spring's last few thousandths of a percent are not movement
+    expect(Math.abs(parseFloat(after.x) - parseFloat(before.x))).toBeLessThan(0.05);
+    expect(Math.abs(parseFloat(after.y) - parseFloat(before.y))).toBeLessThan(0.05);
+  });
+});
+
+test.describe('the lobby light on a phone that asks for less motion', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+  test('does not wander', async ({ page }) => {
+    // emulateMedia rather than the reducedMotion option, which the mobile
+    // emulation quietly overrides
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await page.waitForTimeout(1500);
+    expect((await lightAt(page)).x).toBe('');
+  });
+});
+
+test('with a mouse, the light waits for the pointer', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForTimeout(1500);
+  expect((await lightAt(page)).x).toBe('');
+});
