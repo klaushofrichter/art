@@ -12,7 +12,7 @@
     "dev:fixtures": "ASSETS_DIR=$PWD/test/fixtures/assets tsx src/server.ts"
   },
   "dependencies": {
-    "compression": "^1.8.1",
+    "compression": "^1.8.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0"
   },
