@@ -128,12 +128,21 @@ directory's contents come from a content sync, not from this repository.
 ## Branches
 
 - `main` — normal development, unprotected. Push here builds and pushes
-  `ghcr.io/klaushofrichter/art:latest` + `:<sha>` via
+  `ghcr.io/klaushofrichter/art:main` — that tag and no other — via
   `.github/workflows/build-push.yml`, but does **not** deploy.
 - `production` — protected, PR-only from `main`. Merging here triggers
   `.github/workflows/deploy-production.yml` on the in-cluster self-hosted
   runner, which builds/pushes the image, updates
   `kube-setup/manifests/art/art-ksvc.yaml`'s image tag, and applies it.
+
+**Only the deploy writes a production tag.** `:<sha>`, `:v<version>` and
+`:latest` are all written by `deploy-production.yml` and by nothing else.
+The manifest pins `:<sha>`, and only the deploy's build carries
+`APP_VERSION`, so a main build that wrote the same tag would replace the
+released image under the pin and the next pod restart would quietly run an
+unversioned build. Merge commits have hidden that for now; one fast-forward
+promotion would not. `:latest` means the live release, not the newest commit
+on main — which is why it is written there too.
 
 Required checks on `production` are `test`, `codeql` and `e2e`. The `e2e`
 requirement is the one place this repo departs from

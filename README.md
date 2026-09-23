@@ -552,7 +552,9 @@ pictures), so a simple queue is enough.
 ## Branches and deployment
 
 - **`main`** — development, unprotected. A push builds and pushes
-  `ghcr.io/klaushofrichter/art:latest` and `:<sha>`, but does not deploy.
+  `ghcr.io/klaushofrichter/art:main` and nothing else, and does not deploy.
+  The production tags — `:<sha>`, `:v<version>` and `:latest` — are written
+  by the deploy alone, so nothing can move the image the cluster pins.
 - **`production`** — protected, PR-only from `main`, with `test`, `codeql` and
   `e2e` as required checks, enforced for admins too. Merging deploys via an
   in-cluster self-hosted runner and cuts a release.
