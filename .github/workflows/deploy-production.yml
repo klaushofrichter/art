@@ -68,9 +68,12 @@ jobs:
           # report it on /health and in the page footer.
           build-args: |
             APP_VERSION=${{ steps.ver.outputs.version }}
+          # The only place these three are written. `:latest` belongs here,
+          # not on a main build: it has to mean what is deployed.
           tags: |
             ghcr.io/klaushofrichter/art:${{ github.sha }}
             ghcr.io/klaushofrichter/art:v${{ steps.ver.outputs.version }}
+            ghcr.io/klaushofrichter/art:latest
 
       - name: Prune old Docker images
         run: docker system prune -af --filter "until=168h" || true

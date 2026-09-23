@@ -36,6 +36,13 @@ jobs:
         with:
           context: .
           push: true
+          # `:main` and nothing else. A push to main is not a release, and
+          # two workflows writing the same tag is a race: deploy-production
+          # publishes `:<sha>`, which is what kube-setup's manifest pins, and
+          # only that build carries APP_VERSION. A main build landing on the
+          # same sha would replace the released image under the pin, and the
+          # next pod restart would quietly run an unversioned build. `:latest`
+          # is written by the deploy too, so it means the live release rather
+          # than the newest commit on main.
           tags: |
-            ghcr.io/klaushofrichter/art:latest
-            ghcr.io/klaushofrichter/art:${{ github.sha }}
+            ghcr.io/klaushofrichter/art:main
