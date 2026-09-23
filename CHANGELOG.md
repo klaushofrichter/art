@@ -26,3 +26,6 @@ is where notes are written *before* a release, not an archive of them.
      Currently empty. Last released: v2026.09.09.1. -->
 ## [Unreleased]
 
+- A push to main no longer writes the production image tags; the deploy is the only writer of `:<sha>`, `:v<version>` and `:latest`.
+- The image declares its user as uid 1000 rather than the `node` name, so it is verifiably non-root on its own.
+

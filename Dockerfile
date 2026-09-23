@@ -20,6 +20,10 @@ COPY --from=builder /app/dist ./dist
 # here: content lives on a volume (ASSETS_DIR), so it is neither in this image
 # nor in the public repo, and a content change is a sync rather than a deploy.
 COPY public ./public
-USER node
+# The uid rather than the name, so the image is verifiably non-root on its
+# own. It is the same user: `node` is uid 1000 in the official images. The
+# cluster's securityContext (runAsNonRoot, runAsUser/Group 1000) says the
+# same thing from the other side; neither should be the only place it holds.
+USER 1000:1000
 EXPOSE 8080
 CMD ["node", "dist/server.js"]
