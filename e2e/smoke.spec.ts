@@ -1131,3 +1131,122 @@ test('with a mouse, the light does not wander', async ({ page }) => {
   expect(Math.abs(parseFloat(after.x || '50') - parseFloat(before.x || '50'))).toBeLessThan(0.05);
   expect(Math.abs(parseFloat(after.y || '50') - parseFloat(before.y || '50'))).toBeLessThan(0.05);
 });
+
+/* The agent tools (WebMCP). No browser Playwright drives has
+   document.modelContext without a flag, so a stand-in is put in place before
+   the page's own script runs: it records what is registered, and the tests
+   call the tools the way an agent would. */
+test.describe('the agent tools', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const tools: unknown[] = [];
+      (window as unknown as { __tools: unknown[] }).__tools = tools;
+      Object.defineProperty(document, 'modelContext', {
+        configurable: true,
+        value: { registerTool(t: unknown) { tools.push(t); return Promise.resolve(); } },
+      });
+    });
+  });
+
+  type Tool = { name: string; annotations?: { readOnlyHint?: boolean }; execute: (i?: unknown) => unknown };
+  const call = (page: import('@playwright/test').Page, name: string, input: unknown = {}) =>
+    page.evaluate(async ([n, i]) => {
+      const t = (window as unknown as { __tools: Tool[] }).__tools.find((x) => x.name === n)!;
+      return JSON.parse(JSON.stringify(await t.execute(i)));
+    }, [name, input] as const);
+
+  test('are registered, and only the ones that read say so', async ({ page }) => {
+    await page.goto('/#prints');
+    const tools = await page.evaluate(() =>
+      (window as unknown as { __tools: Tool[] }).__tools.map((t) => [t.name, !!t.annotations?.readOnlyHint]));
+    expect(Object.fromEntries(tools)).toEqual({
+      'list-rooms': true, 'find-works': true, 'describe-current-view': true,
+      'show-room': false, 'show-work': false, 'next-view': false, 'open-purchase-page': false,
+    });
+  });
+
+  test('list the rooms, with the About room told apart', async ({ page }) => {
+    await page.goto('/#prints');
+    const { rooms } = await call(page, 'list-rooms');
+    expect(rooms.map((r: { room: string }) => r.room)).toEqual(['Shapes', 'Prints', 'About']);
+    expect(rooms[2].kind).toBe('about the artist');
+    expect(rooms[0].pictures).toBe(3);
+  });
+
+  test('never hand over the price of a sold picture', async ({ page }) => {
+    await page.goto('/#prints');
+    const all = await call(page, 'find-works');
+    expect(JSON.stringify(all)).not.toContain('150');
+    const tall = all.pictures.find((p: { title: string }) => p.title === 'Tall');
+    expect(tall.status).toBe('sold');
+    expect(tall.price).toBeUndefined();
+  });
+
+  test('filter by status, price and words, taking input as a person says it', async ({ page }) => {
+    await page.goto('/#prints');
+    const cheap = await call(page, 'find-works', { maxPrice: '$120', status: 'available' });
+    expect(cheap.pictures.map((p: { title: string }) => p.title).sort()).toEqual(['First Print', 'Wide']);
+    const inRoom = await call(page, 'find-works', { room: 'prints' });
+    expect(inRoom.count).toBe(2);
+    // what a buyer gets comes along only where it can still be had
+    const first = inRoom.pictures.find((p: { title: string }) => p.title === 'First Print');
+    expect(first.includes).toContain('Signed by the artist');
+    const nfs = inRoom.pictures.find((p: { title: string }) => p.title === 'Second Print');
+    expect(nfs.includes).toBeUndefined();
+  });
+
+  test('show a picture, and a named photograph of it, on screen', async ({ page }) => {
+    await page.goto('/#prints');
+    const r = await call(page, 'show-work', { work: 'wide', view: 'framed' });
+    expect(r.place).toBe('room');
+    expect(r.picture.title).toBe('Wide');
+    expect(r.view.showing).toBe('Framed, on the wall');
+    await expect(page).toHaveURL(/#shapes\/wide$/);
+    await expect(page.locator('.room .viewcap')).toContainText('Framed, on the wall');
+
+    const next = await call(page, 'next-view');
+    expect(next.view.number).toBe(3);
+    await expect(page.locator('.room .viewcap')).toContainText('Detail');
+  });
+
+  test('say what is ambiguous or missing rather than guess', async ({ page }) => {
+    await page.goto('/#prints');
+    const many = await call(page, 'show-work', { work: 'print' });
+    expect(many.error).toContain('More than one');
+    const none = await call(page, 'show-work', { work: 'shapes" onload="alert(1)' });
+    expect(none.error).toContain('No picture matches');
+    // nothing moved
+    await expect(page.locator('.room')).toHaveCount(0);
+  });
+
+  test('go into a room and back out to the lobby', async ({ page }) => {
+    await page.goto('/#prints');
+    expect((await call(page, 'show-room', { room: 'Shapes' })).room).toBe('Shapes');
+    await expect(page.locator('.room')).toBeVisible();
+    const back = await call(page, 'show-room', { room: 'lobby' });
+    expect(back.place).toBe('lobby');
+    expect(back.panel).toBe('Shapes');
+    await expect(page.locator('.room')).toHaveCount(0);
+  });
+
+  test('open a purchase page only for what can be bought', async ({ page }) => {
+    await page.goto('/#prints');
+    const sold = await call(page, 'open-purchase-page', { work: 'Tall' });
+    expect(sold.error).toContain('sold');
+    await page.waitForTimeout(400);
+    expect(new URL(page.url()).pathname).toBe('/');
+
+    const ok = await call(page, 'open-purchase-page', { work: 'First Print' });
+    expect(ok.opening).toMatch(/\/buy\/prints\/first-print$/);
+    await page.waitForURL(/\/buy\/prints\/first-print$/);
+  });
+});
+
+test('without the browser feature, the page registers nothing and carries on', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto('/');
+  await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Shapes');
+  expect(await page.evaluate(() => 'modelContext' in document)).toBe(false);
+  expect(errors).toEqual([]);
+});

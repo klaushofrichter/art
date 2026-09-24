@@ -118,6 +118,23 @@ there is no way to pull a whole room, by design.
 
 ---
 
+### Tools for AI agents (experimental)
+
+A browser with an AI agent built in can drive the gallery through
+[WebMCP](https://github.com/webmachinelearning/webmcp) tools rather than
+dragging the rail: `list-rooms`, `find-works`, `describe-current-view`,
+`show-room`, `show-work`, `next-view` and `open-purchase-page`. They read the
+same manifest the page already has, so a sold picture's price is not there to
+give, and they move the page through its own navigation, so whatever the
+agent does happens on screen. None of them buys, sends or submits anything:
+the furthest one goes is opening a purchase page, and the enquiry is still the
+visitor's to send.
+
+For now they appear only in Chrome with `about:flags#enable-webmcp-testing`
+turned on. Every other browser has no `document.modelContext` and never
+notices. There is no origin-trial token yet, so ordinary visitors do not get
+them. `WEBMCP = false` at the top of `public/app.js` removes them.
+
 ## Content
 
 **The pictures are not in this repository.** It is public and the artwork is
