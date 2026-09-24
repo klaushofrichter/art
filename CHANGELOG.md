@@ -26,3 +26,5 @@ is where notes are written *before* a release, not an archive of them.
      Currently empty. Last released: v2026.09.09.1. -->
 ## [Unreleased]
 
+- Experimental tools for AI agents in the browser (WebMCP): an agent can list rooms, search pictures, describe what is on screen, and show a room, a picture or one of its views. Only in Chrome with the WebMCP testing flag turned on.
+
