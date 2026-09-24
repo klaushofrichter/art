@@ -44,6 +44,14 @@
   var WANDER = AMBIENT && !REDUCE &&
     window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
+  /* Tools for an AI agent in the browser (WebMCP), registered at the bottom
+     of this file. An experiment: only a browser that offers
+     document.modelContext sees them — today that means Chrome with
+     about:flags#enable-webmcp-testing turned on — and every other browser
+     never notices. Set WEBMCP to false to drop them; nothing else depends
+     on it. */
+  var WEBMCP = true;
+
   function Spring(k, d) {
     return {
       x: 0, v: 0, t: 0,
@@ -588,6 +596,7 @@
     if (liveRoom) {
       liveRoom.remove();
       liveRoom = null;
+      here = null;
       lobby.hidden = false;
       keyHandler = lobbyKeys;
     }
@@ -682,6 +691,7 @@
   function returnToLobby(view, roomIndex) {
     view.remove();
     liveRoom = null;
+    here = null;
     lobby.hidden = false;
     lobby.focus({ preventScroll: true });
     keyHandler = lobbyKeys;
@@ -691,6 +701,11 @@
 
   /* ================= ROOM ================= */
   var liveRoom = null;
+  /* What is on screen, in terms the agent tools can ask about and drive:
+     null in the lobby, the room for the About room, and for a picture room
+     its rail and its views as well. Kept beside liveRoom and cleared with
+     it. */
+  var here = null;
 
   function enterRoom(room) {
     if (room.type === 'about') return enterAbout(room);
@@ -1025,6 +1040,12 @@
     view.tabIndex = -1;
     view.focus({ preventScroll: true });
     liveRoom = view;
+    here = {
+      room: room, rail: roomRail, leave: leave,
+      frames: function () { return framesOf(room.works[roomRail.index()]); },
+      frame: function () { return frame; },
+      showFrame: showFrame
+    };
     alignAll(view);
     showPicture(0, function () {
       loadOneByOne(byDistance(room.works.length, roomRail.index()), showPicture);
@@ -1071,6 +1092,7 @@
     view.tabIndex = -1;
     view.focus({ preventScroll: true });
     liveRoom = view;
+    here = { room: room, leave: leave };
     return null;
   }
 
@@ -1169,6 +1191,342 @@
     greeting = dismiss;
   }
   if (CAME_IN_BARE) showWelcome();
+
+  /* ================= AGENT TOOLS (WebMCP) =================
+     An agent in the browser gets the same gallery a visitor does, as
+     functions rather than a rail it would have to drag. Everything comes from
+     the manifest already in the page — which never carried a sold price — and
+     every move goes through the navigation the page already has, so what the
+     agent does is on screen as it happens.
+
+     Nothing here buys, sends or submits. The furthest a tool goes is opening
+     a purchase page, where the enquiry is still the visitor's own email to
+     write. Input from the agent is matched against the manifest and only the
+     matched entry's own id and slug are ever used, so nothing typed into a
+     tool call becomes part of a URL. */
+  (function registerAgentTools() {
+    var mc = document.modelContext;
+    if (!WEBMCP || !mc || typeof mc.registerTool !== 'function') return;
+
+    var STATUS_WORDS = { available: 'available', reserved: 'reserved', sold: 'sold', nfs: 'not for sale' };
+
+    /* Loose on purpose: an agent passes on whatever the person said, so
+       "Golden beets", "golden-beets" and "Golden Béets" are the same thing. */
+    function norm(v) {
+      return String(v == null ? '' : v).toLowerCase().normalize('NFD')
+        .replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    }
+    function plain(text) { return String(text || '').replace(/\*\*|\*/g, ''); }
+    function amount(v) {
+      if (typeof v === 'number') return v;
+      var m = /\d+(?:[.,]\d+)?/.exec(String(v == null ? '' : v).replace(/,(?=\d{3}\b)/g, ''));
+      return m ? parseFloat(m[0].replace(',', '.')) : NaN;
+    }
+    function pending(w) {
+      return w.status === 'available' && window.ArtPending && window.ArtPending.isPending(w.uid);
+    }
+    function statusOf(w) { return pending(w) ? 'sale pending' : STATUS_WORDS[w.status] || w.status; }
+
+    /* Exact matches first, then a name that contains what was asked for.
+       More than one partial match is ambiguous, and saying so lets the agent
+       ask rather than guess. */
+    function pick(list, query, keys) {
+      var q = norm(query);
+      if (!q) return { none: true };
+      var exact = list.filter(function (x) { return keys(x).some(function (k) { return norm(k) === q; }); });
+      if (exact.length === 1) return { one: exact[0] };
+      var loose = exact.length ? exact : list.filter(function (x) {
+        return keys(x).some(function (k) { return norm(k).indexOf(q) > -1; });
+      });
+      if (loose.length === 1) return { one: loose[0] };
+      return loose.length ? { many: loose } : { none: true };
+    }
+    function findRoom(query) {
+      return pick(ROOMS, query, function (r) { return [r.id, r.title]; });
+    }
+    function findWork(query, roomQuery) {
+      var rooms = ROOMS;
+      if (roomQuery) {
+        var r = findRoom(roomQuery);
+        if (!r.one) return { error: 'No single room matches "' + roomQuery + '". Rooms: ' + roomNames() + '.' };
+        rooms = [r.one];
+      }
+      var all = [];
+      rooms.forEach(function (room) {
+        room.works.forEach(function (w, i) { all.push({ room: room, work: w, index: i }); });
+      });
+      var got = pick(all, query, function (e) { return [e.work.slug, e.work.title]; });
+      if (got.one) return got.one;
+      if (got.many) {
+        return { error: 'More than one picture matches "' + query + '": ' +
+          got.many.map(function (e) { return e.work.title + ' (' + e.room.title + ')'; }).join(', ') +
+          '. Say which, or name the room.' };
+      }
+      return { error: 'No picture matches "' + query + '". find-works lists them.' };
+    }
+    function roomNames() { return ROOMS.map(function (r) { return r.title; }).join(', '); }
+
+    /* One picture as the page describes it. The price is only there when the
+       page would show one; the manifest has none for sold work to give. */
+    function describe(room, w) {
+      var out = {
+        room: room.title, title: w.title, artist: w.artist || undefined,
+        date: w.date ? niceDate(w.date) : undefined,
+        medium: w.medium || undefined, size: w.dimensions || undefined,
+        edition: w.edition || undefined,
+        description: plain(w.description) || undefined,
+        status: statusOf(w)
+      };
+      if (w.price != null) out.price = money(w.price, w.currency);
+      if (w.includes && w.includes.length && (w.status === 'available' || w.status === 'reserved')) {
+        out.includes = w.includes.map(plain);
+      }
+      if (w.views && w.views.length) {
+        out.otherViews = w.views.map(function (v) { return v.caption || v.kind; });
+      }
+      if (w.uid) out.permalink = permalink(w.uid);
+      return out;
+    }
+
+    function dismissGreeting() { if (greeting) greeting(); }
+
+    /* Into a room, the way the menu does it: the lobby moves to that panel
+       first so leaving comes back to it. */
+    function goToRoom(room) {
+      dismissGreeting();
+      if (here && here.room === room) return here;
+      var i = ROOMS.indexOf(room);
+      lobbyRail.go(i, true);
+      syncLobby(i);
+      enterRoom(room);
+      return here;
+    }
+
+    function whereAmI() {
+      if (!here) {
+        var r = ROOMS[lobbyRail.index()];
+        return { place: 'lobby', panel: r ? r.title : undefined,
+                 note: 'The lobby shows one room per panel; show-room goes in.' };
+      }
+      if (!here.rail) return { place: 'room', room: here.room.title, kind: 'about',
+                               about: plain(here.room.description) || undefined };
+      var i = here.rail.index(), w = here.room.works[i];
+      var frames = here.frames(), f = here.frame();
+      var out = { place: 'room', room: here.room.title,
+                  position: (i + 1) + ' of ' + here.room.works.length,
+                  picture: describe(here.room, w) };
+      if (frames.length > 1) {
+        out.view = { number: f + 1, of: frames.length,
+                     showing: f === 0 ? 'the work itself' : frames[f].caption || frames[f].kind };
+      }
+      return out;
+    }
+
+    var TOOLS = [
+      {
+        name: 'list-rooms',
+        title: 'List the rooms',
+        description: 'Lists the rooms of this art gallery: each room\'s title, what kind of ' +
+          'work it holds, a short description and how many pictures are in it. The About ' +
+          'room describes the artist and has no pictures to browse.',
+        inputSchema: { type: 'object', properties: {} },
+        annotations: { readOnlyHint: true },
+        execute: function () {
+          return { rooms: ROOMS.map(function (r) {
+            return r.type === 'about'
+              ? { room: r.title, kind: 'about the artist', description: plain(r.description) || undefined }
+              : { room: r.title, kind: r.subtitle, description: plain(r.description) || undefined,
+                  pictures: r.works.length };
+          }) };
+        }
+      },
+      {
+        name: 'find-works',
+        title: 'Find pictures',
+        description: 'Searches the pictures in the gallery and returns their details: title, ' +
+          'room, date, medium, size, edition, description, whether it can be bought, the price ' +
+          'when it has one, and what a buyer receives. Every filter is optional; with none it ' +
+          'returns everything.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            room: { type: 'string', description: 'A room title, such as "Food". Optional.' },
+            status: { type: 'string', enum: ['available', 'reserved', 'sold', 'not for sale'],
+                      description: 'Only pictures in this state. Optional.' },
+            maxPrice: { type: ['number', 'string'], description: 'Highest price, in US dollars, e.g. 70 or "$70". Optional.' },
+            text: { type: 'string', description: 'Words to look for in the title, description or medium. Optional.' }
+          }
+        },
+        annotations: { readOnlyHint: true },
+        execute: function (input) {
+          input = input || {};
+          var rooms = ROOMS.filter(function (r) { return r.type !== 'about'; });
+          if (input.room) {
+            var r = findRoom(input.room);
+            if (!r.one) return { error: 'No single room matches "' + input.room + '". Rooms: ' + roomNames() + '.' };
+            rooms = [r.one];
+          }
+          var max = input.maxPrice == null || input.maxPrice === '' ? null : amount(input.maxPrice);
+          if (max !== null && isNaN(max)) return { error: 'maxPrice should be a number of dollars, such as 70.' };
+          var want = input.status ? norm(input.status) : null;
+          var words = norm(input.text).split(' ').filter(Boolean);
+          var found = [];
+          rooms.forEach(function (room) {
+            room.works.forEach(function (w) {
+              if (want && norm(STATUS_WORDS[w.status]) !== want) return;
+              /* Only pictures that have a price can be under one. */
+              if (max !== null && (w.price == null || w.price > max)) return;
+              var hay = norm([w.title, plain(w.description), w.medium].join(' '));
+              if (words.some(function (x) { return hay.indexOf(x) < 0; })) return;
+              found.push(describe(room, w));
+            });
+          });
+          return { count: found.length, pictures: found };
+        }
+      },
+      {
+        name: 'describe-current-view',
+        title: 'What is on screen',
+        description: 'Says what the visitor is looking at right now: the lobby and which ' +
+          'room\'s panel, or the room, the picture with its details, and which photograph of it ' +
+          'is showing when it has several.',
+        inputSchema: { type: 'object', properties: {} },
+        annotations: { readOnlyHint: true },
+        execute: function () { return whereAmI(); }
+      },
+      {
+        name: 'show-room',
+        title: 'Go to a room',
+        description: 'Takes the visitor into a room of the gallery, showing its first picture, ' +
+          'or back out to the lobby when the room is "lobby".',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            room: { type: 'string', description: 'A room title, such as "Colors", or "lobby".' }
+          },
+          required: ['room']
+        },
+        execute: function (input) {
+          var q = input && input.room;
+          dismissGreeting();
+          if (norm(q) === 'lobby') {
+            if (here) here.leave();
+            return whereAmI();
+          }
+          var r = findRoom(q);
+          if (!r.one) return { error: 'No single room matches "' + q + '". Rooms: ' + roomNames() + ', or "lobby".' };
+          if (r.one.type !== 'about' && !r.one.works.length) return { error: r.one.title + ' has no pictures yet.' };
+          goToRoom(r.one);
+          return whereAmI();
+        }
+      },
+      {
+        name: 'show-work',
+        title: 'Show a picture',
+        description: 'Brings one picture onto the screen, going into its room if need be. ' +
+          'Optionally shows one of its other photographs instead of the work itself: a framed ' +
+          'shot or a close-up detail, where the picture has them.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            work: { type: 'string', description: 'The picture\'s title, such as "Undertow".' },
+            room: { type: 'string', description: 'The room, when the title alone is ambiguous. Optional.' },
+            view: { type: 'string', description: 'Which photograph: "framed", "detail", words from ' +
+                    'its caption, or its number. Optional; the work itself by default.' }
+          },
+          required: ['work']
+        },
+        execute: function (input) {
+          input = input || {};
+          var hit = findWork(input.work, input.room);
+          if (hit.error) return hit;
+          goToRoom(hit.room);
+          here.rail.go(hit.index);
+          if (input.view != null && input.view !== '') {
+            var frames = here.frames();
+            var n = amount(input.view), k = -1;
+            if (!isNaN(n) && /^\s*\d+\s*$/.test(String(input.view))) k = n - 1;
+            else {
+              var q = norm(input.view);
+              frames.forEach(function (f, j) {
+                if (k < 0 && j > 0 && (norm(f.kind) === q || norm(f.caption).indexOf(q) > -1)) k = j;
+              });
+            }
+            if (frames.length < 2) {
+              return { note: hit.work.title + ' has only the one photograph.', now: whereAmI() };
+            }
+            if (k < 0 || k >= frames.length) {
+              return { note: 'No photograph of ' + hit.work.title + ' matches "' + input.view + '". It has: ' +
+                       frames.map(function (f, j) { return (j + 1) + ' ' + (j ? f.caption || f.kind : 'the work itself'); }).join(', ') + '.',
+                       now: whereAmI() };
+            }
+            here.showFrame(k);
+          }
+          return whereAmI();
+        }
+      },
+      {
+        name: 'next-view',
+        title: 'Next photograph of this picture',
+        description: 'On a picture that has more than one photograph — framed, or a close-up — ' +
+          'shows the next or previous one. Wraps around at the ends.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            direction: { type: 'string', enum: ['next', 'previous'], description: 'Defaults to next.' }
+          }
+        },
+        execute: function (input) {
+          if (!here || !here.rail) return { error: 'No picture is on screen. show-work opens one.' };
+          if (here.frames().length < 2) {
+            return { note: 'This picture has only the one photograph.', now: whereAmI() };
+          }
+          var step = input && norm(input.direction) === 'previous' ? -1 : 1;
+          here.showFrame(here.frame() + step);
+          return whereAmI();
+        }
+      },
+      {
+        name: 'open-purchase-page',
+        title: 'Open the purchase page',
+        description: 'Opens the page for buying one picture, which shows the price and what ' +
+          'is included and lets the visitor send an enquiry themselves. It does not buy or ' +
+          'reserve anything. Only for pictures that are available.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            work: { type: 'string', description: 'The picture\'s title.' },
+            room: { type: 'string', description: 'The room, when the title alone is ambiguous. Optional.' }
+          },
+          required: ['work']
+        },
+        execute: function (input) {
+          input = input || {};
+          var hit = findWork(input.work, input.room);
+          if (hit.error) return hit;
+          var w = hit.work;
+          if (w.status !== 'available' || w.price == null) {
+            return { error: w.title + ' is ' + statusOf(w) + ', so there is nothing to buy.' };
+          }
+          /* The answer goes back before the page does: once the tab navigates,
+             this document and anything it was about to return are gone. */
+          var url = buyUrl(hit.room.id, w.slug);
+          setTimeout(function () { location.assign(url); }, 150);
+          return { opening: location.origin + url, picture: describe(hit.room, w),
+                   next: 'The visitor sends the enquiry from that page themselves.' };
+        }
+      }
+    ];
+
+    TOOLS.forEach(function (tool) {
+      try {
+        var p = mc.registerTool(tool);
+        /* Rejected when the page may not use it (a Permissions-Policy, a
+           frame) — which for an experiment means nothing more than "no". */
+        if (p && p.catch) p.catch(function () {});
+      } catch (_) {}
+    });
+  })();
 
   /* The cover you land on downloads by itself; the others queue behind it. */
   (function loadCovers() {
