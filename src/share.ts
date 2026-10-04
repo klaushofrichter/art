@@ -1,6 +1,9 @@
-import { Room, Sized, Work, webpName } from './content';
+import { Room, Work } from './content';
 import { plainText } from './markdown';
 import { SITE_URL } from './site';
+import { pictureUrl } from './urls';
+
+export { srcset, webpSrcset } from './urls';
 
 /** What a link preview shows. Open Graph requires absolute URLs — a crawler
  *  has no page to resolve a relative one against. */
@@ -42,9 +45,9 @@ export function workImage(room: Room, work: Work): ShareImage {
 }
 
 export function roomImage(room: Room): ShareImage | null {
-  if (!room.cover || !room.coverUrl) return null;
+  if (!room.cover) return null;
   return {
-    url: absolute(room.coverUrl),
+    url: absolute(pictureUrl(room.id, room.cover)),
     alt: room.title,
     width: room.cover.width,
     height: room.cover.height,
@@ -64,34 +67,4 @@ export function galleryImage(rooms: Room[]): ShareImage | null {
 export function workDescription(room: Room, work: Work): string {
   const parts = [plainText(work.description), work.medium, room.title].filter(Boolean);
   return parts[0] ? String(parts[0]) : `${work.title} — ${room.title}.`;
-}
-
-/** A picture's smaller copies, as an <img srcset>. Built from a literal
- *  prefix, a number and encoded identifiers — never from anything content
- *  supplies — so it is no more of a sink than a plain src.
- *
- *  The original is deliberately not among the candidates: the top of the
- *  ladder is the ceiling for anything shown on screen, and the original is
- *  what the download link serves. Empty when a picture has no copies, and
- *  callers must then omit the attribute rather than write srcset="". */
-
-/** Every copy of a picture carries the same version token as the picture
- *  itself: the derivatives are regenerated from the original and folded into
- *  it, so one key covers the set. Without it these URLs never change and the
- *  year-long cache on /assets would strand a replaced picture. */
-function sizedUrls(roomId: string, work: Sized, name: string): string {
-  const at = (w: number) =>
-    `/assets/${encodeURIComponent(roomId)}/w${w}/${encodeURIComponent(name)}?v=${work.v}`;
-  return work.widths.map((w) => `${at(w)} ${w}w`).join(', ');
-}
-
-export function srcset(roomId: string, work: Sized): string {
-  return sizedUrls(roomId, work, work.file);
-}
-
-/** The same, in WebP. Empty when this picture has no WebP copies, which is
- *  the signal to leave the <source> out rather than write an empty one. */
-export function webpSrcset(roomId: string, work: Sized): string {
-  if (!work.webp) return '';
-  return sizedUrls(roomId, work, webpName(work.file));
 }

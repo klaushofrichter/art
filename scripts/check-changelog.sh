@@ -16,13 +16,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# The same extraction deploy-production.yml does, so this checks what actually
-# ships rather than something that resembles it.
-unreleased=$(awk '
-  /^## \[Unreleased\]/ { grab = 1; next }
-  grab && /^## /        { exit }
-  grab                  { print }
-' CHANGELOG.md | sed '/^[[:space:]]*$/d')
+# The same script deploy-production.yml publishes from, so this checks what
+# actually ships rather than something that resembles it.
+unreleased=$(scripts/unreleased-notes.sh)
 
 if [ -z "$unreleased" ]; then
   echo "check-changelog: Unreleased is empty — nothing to republish."

@@ -1,11 +1,11 @@
 import { createApp } from './app';
-import { ASSETS_DIR, loadRooms } from './content';
+import { ASSETS_DIR, countWorks, loadRooms } from './content';
 import { watchContent } from './watch';
 
 const port = Number(process.env.PORT) || 8080;
 
 const rooms = loadRooms();
-const works = rooms.reduce((n, r) => n + r.works.length, 0);
+const works = countWorks(rooms);
 if (!rooms.length) {
   // The pictures are not in the repo, so a fresh clone starts with nothing.
   // Say so plainly rather than serving an empty gallery without explanation.

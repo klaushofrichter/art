@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { onTestFinished } from 'vitest';
+import { createApp } from '../src/app';
 import { loadRooms } from '../src/content';
 
 /** Tests run against fixtures they own, not against the gallery's real
@@ -30,4 +31,18 @@ export function tempDir(label = 'art'): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `${label}-`));
   onTestFinished(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
+}
+
+/** A live app serving whatever is in `dir` — the usual partner of
+ *  tempAssets. createApp loads the rooms itself when it is given none. */
+export function appAt(dir: string) {
+  return createApp(undefined, dir);
+}
+
+/** The manifest the gallery page embeds, as the browser would parse it: the
+ *  `<` the server escapes inside the script tag put back. Six tests each had
+ *  their own copy of this, and they had drifted on whether they unescaped. */
+export function manifestOf(html: string) {
+  const inner = (html.match(/id="manifest">([\s\S]*?)<\/script>/) as RegExpMatchArray)[1];
+  return JSON.parse(inner.replace(/\\u003c/g, '<'));
 }

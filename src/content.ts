@@ -2,6 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
 import { imageSize } from './imagesize';
+import { buyPath, pictureUrl, webpName } from './urls';
+
+export { webpName };
 
 export type Status = 'available' | 'sold' | 'reserved' | 'nfs';
 const STATUSES: Status[] = ['available', 'sold', 'reserved', 'nfs'];
@@ -21,19 +24,6 @@ export interface View extends Sized {
 }
 
 export interface Work extends Sized {
-  /** Widths of the smaller copies that exist beside this picture, ascending.
-   *  The browser picks one; the original is always there as the fallback and
-   *  is what the download link serves. See scripts/make-derivatives.sh. */
-  widths: number[];
-  /** Whether a WebP copy exists at every one of those widths. All or nothing:
-   *  a half-generated set would have the browser asking for files that are not
-   *  there. The original is never converted — it stays the file that was shot,
-   *  and it is what the download link serves. */
-  webp: boolean;
-  /** Pixel size, when it could be read from the file's header. Used only for
-   *  the og:image hints a link preview lays itself out with. */
-  width?: number;
-  height?: number;
   /** Stable 8-character id from index.json — the permalink never changes,
    *  even if the title (and therefore the slug) does. */
   uid: string;
@@ -87,8 +77,6 @@ export interface Room {
    *  reassemble those into this shape anyway before it could use any of the
    *  shared URL helpers on them. Null for a room with no cover on disk. */
   cover: Sized | null;
-  /** Ready-made URL for the full-size cover, for the link preview. */
-  coverUrl: string | null;
   includes: string[];
   order: number;
   about?: AboutInfo;
@@ -138,7 +126,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     const base = slug;
     for (let n = 2; seen.has(slug); n++) slug = `${base}-${n}`;
     seen.add(slug);
-    const pic = sizedWithPixels(roomDir, path.join(assetsDir, dir, w.file), w.file, availableWidths);
+    const pic = sized(roomDir, w.file, availableWidths);
     return [{
       ...pic,
       uid: typeof w.uid === 'string' ? w.uid : '',
@@ -147,7 +135,7 @@ function readRoom(dir: string, assetsDir: string): Room | null {
       // and is deliberately not required to match the folder it came from
       // (see Room.dir), so it is arbitrary text — and this string is put
       // straight into a src attribute on the purchase page.
-      src: `/assets/${encodeURIComponent(c.id)}/${encodeURIComponent(w.file)}?v=${pic.v}`,
+      src: pictureUrl(c.id, pic),
       title: w.title || w.file,
       date: w.date || '',
       artist: w.artist,
@@ -158,16 +146,15 @@ function readRoom(dir: string, assetsDir: string): Room | null {
       price: typeof w.price === 'number' ? w.price : undefined,
       currency: w.currency || 'USD',
       status,
-      purchaseUrl: w.purchase_url || `/buy/${encodeURIComponent(c.id)}/${slug}`,
+      purchaseUrl: w.purchase_url || buyPath(c.id, slug),
       includes: [...roomIncludes, ...strings(w.includes)],
-      views: readViews(w.views, dir, assetsDir, roomDir, availableWidths),
+      views: readViews(w.views, assetsDir, dir, availableWidths),
     }];
   });
 
   const coverFile = typeof c.cover === 'string' ? c.cover : null;
-  const coverOk = coverFile && fs.existsSync(path.join(assetsDir, dir, coverFile));
-  const cover = coverOk
-    ? sizedWithPixels(roomDir, path.join(assetsDir, dir, coverFile as string), coverFile as string, availableWidths)
+  const cover = coverFile && fs.existsSync(path.join(roomDir, coverFile))
+    ? sized(roomDir, coverFile, availableWidths)
     : null;
 
   return {
@@ -179,9 +166,6 @@ function readRoom(dir: string, assetsDir: string): Room | null {
     subtitle: c.subtitle || '',
     description: c.description || '',
     cover,
-    coverUrl: cover
-      ? `/assets/${encodeURIComponent(c.id)}/${encodeURIComponent(cover.file)}?v=${cover.v}`
-      : null,
     includes: roomIncludes,
     order: typeof c.order === 'number' ? c.order : 50,
     about: readAbout(raw.about),
@@ -224,20 +208,14 @@ function readAbout(raw: any): AboutInfo | undefined {
  *  works themselves follow, and for the same reason — a missing supporting
  *  photograph is not worth taking the gallery down for, and the work still
  *  has its own picture to show. */
-function readViews(
-  raw: any,
-  dir: string,
-  assetsDir: string,
-  roomDir: string,
-  availableWidths: number[],
-): View[] {
+function readViews(raw: any, assetsDir: string, dir: string, availableWidths: number[]): View[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((v: any): View[] => {
     if (!v || typeof v.file !== 'string') return [];
     if (!onDisk(assetsDir, dir, v.file, 'listed as a view')) return [];
     const kind = v.kind === 'detail' || v.kind === 'framed' ? v.kind : 'other';
     return [{
-      ...sizedWithPixels(roomDir, path.join(assetsDir, dir, v.file), v.file, availableWidths),
+      ...sized(path.join(assetsDir, dir), v.file, availableWidths),
       caption: typeof v.caption === 'string' ? v.caption : '',
       kind,
     }];
@@ -256,6 +234,37 @@ function widthDirs(roomDir: string): number[] {
   } catch {
     return [];
   }
+}
+
+/** A picture that index.json names but the sync did not carry. Warn and skip
+ *  it rather than throwing: a missing file must never take down a gallery
+ *  that is otherwise fine, and the same rule holds for a work and for one of
+ *  its views — which is why it is said here once rather than at both. */
+function onDisk(assetsDir: string, dir: string, file: string, listedAs: string): boolean {
+  if (fs.existsSync(path.join(assetsDir, dir, file))) return true;
+  console.warn(`content: ${dir}/${file} ${listedAs} but not on disk — skipped`);
+  return false;
+}
+
+/** One picture file as everything else needs it — a work, one of its views
+ *  and a room's cover all take this shape. */
+export interface Sized {
+  file: string;
+  /** Widths of the smaller copies that exist beside this picture, ascending.
+   *  The browser picks one; the original is always there as the fallback and
+   *  is what the download link serves. See scripts/make-derivatives.sh. */
+  widths: number[];
+  /** Whether a WebP copy exists at every one of those widths. All or nothing:
+   *  a half-generated set would have the browser asking for files that are not
+   *  there. The original is never converted — it stays the file that was shot,
+   *  and it is what the download link serves. */
+  webp: boolean;
+  /** The cache key every URL naming this file carries as `?v=`. */
+  v: string;
+  /** Pixel size, when it could be read from the file's header. Used only for
+   *  the og:image hints a link preview lays itself out with. */
+  width?: number;
+  height?: number;
 }
 
 /** Everything the rest of the code needs to know about one picture file:
@@ -278,32 +287,7 @@ function widthDirs(roomDir: string): number[] {
  *  Every derivative is folded in, not just the original, because they change
  *  on their own: a FORCE=1 rebuild or a different QUALITY rewrites the copies
  *  and leaves the original untouched. */
-/** A picture that index.json names but the sync did not carry. Warn and skip
- *  it rather than throwing: a missing file must never take down a gallery
- *  that is otherwise fine, and the same rule holds for a work and for one of
- *  its views — which is why it is said here once rather than at both. */
-function onDisk(assetsDir: string, dir: string, file: string, listedAs: string): boolean {
-  if (fs.existsSync(path.join(assetsDir, dir, file))) return true;
-  console.warn(`content: ${dir}/${file} ${listedAs} but not on disk — skipped`);
-  return false;
-}
-
-/** The WebP beside a resized copy keeps the basename and changes the
- *  extension. Exported because the browser has to build the same name. */
-export function webpName(file: string): string {
-  return file.replace(/\.[A-Za-z0-9]+$/, '') + '.webp';
-}
-
-export interface Sized {
-  file: string;
-  widths: number[];
-  webp: boolean;
-  v: string;
-  width?: number;
-  height?: number;
-}
-
-function sizedFrom(roomDir: string, file: string, dirs: number[]): Omit<Sized, 'width' | 'height'> {
+function sized(roomDir: string, file: string, dirs: number[]): Sized {
   const stamp = (p: string): string | null => {
     try {
       const st = fs.statSync(p);
@@ -327,19 +311,17 @@ function sizedFrom(roomDir: string, file: string, dirs: number[]): Omit<Sized, '
     if (wp) parts.push(wp);
     else webpEverywhere = false;
   }
+  // The pixel size costs an open and a read; it is what a link preview lays
+  // itself out with, and every picture here can be one.
+  const size = imageSize(path.join(roomDir, file));
   return {
     file,
     widths,
     webp: widths.length > 0 && webpEverywhere,
     v: createHash('sha1').update(parts.join('|')).digest('hex').slice(0, 10),
+    width: size?.width,
+    height: size?.height,
   };
-}
-
-/** The same, plus the pixel dimensions — which cost an open and a read, so
- *  they are only taken where something actually needs them. */
-function sizedWithPixels(roomDir: string, absFile: string, file: string, dirs: number[]): Sized {
-  const size = imageSize(absFile);
-  return { ...sizedFrom(roomDir, file, dirs), width: size?.width, height: size?.height };
 }
 
 export function loadRooms(assetsDir: string = ASSETS_DIR): Room[] {
@@ -354,21 +336,14 @@ export function loadRooms(assetsDir: string = ASSETS_DIR): Room[] {
     .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
 }
 
-/** Resolve a permalink id to whatever it names — a room, or one picture. */
-export function findByUid(rooms: Room[], uid: string) {
-  if (!uid) return null;
-  for (const room of rooms) {
-    if (room.uid === uid) return { room, work: null };
-    for (const work of room.works) {
-      if (work.uid === uid) return { room, work };
-    }
-  }
-  return null;
-}
-
 export function findWork(rooms: Room[], roomId: string, slug: string) {
   const room = rooms.find((r) => r.id === roomId);
   if (!room) return null;
   const work = room.works.find((w) => w.slug === slug);
   return work ? { room, work } : null;
+}
+
+/** How many works the gallery holds — what /health and the logs report. */
+export function countWorks(rooms: Room[]): number {
+  return rooms.reduce((n, r) => n + r.works.length, 0);
 }

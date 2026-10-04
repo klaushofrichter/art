@@ -10,36 +10,22 @@
 #     scripts/pull-assets.sh assets.live
 set -euo pipefail
 
-NS=art
-DEPLOY=art-content
 DEST="${1:-assets}"
-KUBECTL="${KUBECTL:-kubectl}"
 
 cd "$(dirname "$0")/.."
+. scripts/content-pod.sh
 
 if [ -e "$DEST" ]; then
   echo "pull-assets: $DEST already exists — move it aside, or name another destination" >&2
   exit 1
 fi
 
-echo "==> waking $DEPLOY"
-scaled_up=0
-cleanup() {
-  if [ "$scaled_up" = 1 ]; then
-    echo "==> sending $DEPLOY back to sleep"
-    $KUBECTL scale deploy/$DEPLOY -n $NS --replicas=0 >/dev/null
-  fi
-}
-trap cleanup EXIT
-$KUBECTL scale deploy/$DEPLOY -n $NS --replicas=1 >/dev/null
-scaled_up=1
-$KUBECTL rollout status deploy/$DEPLOY -n $NS --timeout=120s >/dev/null
-POD=$($KUBECTL get pod -n $NS -l app=$DEPLOY -o jsonpath='{.items[0].metadata.name}')
+wake_content_pod
 
 # Stream into a temporary directory and move it into place, so an interrupted
 # pull leaves nothing behind that looks like content.
 TMP=$(mktemp -d "./.pull-assets.XXXXXX")
-trap 'rm -rf "$TMP"; cleanup' EXIT
+on_exit 'rm -rf "$TMP"'
 echo "==> copying from $POD"
 # Land the archive as a file before unpacking rather than piping straight into
 # tar: a pipe hides a short read, so a truncated stream looks like a corrupt

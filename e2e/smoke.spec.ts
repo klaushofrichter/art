@@ -602,12 +602,7 @@ test('sending an enquiry marks the picture pending for that visitor', async ({ p
 test('the mark is only in that browser, never for anyone else', async ({ browser }) => {
   const mine = await browser.newContext();
   const minePage = await mine.newPage();
-  await minePage.addInitScript(() => {
-    document.addEventListener('click', (e) => {
-      const a = (e.target as HTMLElement).closest?.('a[href^="mailto:"]');
-      if (a) e.preventDefault();
-    }, true);
-  });
+  await stopMailto(minePage);
   await minePage.goto('/buy/shapes/wide');
   await minePage.locator('[data-enquire-uid]').click();
   await minePage.goto('/#shapes/wide');
@@ -1249,4 +1244,21 @@ test('without the browser feature, the page registers nothing and carries on', a
   await expect(page.locator('.lpanel .cap .n').first()).toHaveText('Shapes');
   expect(await page.evaluate(() => 'modelContext' in document)).toBe(false);
   expect(errors).toEqual([]);
+});
+
+test('going back to a work\'s own picture keeps its version', async ({ page }) => {
+  // Paging through the views and wrapping round to the first used to load the
+  // work under ?v=undefined — a cache key that never changes, so a replaced
+  // picture would have stayed stale for a year.
+  await page.goto('/#shapes/wide');
+  const art = page.locator('.room .slide').first().locator('img.art');
+  await expect(art).toHaveAttribute('src', /\?v=[a-f0-9]{10}$/);
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.room .viewcap')).toContainText('2 / ');
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('.room .viewcap')).toContainText('1 / ');
+  await expect(art).toHaveAttribute('src', /\/assets\/shapes\/wide\.jpg\?v=[a-f0-9]{10}$/);
+  for (const attr of ['src', 'srcset']) {
+    expect(await art.getAttribute(attr)).not.toContain('undefined');
+  }
 });

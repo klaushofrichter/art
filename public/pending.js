@@ -50,9 +50,6 @@
       if (note) note.hidden = false;
     });
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', wire);
-  } else {
-    wire();
-  }
+  /* Loaded with defer (views/layout.ts), so the page is parsed by now. */
+  wire();
 })();

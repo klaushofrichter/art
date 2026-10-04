@@ -2,9 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import request from 'supertest';
-import { createApp } from '../src/app';
-import { loadRooms } from '../src/content';
-import { tempAssets } from './setup';
+import { tempAssets, appAt } from './setup';
 
 let dir: string;
 
@@ -14,7 +12,7 @@ beforeEach(() => {
 
 describe('reloading content under a running server', () => {
   it('picks up a change without a restart', async () => {
-    const app = createApp(loadRooms(dir), dir);
+    const app = appAt(dir);
     expect((await request(app).get('/health')).body.rooms).toBe(3);
 
     fs.rmSync(path.join(dir, 'prints'), { recursive: true });
@@ -26,7 +24,7 @@ describe('reloading content under a running server', () => {
   });
 
   it('re-renders the page, not just the counts', async () => {
-    const app = createApp(loadRooms(dir), dir);
+    const app = appAt(dir);
     expect((await request(app).get('/')).text).toContain('First Print');
     fs.rmSync(path.join(dir, 'prints'), { recursive: true });
     app.reloadContent();
@@ -34,7 +32,7 @@ describe('reloading content under a running server', () => {
   });
 
   it('keeps the gallery it has when the new content will not parse', async () => {
-    const app = createApp(loadRooms(dir), dir);
+    const app = appAt(dir);
     fs.writeFileSync(path.join(dir, 'shapes', 'index.json'), '{ not json');
 
     expect(app.reloadContent()).toBe(false);
@@ -45,7 +43,7 @@ describe('reloading content under a running server', () => {
 
   it('keeps the gallery it has when the content disappears', async () => {
     // a half-finished sync, or a volume that failed to mount
-    const app = createApp(loadRooms(dir), dir);
+    const app = appAt(dir);
     for (const room of fs.readdirSync(dir)) {
       fs.rmSync(path.join(dir, room), { recursive: true });
     }

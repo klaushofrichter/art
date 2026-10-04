@@ -17,6 +17,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 26
+          cache: npm
 
       - run: npm ci
 
@@ -50,6 +51,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 26
+          cache: npm
 
       - run: npm ci
 
@@ -67,23 +69,11 @@ jobs:
                      /etc/apt/sources.list.d/google-chrome.sources
           npx playwright install --with-deps chromium
 
-      - run: npm run build
-
-      - name: Start the server and run the smoke test
-        env:
-          ASSETS_DIR: ${{ github.workspace }}/test/fixtures/assets
-        run: |
-          set -euo pipefail
-          npm start &
-          echo $! > /tmp/server.pid
-          for i in $(seq 1 20); do
-            curl -sf http://localhost:8080/health >/dev/null && break
-            echo "waiting for server (${i}/20)"; sleep 2
-          done
-          curl -sf http://localhost:8080/health >/dev/null \
-            || { echo "::error::server did not come up"; exit 1; }
-          npm run test:e2e
-          kill "$(cat /tmp/server.pid)" || true
+      # Builds, starts the server on the test fixtures, waits for /health and
+      # stops it again — all from webServer in playwright.config.ts, so a
+      # failed run cannot leave it running and the laptop runs the same thing.
+      - name: Run the smoke test
+        run: npm run test:e2e
 
   codeql:
     runs-on: ubuntu-latest

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { Room, findWork } from '../content';
+import { buyPath } from '../urls';
 import { renderBuy } from '../views/buy';
 
 export function buyRouter(rooms: () => Room[]): Router {
@@ -21,11 +22,13 @@ export function buyRouter(rooms: () => Room[]): Router {
     // index.json may point a work at somewhere else entirely. The gallery
     // always links to this canonical path, so the redirect lives here rather
     // than in the browser — the client never handles a URL from content.
-    // Built the same way content.ts builds the default purchaseUrl, encoding
-    // included — otherwise a room id that needs encoding makes every work in
-    // it look like it points somewhere else, and each one redirects to
-    // itself for ever.
-    const canonical = `/buy/${encodeURIComponent(found.room.id)}/${found.work.slug}`;
+    // buyPath is also what content.ts fills in as the default purchaseUrl, so
+    // the two cannot drift. When they did, a room id that needed encoding made
+    // every work in it look like it pointed somewhere else, and each one
+    // redirected to itself for ever. The content itself also sets
+    // purchase_url to this same path, which is why this is a comparison and
+    // not "is it set".
+    const canonical = buyPath(found.room.id, found.work.slug);
     if (found.work.purchaseUrl && found.work.purchaseUrl !== canonical) {
       res.redirect(302, found.work.purchaseUrl);
       return;

@@ -312,7 +312,7 @@ npm run dev          # http://localhost:8080
 | `npm run build` | compile TypeScript into `dist/` |
 | `npm start` | run the compiled server |
 | `npm test` | unit tests (vitest + supertest) |
-| `npm run test:e2e` | Playwright, against a running server |
+| `npm run test:e2e` | Playwright; builds and starts its own server on the test fixtures (`BASE_URL=` to aim it at one already running) |
 
 | `npm run dev:fixtures` | the same, against the test fixtures |
 
