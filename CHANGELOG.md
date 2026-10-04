@@ -26,3 +26,5 @@ is where notes are written *before* a release, not an archive of them.
      Currently empty. Last released: v2026.09.09.1. -->
 ## [Unreleased]
 
+- A reserved picture's purchase page now shows its price and what is included, as the room already did, without offering to enquire.
+

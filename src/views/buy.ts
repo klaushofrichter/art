@@ -44,7 +44,12 @@ function views(room: Room, work: Work): string {
 }
 
 export function renderBuy(room: Room, work: Work): string {
-  const priced = work.status === 'available' && work.price != null;
+  // A reserved work still shows its price and what comes with it, the same as
+  // the room does: it is spoken for, not gone. Only an available one can be
+  // asked about.
+  const buyable = work.status === 'available' && work.price != null;
+  const priced = (work.status === 'available' || work.status === 'reserved') && work.price != null;
+  const promises = work.status === 'available' || work.status === 'reserved';
   return page({
     title: `${work.title} — Klaus Hofrichter`,
     description: `${work.title}${work.medium ? `, ${work.medium}` : ''}.`,
@@ -66,7 +71,7 @@ export function renderBuy(room: Room, work: Work): string {
         ${work.edition ? `<dt>Edition</dt><dd>${escapeHtml(work.edition)}</dd>` : ''}
         <dt>Room</dt><dd>${escapeHtml(room.title)}</dd>
       </dl>
-      ${work.includes.length && priced
+      ${work.includes.length && promises
         ? `<ul class="includes">${work.includes.map((i) => `<li>${inlineMarkup(i)}</li>`).join('')}</ul>`
         : ''}
       ${priced
@@ -74,8 +79,10 @@ export function renderBuy(room: Room, work: Work): string {
             formatMoney(work.price as number, work.currency)
           }</span>${
             work.edition ? `<span class="edition">${escapeHtml(work.edition)}</span>` : ''
-          }</div>
-      <p class="fine">One picture at a time — there is no basket. Tell me you want it and
+          }</div>`
+        : ''}
+      ${buyable
+        ? `<p class="fine">One picture at a time — there is no basket. Tell me you want it and
         I will send an invoice and arrange shipping, insured.</p>
       <a class="buy" data-enquire-uid="${escapeHtml(work.uid)}"
          href="mailto:klaus@klaushofrichter.net?subject=${
@@ -83,7 +90,10 @@ export function renderBuy(room: Room, work: Work): string {
          }&body=${encodeURIComponent(enquiryBody(room, work))}">Enquire about this picture</a>
       <p class="pending-note" hidden>You asked about this one. I will reply within a day or two —
         send again if you have not heard back.</p>`
-        : `<div class="soldbox">${work.status === 'sold' ? 'Sold' : work.status === 'reserved' ? 'Reserved' : 'Not for sale'}</div>
+        : work.status === 'reserved'
+          ? `<div class="soldbox">Reserved</div>
+      <p class="fine">Someone has asked for this one. If it does not go to them, it will be available again.</p>`
+          : `<div class="soldbox">${work.status === 'sold' ? 'Sold' : 'Not for sale'}</div>
       <p class="fine">This one is not available. It stays on the wall so the room reads as it was.</p>`}
     </div>
   </div>

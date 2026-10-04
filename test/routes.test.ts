@@ -86,6 +86,16 @@ describe('GET /buy/:room/:slug', () => {
     expect(res.text).not.toContain('Enquire about this picture');
   });
 
+  it('shows a reserved work\'s price, but offers no enquiry', async () => {
+    // Spoken for, not gone: the room shows the price, and so does this page.
+    const res = await request(app()).get('/buy/shapes/square');
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('$200');
+    expect(res.text).toContain('Reserved');
+    expect(res.text).not.toContain('Enquire about this picture');
+    expect(res.text).not.toContain('data-enquire-uid');
+  });
+
   it('404s on an unknown picture', async () => {
     expect((await request(app()).get('/buy/shapes/nope')).status).toBe(404);
     expect((await request(app()).get('/buy/nope/wide')).status).toBe(404);
@@ -225,6 +235,21 @@ describe('what a purchase includes', () => {
     const res = await request(app()).get('/buy/prints/first-print');
     expect(res.text).toContain('Signed by the artist');
     expect(res.text).toContain('Comes with a note');
+  });
+
+  it('lists it for a reserved work too, as the room does', async () => {
+    const reserved = rooms.map((r) =>
+      r.id !== 'prints' ? r : {
+        ...r,
+        works: r.works.map((w) =>
+          w.slug === 'first-print' ? { ...w, status: 'reserved' as const } : w
+        ),
+      }
+    );
+    const res = await request(createApp(reserved, ASSETS)).get('/buy/prints/first-print');
+    expect(res.text).toContain('Signed by the artist');
+    expect(res.text).toContain('$50');
+    expect(res.text).not.toContain('Enquire about this picture');
   });
 
   it('promises nothing for work that is sold', async () => {
