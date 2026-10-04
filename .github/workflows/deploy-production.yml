@@ -196,11 +196,7 @@ jobs:
           # since the previous release. Neither needs maintaining for a
           # release to be readable.
           : > /tmp/notes.md
-          awk '
-            /^## \[Unreleased\]/ { grab = 1; next }
-            grab && /^## / { exit }
-            grab { print }
-          ' CHANGELOG.md | sed '/^[[:space:]]*$/d' > /tmp/curated.md
+          scripts/unreleased-notes.sh > /tmp/curated.md
           if [ -s /tmp/curated.md ]; then
             cat /tmp/curated.md >> /tmp/notes.md
             printf '\n' >> /tmp/notes.md

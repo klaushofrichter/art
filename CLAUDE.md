@@ -95,11 +95,11 @@ hard caching is disabled outside production, or local edits would be
 invisible behind the same cache.
 
 **The pictures are fingerprinted too, and that is what lets them be cached.**
-`sizedFrom` in `content.ts` builds a ten-character token per picture from the
+`sized` in `content.ts` builds a ten-character token per picture from the
 size and mtime of the original *and every derivative of it*, and every URL
 that names the file carries it as `?v=`. It reads a picture's widths, WebP
 coverage and version in one pass — a work, a view and a room's cover all come
-back as the same `Sized` shape, which is what `share.ts`'s URL helpers and the
+back as the same `Sized` shape, which is what the URL helpers in `urls.ts` and the
 client's take. The derivatives are folded in
 because they change on their own: a `FORCE=1` rebuild or a different
 `QUALITY` rewrites the copies and leaves the original untouched.
@@ -181,7 +181,8 @@ published, because writing this down twice did not stop it happening five
 times. The deploy reads the file and never writes to it, so
 anything left behind is published again with the next release — that has
 happened three times now. Leave the heading with nothing under it rather
-than a placeholder line: the `awk` that extracts the block prints every
+than a placeholder line: `scripts/unreleased-notes.sh`, which both the
+deploy and the check read the block through, prints every
 non-blank line it finds, so "nothing yet" becomes the release notes. The release step runs last
 (after the rollout check and the curl smoke test), so a failed deploy produces
 no release, and the checkout uses `fetch-depth: 0` because the notes are

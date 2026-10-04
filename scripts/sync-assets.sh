@@ -6,12 +6,10 @@
 # content ships through here.
 set -euo pipefail
 
-NS=art
-DEPLOY=art-content
 SRC="${1:-assets}"
-KUBECTL="${KUBECTL:-kubectl}"
 
 cd "$(dirname "$0")/.."
+. scripts/content-pod.sh
 
 if [ ! -d "$SRC" ]; then
   echo "sync-assets: no such directory: $SRC" >&2
@@ -32,19 +30,7 @@ echo "==> checking $SRC"
 npx tsx scripts/check-assets.ts "$SRC"
 
 # 3. Wake the one pod allowed to write to the volume.
-echo "==> waking $DEPLOY"
-scaled_up=0
-cleanup() {
-  if [ "$scaled_up" = 1 ]; then
-    echo "==> sending $DEPLOY back to sleep"
-    $KUBECTL scale deploy/$DEPLOY -n $NS --replicas=0 >/dev/null
-  fi
-}
-trap cleanup EXIT
-$KUBECTL scale deploy/$DEPLOY -n $NS --replicas=1 >/dev/null
-scaled_up=1
-$KUBECTL rollout status deploy/$DEPLOY -n $NS --timeout=120s >/dev/null
-POD=$($KUBECTL get pod -n $NS -l app=$DEPLOY -o jsonpath='{.items[0].metadata.name}')
+wake_content_pod
 
 # 4. Stream it in and swap it into place. Extracting beside the live directory
 #    and moving means the gallery never reads a half-written tree, and the

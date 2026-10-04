@@ -71,7 +71,6 @@ describe('slug collisions', () => {
     }));
     const [loaded] = loadRooms(dir);
     expect(loaded.works.map((w) => w.slug)).toEqual(['untitled', 'untitled-2', 'untitled-3']);
-    fs.rmSync(dir, { recursive: true, force: true });
   });
 });
 

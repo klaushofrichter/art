@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
-import { ASSETS, rooms } from './setup';
+import { ASSETS, rooms, manifestOf } from './setup';
 
 const app = () => createApp(rooms, ASSETS);
 
@@ -29,17 +29,15 @@ describe('GET /', () => {
 
   it('embeds a manifest the browser can parse', async () => {
     const res = await request(app()).get('/');
-    const match = res.text.match(/<script type="application\/json" id="manifest">([\s\S]*?)<\/script>/);
-    expect(match).toBeTruthy();
-    const data = JSON.parse((match as RegExpMatchArray)[1].replace(/\\u003c/g, '<'));
+    expect(res.text).toContain('<script type="application/json" id="manifest">');
+    const data = manifestOf(res.text);
     expect(data).toHaveLength(3);
     expect(data.map((r: any) => r.id)).toEqual(['shapes', 'prints', 'about']);
   });
 
   it('never ships a price for a sold picture', async () => {
     const res = await request(app()).get('/');
-    const match = res.text.match(/id="manifest">([\s\S]*?)<\/script>/) as RegExpMatchArray;
-    const data = JSON.parse(match[1].replace(/\\u003c/g, '<'));
+    const data = manifestOf(res.text);
     const works = data.flatMap((r: any) => r.works);
     const sold = works.filter((w: any) => w.status === 'sold');
     expect(sold.length).toBeGreaterThan(0);
@@ -171,8 +169,7 @@ describe('the manifest ships identifiers, not URLs', () => {
   // index.json could put "javascript:" behind a link.
   it('sends a bare filename and no URL fields', async () => {
     const res = await request(app()).get('/');
-    const inner = (res.text.match(/id="manifest">([\s\S]*?)<\/script>/) as RegExpMatchArray)[1];
-    const data = JSON.parse(inner.replace(/\\u003c/g, '<'));
+    const data = manifestOf(res.text);
     const works = data.flatMap((r: any) => r.works);
     expect(works.length).toBeGreaterThan(0);
     for (const w of works) {

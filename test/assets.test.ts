@@ -4,7 +4,7 @@ import path from 'path';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { loadRooms } from '../src/content';
-import { ASSETS, rooms, tempAssets } from './setup';
+import { ASSETS, rooms, tempAssets, appAt } from './setup';
 
 const app = () => createApp(rooms, ASSETS);
 
@@ -46,7 +46,7 @@ describe('what /assets is allowed to serve', () => {
     fs.writeFileSync(path.join(dir, 'shapes', 'notes.txt'), 'not for anyone');
     fs.writeFileSync(path.join(dir, 'shapes', 'index.json.bak'), '{"secret":1}');
 
-    const live = createApp(loadRooms(dir), dir);
+    const live = appAt(dir);
     expect((await request(live).get('/assets/shapes/notes.txt')).status).toBe(404);
     expect((await request(live).get('/assets/shapes/index.json.bak')).status).toBe(404);
     // and the pictures in that same directory still work
@@ -126,7 +126,7 @@ describe('a replaced picture reaches someone who has seen the old one', () => {
 
   it('carries the version into every URL that names the file', async () => {
     const wide = wideOf(dir);
-    const res = await request(createApp(loadRooms(dir), dir)).get('/buy/shapes/wide');
+    const res = await request(appAt(dir)).get('/buy/shapes/wide');
     const urls = [...res.text.matchAll(/\/assets\/shapes\/[^"\s,]+/g)].map((m) => m[0]);
     expect(urls.length).toBeGreaterThan(2);
     // Not one of them may be missing a version: a single bare URL is a
@@ -137,13 +137,13 @@ describe('a replaced picture reaches someone who has seen the old one', () => {
 
   it('serves the picture whatever version is asked for', async () => {
     // The token is a cache key, not a lookup. An old link must still work.
-    const live = createApp(loadRooms(dir), dir);
+    const live = appAt(dir);
     expect((await request(live).get('/assets/shapes/wide.jpg?v=deadbeef00')).status).toBe(200);
     expect((await request(live).get('/assets/shapes/wide.jpg')).status).toBe(200);
   });
 
   it('still refuses index.json however it is dressed up', async () => {
-    const live = createApp(loadRooms(dir), dir);
+    const live = appAt(dir);
     expect((await request(live).get('/assets/shapes/index.json?v=abc')).status).toBe(404);
   });
 });

@@ -40,7 +40,6 @@ describe('the content gate', () => {
     expect(r.out).toContain('must match the folder name');
     expect(r.out).not.toContain('ENOENT');
     expect(r.out).not.toMatch(/at Object\.statSync|Node\.js v/);
-    fs.rmSync(dir, { recursive: true, force: true });
   });
 
   it('survives a picture disappearing while it runs', () => {
@@ -52,6 +51,5 @@ describe('the content gate', () => {
     fs.rmSync(gone);
     const r = check(dir);
     expect(r.out).not.toContain('ENOENT');
-    fs.rmSync(dir, { recursive: true, force: true });
   });
 });
