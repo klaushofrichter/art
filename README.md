@@ -271,7 +271,7 @@ The original paintings carry none — being one of one is the difference.
 | --- | --- |
 | `available` | price, and a link to the purchase page |
 | `sold` | no price at all — the picture still hangs |
-| `reserved` | price shown, but it cannot be bought |
+| `reserved` | price and what is included, in the room and on its purchase page, but no way to enquire |
 | `nfs` | never for sale |
 
 A sold or not-for-sale price is not merely hidden in the page: it is never sent

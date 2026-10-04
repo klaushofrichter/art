@@ -26,6 +26,5 @@ is where notes are written *before* a release, not an archive of them.
      Currently empty. Last released: v2026.09.09.1. -->
 ## [Unreleased]
 
-- Paging back to a painting's main photograph no longer loads it without its version, which could have left a replaced photo stale in the browser cache.
-- Leaving a room stops downloading the rest of its pictures.
+- A reserved picture's purchase page now shows its price and what is included, as the room already did, without offering to enquire.
 
