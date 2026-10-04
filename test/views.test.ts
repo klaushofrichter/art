@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { renderGallery } from '../src/views/gallery';
-import { ASSETS, rooms } from './setup';
+import { ASSETS, rooms, manifestOf } from './setup';
 
 const app = () => createApp(rooms, ASSETS);
 const shapes = rooms.find((r) => r.id === 'shapes')!;
@@ -47,8 +47,7 @@ describe('reading views from index.json', () => {
 describe('what reaches the browser', () => {
   it('ships views as filenames and numbers, like everything else', async () => {
     const res = await request(app()).get('/');
-    const json = res.text.match(/<script[^>]*id="manifest"[^>]*>(.+?)<\/script>/s);
-    const data = JSON.parse(json![1]);
+    const data = manifestOf(res.text);
     const room = data.find((r: any) => r.id === 'shapes');
     const w = room.works.find((x: any) => x.slug === 'wide');
     expect(w.views).toHaveLength(2);
@@ -59,8 +58,7 @@ describe('what reaches the browser', () => {
 
   it('omits the field entirely for a work with no views', async () => {
     const res = await request(app()).get('/');
-    const json = res.text.match(/<script[^>]*id="manifest"[^>]*>(.+?)<\/script>/s);
-    const data = JSON.parse(json![1]);
+    const data = manifestOf(res.text);
     const room = data.find((r: any) => r.id === 'shapes');
     expect('views' in room.works.find((x: any) => x.slug === 'tall')).toBe(false);
   });

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { Room } from '../content';
+import { Room, countWorks } from '../content';
 import { appVersion } from '../version';
 
 /** Reads the rooms through a getter rather than a snapshot, so the counts
@@ -13,7 +13,7 @@ export function healthRouter(rooms: () => Room[]): Router {
       service: 'art',
       version: appVersion(),
       rooms: current.length,
-      works: current.reduce((n, r) => n + r.works.length, 0),
+      works: countWorks(current),
     });
   });
   return router;

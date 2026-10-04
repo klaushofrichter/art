@@ -2,10 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import request from 'supertest';
-import { createApp } from '../src/app';
 import { loadRooms } from '../src/content';
 import { signature, watchContent } from '../src/watch';
-import { ASSETS, tempAssets } from './setup';
+import { ASSETS, tempAssets, appAt } from './setup';
 
 let dir: string;
 const timers: (NodeJS.Timeout | null)[] = [];
@@ -67,7 +66,7 @@ describe('taking the signature of a content directory', () => {
 
 describe('the watch that reloads content under a running server', () => {
   it('picks up a change', async () => {
-    const app = createApp(loadRooms(dir), dir);
+    const app = appAt(dir);
     timers.push(watchContent(app, dir, 20));
     expect((await request(app).get('/health')).body.rooms).toBe(3);
 
@@ -77,7 +76,7 @@ describe('the watch that reloads content under a running server', () => {
   });
 
   it('survives content that will not parse, and keeps serving', async () => {
-    const app = createApp(loadRooms(dir), dir);
+    const app = appAt(dir);
     timers.push(watchContent(app, dir, 20));
 
     fs.writeFileSync(path.join(dir, 'shapes', 'index.json'), '{ not json');
@@ -92,7 +91,7 @@ describe('the watch that reloads content under a running server', () => {
     // reloadContent had already succeeded — a second read, outside the
     // try/catch, that threw if the content moved again in between. Asking
     // the app what it is serving cannot fail and cannot disagree with it.
-    const app = createApp(loadRooms(dir), dir);
+    const app = appAt(dir);
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     timers.push(watchContent(app, dir, 20));
 
@@ -107,7 +106,7 @@ describe('the watch that reloads content under a running server', () => {
   it('keeps running when the whole tree is replaced under it', async () => {
     // The shape of a real sync: everything goes away, then everything comes
     // back. Nothing in here may throw out of the timer.
-    const app = createApp(loadRooms(dir), dir);
+    const app = appAt(dir);
     timers.push(watchContent(app, dir, 20));
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 

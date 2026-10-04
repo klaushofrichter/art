@@ -101,6 +101,15 @@
     return f;
   }
   var STATUS = { available: '', sold: 'Sold', reserved: 'Reserved', nfs: 'Not for sale' };
+  /* Asked about from this browser and not yet answered — see pending.js. */
+  function salePending(w) {
+    return w.status === 'available' && !!(window.ArtPending && window.ArtPending.isPending(w.uid));
+  }
+  /* What a buyer gets is a promise, so it is only shown where the work can
+     still be had. The room and the agent tools both ask this. */
+  function showsIncludes(w) {
+    return !!(w.includes && w.includes.length) && (w.status === 'available' || w.status === 'reserved');
+  }
 
   /* A permalink is the picture's own id, not its position or its title, so it
      survives renaming and reordering. */
@@ -291,7 +300,6 @@
       host.classList.remove('grabbing');
       drag = null; s.v = 0;
       setTarget(Math.round(proj));
-      kick();
     }
     host.addEventListener('pointerup', endDrag);
     host.addEventListener('pointercancel', endDrag);
@@ -593,15 +601,8 @@
   /* Back to the front door: out of any room, onto the first panel, with the
      URL and the greeting as they were on arrival. */
   function goHome() {
-    if (liveRoom) {
-      liveRoom.remove();
-      liveRoom = null;
-      here = null;
-      lobby.hidden = false;
-      keyHandler = lobbyKeys;
-    }
-    lobbyRail.go(0);
-    syncLobby(0);
+    if (liveRoom) returnToLobby(liveRoom, 0);
+    else { lobbyRail.go(0); syncLobby(0); }
     history.replaceState(null, '', location.pathname);
     showWelcome();
   }
@@ -699,6 +700,16 @@
     syncLobby(roomIndex);
   }
 
+  /* Into a room the way the menu does it: the lobby moves to that panel
+     first, quietly, so leaving the room comes back to it. Returns what
+     enterRoom does — the room's rail, or null for the About room. */
+  function openRoom(room) {
+    var i = ROOMS.indexOf(room);
+    lobbyRail.go(i, true);
+    syncLobby(i);
+    return enterRoom(room);
+  }
+
   /* ================= ROOM ================= */
   var liveRoom = null;
   /* What is on screen, in terms the agent tools can ask about and drive:
@@ -709,34 +720,27 @@
 
   function enterRoom(room) {
     if (room.type === 'about') return enterAbout(room);
+    if (!room.works.length) return;
     lobbyMenu.close();
     if (liveRoom) liveRoom.remove();
-    if (!room.works.length) return;
     lobby.hidden = true;
     wanderAt(-1);
     var roomIndex = ROOMS.indexOf(room);
 
     var view = el('div', 'screen room');
     var rrail = el('div', 'rail');
-    var urls = [], plates = [];
+    var plates = [];
     room.works.forEach(function (w) {
       var slide = el('div', 'slide');
       var plate = el('div', 'plate');
-      var url = pictureUrl(room.id, w);
       var amb = el('div', 'ambient');
       var img = el('img', 'art');
       img.alt = w.title;
       img.draggable = false;
-      /* The picture fills the screen, so let the browser pick the copy that
-         suits this display rather than always sending the original. The
-         download link still points at the original — see downloadIcon. */
-      var set = srcsetFor(room.id, w);
       img.addEventListener('load', function () { alignArt(view, img); });
-      /* src is set by show() below, so the picture on screen is not competing
-         with every other picture in the room for the connection */
-      urls.push(url);
-      plates.push({ img: img, amb: amb, set: set,
-                    small: smallestUrl(room.id, w) });
+      /* src is set by showPicture() below, so the picture on screen is not
+         competing with every other picture in the room for the connection */
+      plates.push({ img: img, amb: amb });
       plate.append(amb, img);
       slide.append(plate);
       rrail.append(slide);
@@ -825,8 +829,10 @@
        photographs of it. A work with no views has exactly one frame, which
        is what keeps the axis invisible for almost everything in the room. */
     function framesOf(w) {
-      return [{ file: w.file, widths: w.widths, webp: w.webp, caption: '' }]
-        .concat(w.views || []);
+      /* The work itself, not a copy of some of its fields: a copy left out
+         `v`, so going back to the first frame fetched the picture under a
+         version that never changed. */
+      return [w].concat(w.views || []);
     }
     var frame = 0;
 
@@ -843,11 +849,7 @@
       frame = (n + frames.length) % frames.length;
       var f = frames[frame];
       var slot = plates[i];
-      var set = srcsetFor(room.id, f);
-      if (set) { slot.img.sizes = '100vw'; slot.img.srcset = set; }
-      else slot.img.removeAttribute('srcset');
-      slot.img.src = pictureUrl(room.id, f);
-      slot.img.alt = f.caption ? w.title + ' \u2014 ' + f.caption : w.title;
+      setPlate(slot, f, f.caption ? w.title + ' \u2014 ' + f.caption : w.title);
       /* showPicture() only ever loads a plate once, so without this a work
          left on a close-up would still be showing it when you came back. */
       slot.shifted = frame !== 0;
@@ -902,7 +904,7 @@
       if (w.edition) dl.append(el('dt', null, 'Edition'), el('dd', null, w.edition));
       /* What a buyer gets that a visitor cannot just download. Only where the
          work can still be had — it reads as a promise, not a description. */
-      if (w.includes && w.includes.length && (w.status === 'available' || w.status === 'reserved')) {
+      if (showsIncludes(w)) {
         var dd = el('dd', 'includes');
         w.includes.forEach(function (t, n) {
           if (n) dd.append(el('br'));
@@ -912,8 +914,7 @@
       }
       right.append(dl);
       var line = el('div', 'buyline');
-      var pending = w.status === 'available' &&
-        window.ArtPending && window.ArtPending.isPending(w.uid);
+      var pending = salePending(w);
       /* Three of the four branches below open with the same price, and it has
          to be a fresh node each time — a node can only be in one place. */
       function price() { return el('div', 'price', money(w.price, w.currency)); }
@@ -945,25 +946,40 @@
       frame = 0;
       var slot = plates[i];
       if (slot && slot.shifted) {
-        if (slot.set) { slot.img.sizes = '100vw'; slot.img.srcset = slot.set; }
-        slot.img.src = urls[i];
-        slot.img.alt = w.title;
+        setPlate(slot, w, w.title);
         slot.shifted = false;
       }
       paintFrame(w, framesOf(w));
     }
 
+    /* Put one photograph on a plate. The picture fills the screen, so the
+       browser picks the copy that suits this display rather than always being
+       sent the original; the download link still points at the original — see
+       downloadIcon. A photograph with no smaller copies loses the srcset left
+       by the one before it. */
+    function setPlate(slot, pic, alt) {
+      var set = srcsetFor(room.id, pic);
+      if (set) { slot.img.sizes = '100vw'; slot.img.srcset = set; }
+      else slot.img.removeAttribute('srcset');
+      slot.img.src = pictureUrl(room.id, pic);
+      slot.img.alt = alt;
+    }
+
     function showPicture(i, done) {
       var slot = plates[i];
-      if (!slot || slot.on) return false;
+      /* Nothing more to fetch for a room nobody is in. The queue that calls
+         this is chained on load events, and a picture in a removed view still
+         loads — so without this, leaving a room carried on downloading the
+         rest of it, competing with the next room's first picture. */
+      if (!slot || slot.on || !view.isConnected) return false;
       slot.on = true;
       slot.img.addEventListener('load', function () { done && done(); }, { once: true });
       slot.img.addEventListener('error', function () { done && done(); }, { once: true });
-      if (slot.set) { slot.img.sizes = '100vw'; slot.img.srcset = slot.set; }
-      slot.img.src = urls[i];
+      var w = room.works[i];
+      setPlate(slot, w, w.title);
       /* The ambient wash behind the picture is blurred out of recognition,
          so it never needs more than the smallest copy. */
-      slot.amb.style.backgroundImage = 'url("' + slot.small + '")';
+      slot.amb.style.backgroundImage = 'url("' + smallestUrl(room.id, w) + '")';
       return true;
     }
 
@@ -1069,8 +1085,6 @@
     pane.append(bg, scrim, aboutBody(room));
     view.append(pane);
 
-    /* the same light as the lobby, so the room feels like the panel it came from */
-
     var back = el('button', 'chrome fade-idle no-drag', '← Lobby');
     back.type = 'button';
     var nav = el('div', 'navstack');
@@ -1123,14 +1137,12 @@
     for (var i = 0; i < ROOMS.length; i++) {
       var room = ROOMS[i];
       if (room.uid === uid) {
-        lobbyRail.go(i, true); syncLobby(i);
-        enterRoom(room);
+        openRoom(room);
         return true;
       }
       for (var j = 0; j < room.works.length; j++) {
         if (room.works[j].uid === uid) {
-          lobbyRail.go(i, true); syncLobby(i);
-          var rail = enterRoom(room);
+          var rail = openRoom(room);
           if (rail) rail.go(j);
           return true;
         }
@@ -1222,10 +1234,7 @@
       var m = /\d+(?:[.,]\d+)?/.exec(String(v == null ? '' : v).replace(/,(?=\d{3}\b)/g, ''));
       return m ? parseFloat(m[0].replace(',', '.')) : NaN;
     }
-    function pending(w) {
-      return w.status === 'available' && window.ArtPending && window.ArtPending.isPending(w.uid);
-    }
-    function statusOf(w) { return pending(w) ? 'sale pending' : STATUS_WORDS[w.status] || w.status; }
+    function statusOf(w) { return salePending(w) ? 'sale pending' : STATUS_WORDS[w.status] || w.status; }
 
     /* Exact matches first, then a name that contains what was asked for.
        More than one partial match is ambiguous, and saying so lets the agent
@@ -1278,7 +1287,7 @@
         status: statusOf(w)
       };
       if (w.price != null) out.price = money(w.price, w.currency);
-      if (w.includes && w.includes.length && (w.status === 'available' || w.status === 'reserved')) {
+      if (showsIncludes(w)) {
         out.includes = w.includes.map(plain);
       }
       if (w.views && w.views.length) {
@@ -1290,15 +1299,9 @@
 
     function dismissGreeting() { if (greeting) greeting(); }
 
-    /* Into a room, the way the menu does it: the lobby moves to that panel
-       first so leaving comes back to it. */
     function goToRoom(room) {
       dismissGreeting();
-      if (here && here.room === room) return here;
-      var i = ROOMS.indexOf(room);
-      lobbyRail.go(i, true);
-      syncLobby(i);
-      enterRoom(room);
+      if (!here || here.room !== room) openRoom(room);
       return here;
     }
 
@@ -1415,7 +1418,6 @@
           }
           var r = findRoom(q);
           if (!r.one) return { error: 'No single room matches "' + q + '". Rooms: ' + roomNames() + ', or "lobby".' };
-          if (r.one.type !== 'about' && !r.one.works.length) return { error: r.one.title + ' has no pictures yet.' };
           goToRoom(r.one);
           return whereAmI();
         }

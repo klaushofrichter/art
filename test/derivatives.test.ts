@@ -3,16 +3,12 @@ import request from 'supertest';
 import fs from 'fs';
 import path from 'path';
 import { createApp } from '../src/app';
-import { ASSETS, rooms } from './setup';
+import { ASSETS, rooms, manifestOf } from './setup';
 import { srcset, webpSrcset } from '../src/share';
 import { imageSize } from '../src/imagesize';
 
 const app = () => createApp(rooms, ASSETS);
 
-function manifestOf(html: string) {
-  const inner = (html.match(/id="manifest">([\s\S]*?)<\/script>/) as RegExpMatchArray)[1];
-  return JSON.parse(inner.replace(/\\u003c/g, '<'));
-}
 
 const shapes = rooms.find((r) => r.id === 'shapes')!;
 const wide = shapes.works.find((w) => w.slug === 'wide')!;

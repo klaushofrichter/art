@@ -8,10 +8,6 @@ RUN npm run build
 
 FROM node:26-alpine
 WORKDIR /app
-# Stamped by the deploy so the running container can report which build it is.
-# Defaults to "dev" for local builds, which is what you want to see locally.
-ARG APP_VERSION=dev
-ENV APP_VERSION=$APP_VERSION
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
@@ -25,5 +21,12 @@ COPY public ./public
 # cluster's securityContext (runAsNonRoot, runAsUser/Group 1000) says the
 # same thing from the other side; neither should be the only place it holds.
 USER 1000:1000
+# Stamped by the deploy so the running container can report which build it is.
+# Defaults to "dev" for local builds, which is what you want to see locally.
+# Last, because every release has a new one: declared before the install, it
+# invalidated every layer after it, and each deploy reinstalled the
+# production dependencies from the network.
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
 EXPOSE 8080
 CMD ["node", "dist/server.js"]

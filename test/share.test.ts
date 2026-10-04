@@ -42,7 +42,6 @@ describe('reading a picture\'s size from its header', () => {
     expect(imageSize(path.join(dir, 'missing.jpg'))).toBeNull();
     fs.writeFileSync(path.join(dir, 'empty.jpg'), '');
     expect(imageSize(path.join(dir, 'empty.jpg'))).toBeNull();
-    fs.rmSync(dir, { recursive: true, force: true });
   });
 
   it('puts the dimensions on the loaded content', () => {
@@ -151,6 +150,5 @@ describe('the previews follow the content', () => {
     expect(meta((await request(a).get('/?id=fixtall1')).text)['og:title']).toBe(
       'Renamed — Klaus Hofrichter'
     );
-    fs.rmSync(dir, { recursive: true, force: true });
   });
 });

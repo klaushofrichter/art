@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { GalleryApp } from './app';
+import { countWorks } from './content';
 
 /** How often to look for new content. Zero turns the watch off. */
 export const WATCH_MS = Number(process.env.CONTENT_WATCH_MS ?? 10_000);
@@ -64,7 +65,7 @@ export function watchContent(
         // a bad edit is guaranteed to be caught — and threw if the content
         // changed once more in between, which a sync makes likely.
         const rooms = app.rooms();
-        const works = rooms.reduce((n, r) => n + r.works.length, 0);
+        const works = countWorks(rooms);
         console.log(`content: reloaded — ${rooms.length} rooms, ${works} works`);
       }
     } catch (err) {

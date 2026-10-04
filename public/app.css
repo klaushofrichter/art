@@ -71,7 +71,7 @@
    Nothing the pointer drives carries a CSS transition; those values are
    driven by springs in app.js instead. */
 :root {
-  --ink:#0B1017; --ink-2:#121A25; --line:#24303F;
+  --ink:#0B1017; --line:#24303F;
   --bone:#EDE7DA; --mute:#8B95A6; --brass:#C9A227;
   --display:'Bodoni Moda',Didot,'Times New Roman',serif;
   --body:'Archivo',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;

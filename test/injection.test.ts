@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import request from 'supertest';
-import { createApp } from '../src/app';
 import { loadRooms } from '../src/content';
-import { tempAssets } from './setup';
+import { pictureUrl } from '../src/urls';
+import { tempAssets, appAt } from './setup';
 
 /** A room id that tries to climb out of an HTML attribute. `collection.id`
  *  and the folder it was read from are deliberately not enforced to match
@@ -23,7 +23,7 @@ beforeEach(() => {
 });
 
 
-const live = () => createApp(loadRooms(dir), dir);
+const live = () => appAt(dir);
 
 describe('a room id from content cannot break out of the markup', () => {
   it('does not put a bare quote in the page', async () => {
@@ -50,15 +50,15 @@ describe('a room id from content cannot break out of the markup', () => {
     // Strings, all of them — `expect(anObject).not.toContain(...)` passes
     // silently, so asserting on a shape rather than a string would quietly
     // stop testing anything. That is exactly what happened to the cover
-    // assertion below when Room.cover became a nested object and the URL
-    // moved to Room.coverUrl.
-    for (const url of [room.works[0].src, room.coverUrl, room.works[0].purchaseUrl]) {
+    // assertion below when Room.cover became a nested object.
+    const coverUrl = pictureUrl(room.id, room.cover!);
+    for (const url of [room.works[0].src, coverUrl, room.works[0].purchaseUrl]) {
       expect(typeof url).toBe('string');
       expect(url).not.toContain('"');
       expect(url).not.toContain(' ');
     }
     expect(room.works[0].src).toContain(encodeURIComponent(NASTY));
-    expect(room.coverUrl).toContain(encodeURIComponent(NASTY));
+    expect(coverUrl).toContain(encodeURIComponent(NASTY));
   });
 });
 

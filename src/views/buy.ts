@@ -3,8 +3,9 @@ import { escapeHtml, inlineMarkup } from '../markdown';
 import { formatDate, formatMoney } from '../format';
 import { page } from './layout';
 import { ENQUIRY_HOURS, SITE_URL } from '../site';
-import { workImage, srcset, webpSrcset } from '../share';
+import { workImage } from '../share';
 import { View } from '../content';
+import { buyPath, pictureTag } from '../urls';
 
 /** The picture fills most of the column on a wide screen and all of it on a
  *  phone. Shared by the WebP source and the JPEG fallback so they cannot drift. */
@@ -32,15 +33,8 @@ function views(room: Room, work: Work): string {
   if (!work.views.length) return '';
   const SIZES = '(max-width: 760px) 50vw, 30vw';
   const one = (v: View) => `<figure>
-      <picture>${
-        webpSrcset(room.id, v)
-          ? `<source type="image/webp" srcset="${webpSrcset(room.id, v)}" sizes="${SIZES}">`
-          : ''
-      }<img loading="lazy"${
-        v.width && v.height ? ` width="${v.width}" height="${v.height}"` : ''
-      } src="/assets/${encodeURIComponent(room.id)}/${encodeURIComponent(v.file)}?v=${v.v}"${
-        srcset(room.id, v) ? ` srcset="${srcset(room.id, v)}" sizes="${SIZES}"` : ''
-      } alt="${escapeHtml(work.title)}${v.caption ? ` — ${escapeHtml(v.caption)}` : ''}"></picture>
+      ${pictureTag(room.id, v, SIZES, v.caption ? `${work.title} — ${v.caption}` : work.title,
+        'loading="lazy"' + (v.width && v.height ? ` width="${v.width}" height="${v.height}"` : ''))}
       ${v.caption ? `<figcaption>${escapeHtml(v.caption)}</figcaption>` : ''}
     </figure>`;
   return `<section class="views">
@@ -55,19 +49,13 @@ export function renderBuy(room: Room, work: Work): string {
     title: `${work.title} — Klaus Hofrichter`,
     description: `${work.title}${work.medium ? `, ${work.medium}` : ''}.`,
     bodyClass: 'buypage',
-    path: `/buy/${room.id}/${work.slug}`,
+    path: buyPath(room.id, work.slug),
     image: workImage(room, work),
     scripts: ['pending.js'],
     body: `<main class="buywrap">
   <a class="crumb" href="/#${encodeURIComponent(room.id)}/${encodeURIComponent(work.slug)}">&larr; Back to ${escapeHtml(room.title)}</a>
   <div class="buygrid">
-    <picture>${
-      webpSrcset(room.id, work)
-        ? `<source type="image/webp" srcset="${webpSrcset(room.id, work)}" sizes="${BUY_SIZES}">`
-        : ''
-    }<img class="buyart" src="${work.src}"${
-      srcset(room.id, work) ? ` srcset="${srcset(room.id, work)}" sizes="${BUY_SIZES}"` : ''
-    } alt="${escapeHtml(work.title)}"></picture>
+    ${pictureTag(room.id, work, BUY_SIZES, work.title, 'class="buyart"')}
     <div class="buyside">
       <h1>${escapeHtml(work.title)}</h1>
       <p class="by">${escapeHtml(work.artist || '')}${work.date ? ` &middot; ${escapeHtml(formatDate(work.date))}` : ''}</p>

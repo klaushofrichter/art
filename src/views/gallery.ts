@@ -3,7 +3,8 @@ import { escapeHtml, inlineMarkup, plainText } from '../markdown';
 import { page } from './layout';
 import { appVersion } from '../version';
 import { REPO_URL } from '../site';
-import { galleryImage, roomImage, workImage, workDescription, srcset, webpSrcset } from '../share';
+import { galleryImage, roomImage, workImage, workDescription } from '../share';
+import { buyPath, pictureTag } from '../urls';
 
 const BLURB = 'Paintings and photographs by Klaus Hofrichter.';
 
@@ -80,21 +81,15 @@ function fallback(rooms: Room[]): string {
         `</section>`;
     }
     const items = r.works.map((w) => {
-      const buy = `/buy/${encodeURIComponent(r.id)}/${encodeURIComponent(w.slug)}`;
-      const src = `/assets/${encodeURIComponent(r.id)}/${encodeURIComponent(w.file)}?v=${w.v}`;
       // Without JavaScript this is a plain grid of thumbnails, so the
       // smallest copy is the right one to offer first.
-      const set = srcset(r.id, w);
-      const webp = webpSrcset(r.id, w);
-      const sizes = '(max-width: 700px) 45vw, 300px';
-      const img = `<img src="${src}"${set ? ` srcset="${set}" sizes="${sizes}"` : ''} alt="${escapeHtml(w.title)}" loading="lazy">`;
-      return `<li><a href="${buy}">` +
-        (webp ? `<picture><source type="image/webp" srcset="${webp}" sizes="${sizes}">${img}</picture>` : img) +
+      return `<li><a href="${buyPath(r.id, w.slug)}">` +
+        pictureTag(r.id, w, '(max-width: 700px) 45vw, 300px', w.title, 'loading="lazy"') +
         `<span class="t">${escapeHtml(w.title)}</span></a></li>`;
     }).join('');
     return `<section><h2>${escapeHtml(r.title)}</h2><ul>${items}</ul></section>`;
   }).join('');
-  return `<noscript><div class="fallback">${'<h1>Art</h1>'}${sections}</div></noscript>`;
+  return `<noscript><div class="fallback"><h1>Art</h1>${sections}</div></noscript>`;
 }
 
 export function renderGallery(rooms: Room[], focus: Focus | null = null): string {
