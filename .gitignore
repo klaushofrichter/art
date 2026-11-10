@@ -12,3 +12,6 @@ playwright-report/
 # Content lives on the cluster volume — see scripts/sync-assets.sh.
 # test/fixtures/assets is generated stand-in content and stays tracked.
 /assets/
+
+# Lighthouse reports from scripts/lighthouse-gate.sh
+lighthouse-report*

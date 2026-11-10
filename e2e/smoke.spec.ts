@@ -1119,7 +1119,20 @@ test('with a mouse, the light does not wander', async ({ page }) => {
   // the page loads (Playwright 1.63 does, at the top-left corner), and the
   // light rightly goes there. What must not happen is movement of its own.
   await page.goto('/');
-  await page.waitForTimeout(3000);
+  // First let it settle wherever that initial report sent it. The spring
+  // takes about 2.6s at 60 frames a second, and longer on a busy runner that
+  // paints fewer, so a fixed wait measured the tail of the settling as
+  // wandering (it failed once in ten local runs under load).
+  const at = async () => {
+    const p = await lightAt(page);
+    return { x: parseFloat(p.x || '50'), y: parseFloat(p.y || '50') };
+  };
+  await expect.poll(async () => {
+    const a = await at();
+    await page.waitForTimeout(300);
+    const b = await at();
+    return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+  }, { timeout: 15_000 }).toBeLessThan(0.01);
   const before = await lightAt(page);
   await page.waitForTimeout(1500);
   const after = await lightAt(page);

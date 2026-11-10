@@ -23,6 +23,12 @@ function enquiryBody(room: Room, work: Work): string {
   ].join('\n');
 }
 
+/** The picture's own size as attributes, so the browser keeps its box before
+ *  it arrives instead of the text below jumping down when it lands. */
+function dims(p: { width?: number; height?: number }): string {
+  return p.width && p.height ? ` width="${p.width}" height="${p.height}"` : '';
+}
+
 /** The other photographs of this work, laid out under it. No slider and no
  *  script: this is the page someone reads while deciding whether to spend
  *  money, and a buyer wants the framed shot and the brushwork in front of
@@ -34,7 +40,7 @@ function views(room: Room, work: Work): string {
   const SIZES = '(max-width: 760px) 50vw, 30vw';
   const one = (v: View) => `<figure>
       ${pictureTag(room.id, v, SIZES, v.caption ? `${work.title} — ${v.caption}` : work.title,
-        'loading="lazy"' + (v.width && v.height ? ` width="${v.width}" height="${v.height}"` : ''))}
+        'loading="lazy"' + dims(v))}
       ${v.caption ? `<figcaption>${escapeHtml(v.caption)}</figcaption>` : ''}
     </figure>`;
   return `<section class="views">
@@ -60,7 +66,7 @@ export function renderBuy(room: Room, work: Work): string {
     body: `<main class="buywrap">
   <a class="crumb" href="/#${encodeURIComponent(room.id)}/${encodeURIComponent(work.slug)}">&larr; Back to ${escapeHtml(room.title)}</a>
   <div class="buygrid">
-    ${pictureTag(room.id, work, BUY_SIZES, work.title, 'class="buyart"')}
+    ${pictureTag(room.id, work, BUY_SIZES, work.title, 'class="buyart"' + dims(work))}
     <div class="buyside">
       <h1>${escapeHtml(work.title)}</h1>
       <p class="by">${escapeHtml(work.artist || '')}${work.date ? ` &middot; ${escapeHtml(formatDate(work.date))}` : ''}</p>
