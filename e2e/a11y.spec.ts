@@ -48,37 +48,43 @@ test('@live the Rooms menu meets WCAG 2.2 AA', async ({ page }) => {
   await audit(page, { within: '.menu.on' });
 });
 
-test('@live every room, its label and its Content menu meet WCAG 2.2 AA', async ({ page, isMobile, request }) => {
-  // Three audits per room, each with its on-screen contrast pass.
-  test.setTimeout(120_000);
-  const rooms = (await site(request)).filter((r) => r.type !== 'about' && r.works.length);
-  for (const room of rooms) {
-    await open(page, `/#${room.id}/${room.works[0].slug}`);
-    await expect(page.locator('.info h2')).toHaveText(room.works[0].title);
-    await expectPlateLoaded(page);
-    await hover(page);
-    await audit(page);
-
-    await page.getByRole('button', { name: 'Content' }).click();
-    await expect(page.locator('.menu.on')).toBeVisible();
-    await page.waitForTimeout(700);
-    await audit(page, { within: '.menu.on' });
-    await page.locator('.menu.on .mclose').click();
-    await expect(page.locator('.menu.on')).toHaveCount(0);
-
-    // Full screen with its hint, then (with a keyboard) the short title
-    // Space brings up. A click on the picture rather than Return: focus is
-    // still on the menu's Close.
-    await page.locator('.room .rail').click({ position: { x: 200, y: 150 } });
-    await expect(page.locator('.room')).toHaveClass(/bare/);
-    if (!isMobile) {
-      await page.keyboard.press('Space');
-      await expect(page.locator('.mini')).toHaveClass(/on/);
-    }
-    await page.waitForTimeout(900);
-    await audit(page);
+// One test per room and state rather than one for the lot: WebKit on a CI
+// runner draws the rooms slowly (their blurred washes and frosted controls),
+// and a single test auditing every room three times ran out of time there.
+// The rooms are read from the page, so the slots cover up to six; a slot
+// with no room behind it is skipped.
+for (let slot = 0; slot < 6; slot++) {
+  for (const state of ['label', 'Content menu', 'full screen'] as const) {
+    test(`@live room ${slot + 1} with its ${state} meets WCAG 2.2 AA`, async ({ page, isMobile, request }) => {
+      test.setTimeout(90_000);
+      const room = (await site(request)).filter((r) => r.type !== 'about' && r.works.length)[slot];
+      test.skip(!room, 'no room in this slot');
+      await open(page, `/#${room.id}/${room.works[0].slug}`);
+      await expect(page.locator('.info h2')).toHaveText(room.works[0].title);
+      await expectPlateLoaded(page);
+      await hover(page);
+      if (state === 'label') {
+        await audit(page);
+      } else if (state === 'Content menu') {
+        await page.getByRole('button', { name: 'Content' }).click();
+        await expect(page.locator('.menu.on')).toBeVisible();
+        await page.waitForTimeout(700);
+        await audit(page, { within: '.menu.on' });
+      } else {
+        // Full screen with its hint, then (with a keyboard) the short title
+        // Space brings up.
+        await page.locator('.room .rail').click({ position: { x: 200, y: 150 } });
+        await expect(page.locator('.room')).toHaveClass(/bare/);
+        if (!isMobile) {
+          await page.keyboard.press('Space');
+          await expect(page.locator('.mini')).toHaveClass(/on/);
+        }
+        await page.waitForTimeout(900);
+        await audit(page);
+      }
+    });
   }
-});
+}
 
 test('@live the About room meets WCAG 2.2 AA', async ({ page, request }) => {
   const about = (await site(request)).find((r) => r.type === 'about');

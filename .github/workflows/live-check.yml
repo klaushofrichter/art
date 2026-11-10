@@ -16,12 +16,12 @@ name: Live check
 #
 # The site limits each address to 300 page requests per five minutes
 # (src/ratelimit.ts; pictures, fonts and the bundle are not counted), and this
-# runner is one address. The whole run loads about 230 pages (desktop Chrome
+# runner is one address. The whole run loads about 250 pages (desktop Chrome
 # walks every purchase page; each browser opens the gallery some twenty
 # times), which would fit one window but not comfortably. So it is in two
-# halves, about 115 pages each, and the second starts in a fresh window
+# halves, about 125 pages each, and the second starts in a fresh window
 # (scripts/rate-window.sh waits for one if the first half left less than 250).
-# Each half stays under 40% of the limit, so a visitor sharing the window, or
+# Each half stays near 40% of the limit, so a visitor sharing the window, or
 # a retry, cannot push the run into a 429.
 #
 # kube-setup's "public web pages" baseline, adapted from
