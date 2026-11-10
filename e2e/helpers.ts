@@ -226,47 +226,43 @@ export async function audit(page: Page, opts: { within?: string } = {}): Promise
   });
   // Transitions on colour would otherwise still be running.
   await page.waitForTimeout(400);
-  const failures: string[] = [];
+  let failures: string[] = [];
   try {
-    for (const t of texts) {
-      if (!t || !t.visible) continue;
-      const shot = await page.screenshot({ clip: { x: t.x, y: t.y, width: t.w, height: t.h }, animations: 'disabled', scale: 'css' });
-      const m = await page.evaluate(async ({ b64, color, alpha }) => {
-        const img = new Image();
-        img.src = `data:image/png;base64,${b64}`;
-        await img.decode();
-        const c = document.createElement('canvas');
-        c.width = img.naturalWidth; c.height = img.naturalHeight;
-        const ctx = c.getContext('2d')!;
-        ctx.drawImage(img, 0, 0);
-        const d = ctx.getImageData(0, 0, c.width, c.height).data;
-        const lin = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
-        const L = (r: number, g: number, b: number) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-        // At most about 20,000 pixels, evenly spread: a phone's screenshot of
-        // a caption runs to hundreds of thousands, and sorting them all in
-        // WebKit took longer than a test is given.
-        const stride = Math.max(1, Math.floor(d.length / 4 / 20000));
-        const idx: number[] = [];
-        const lum: number[] = [];
-        for (let i = 0; i < d.length; i += 4 * stride) { idx.push(i); lum.push(L(d[i], d[i + 1], d[i + 2])); }
-        const order = idx.map((_, k) => k).sort((a, b) => lum[a] - lum[b]);
-        const at = (q: number) => order[Math.min(order.length - 1, Math.floor(order.length * q))];
+    // One photograph of the whole window, measured box by box in the page:
+    // a clipped screenshot per text took about six seconds each in WebKit.
+    const shot = await page.screenshot({ animations: 'disabled', scale: 'css' });
+    failures = await page.evaluate(async ({ b64, texts }) => {
+      const img = new Image();
+      img.src = `data:image/png;base64,${b64}`;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const ctx = c.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const sx = c.width / window.innerWidth, sy = c.height / window.innerHeight;
+      const lin = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+      const L = (r: number, g: number, b: number) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+      const out: string[] = [];
+      for (const t of texts) {
+        if (!t || !t.visible) continue;
+        const w = Math.max(1, Math.floor(t.w * sx)), h = Math.max(1, Math.floor(t.h * sy));
+        const d = ctx.getImageData(Math.floor(t.x * sx), Math.floor(t.y * sy), w, h).data;
+        const px: { l: number; i: number }[] = [];
+        for (let i = 0; i < d.length; i += 4) px.push({ l: L(d[i], d[i + 1], d[i + 2]), i });
+        px.sort((p, q) => p.l - q.l);
+        const at = (q: number) => px[Math.min(px.length - 1, Math.floor(px.length * q))];
         // The colour the text is actually drawn in: its own, faded over the
         // middle of what is behind it.
-        const mid = idx[at(0.5)];
-        const drawn = color.map((v, i) => v * alpha + d[mid + i] * (1 - alpha));
+        const mid = at(0.5);
+        const drawn = t.color.map((v, i) => v * t.alpha + d[mid.i + i] * (1 - t.alpha));
         const lt = L(drawn[0], drawn[1], drawn[2]);
-        const light = lt > lum[at(0.5)];
-        const k = at(light ? 0.9 : 0.1);
-        const lb = lum[k];
-        return {
-          ratio: (Math.max(lt, lb) + 0.05) / (Math.min(lt, lb) + 0.05),
-          bg: [d[idx[k]], d[idx[k] + 1], d[idx[k] + 2]],
-        };
-      }, { b64: shot.toString('base64'), color: t.color, alpha: t.alpha });
-      const need = t.large ? 3 : 4.5;
-      if (m.ratio < need) failures.push(`${t.sel}: ${m.ratio.toFixed(2)}:1 against rgb(${m.bg.join(',')}), needs ${need}:1`);
-    }
+        const bg = at(lt > mid.l ? 0.9 : 0.1);
+        const ratio = (Math.max(lt, bg.l) + 0.05) / (Math.min(lt, bg.l) + 0.05);
+        const need = t.large ? 3 : 4.5;
+        if (ratio < need) out.push(`${t.sel}: ${ratio.toFixed(2)}:1 against rgb(${d[bg.i]},${d[bg.i + 1]},${d[bg.i + 2]}), needs ${need}:1`);
+      }
+      return out;
+    }, { b64: shot.toString('base64'), texts });
   } finally {
     await page.evaluate(() => document.head.lastElementChild?.remove());
   }
