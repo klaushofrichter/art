@@ -158,19 +158,38 @@ test.describe('without JavaScript', () => {
 test('@live the rate limit counts pages, not the files a page loads', async ({ request }, testInfo) => {
   test.skip(!LIVE, 'locally and in CI the server sees loopback and limits nothing (test/ratelimit.test.ts covers it)');
   test.skip(testInfo.project.name !== 'desktop-chromium', 'once is enough');
+  // The budget is per address, and the other workers of this same run spend
+  // it in parallel (another browser opening pages), so the remaining count
+  // can fall by more than this test's own requests between two reads (it
+  // did: 266 then 264). What cannot race is whether a response was counted
+  // at all: express-rate-limit sets the RateLimit headers on every request it
+  // counts, and src/app.ts serves the static files before the limiter, so
+  // they never carry them. That is the exact check; the page's own
+  // decrement is only checked to be a decrement.
+  const read = (r: { headers(): Record<string, string> }) => ({
+    remaining: Number(r.headers()['ratelimit-remaining']),
+    reset: Number(r.headers()['ratelimit-reset']),
+  });
   const page = await request.get('/terms');
-  expect(page.headers()['ratelimit-limit']).toBe('300');
-  const before = Number(page.headers()['ratelimit-remaining']);
-  // The stylesheet the page names, and the favicon: no budget spent, no
-  // headers at all.
+  expect(page.headers()['ratelimit-limit'], 'a page is counted').toBe('300');
+  const before = read(page);
+
+  // Every file the page names: the stylesheet, the fonts it preloads, the
+  // favicon, and any picture (/assets) its share tags point at.
   const html = await page.text();
-  for (const m of html.matchAll(/href="(\/[^"/]+\.(?:css|png)\?v=[^"]+)"/g)) {
-    const file = await request.get(m[1]);
-    expect(file.status(), m[1]).toBe(200);
-    expect(file.headers()['ratelimit-remaining'], m[1]).toBeUndefined();
+  const files = [...new Set([
+    ...[...html.matchAll(/(?:href|src)="(\/[^"]+\.(?:css|js|png|woff2)(?:\?v=[^"]+)?)"/g)].map((m) => m[1]),
+    ...[...html.matchAll(/content="https?:\/\/[^/"]+(\/assets\/[^"]+)"/g)].map((m) => m[1]),
+  ])];
+  expect(files.length, 'files named by the page').toBeGreaterThan(2);
+  for (const url of files) {
+    const file = await request.get(url);
+    expect(file.status(), url).toBe(200);
+    expect(file.headers()['ratelimit-remaining'], `${url} is not counted`).toBeUndefined();
   }
-  const again = await request.get('/terms');
-  // Exactly one less, unless the window turned over in between.
-  const after = Number(again.headers()['ratelimit-remaining']);
-  expect(after === before - 1 || after >= 298, `${before} then ${after}`).toBe(true);
+
+  // The page again: counted, and lower than before unless a new window
+  // began in between (its reset is then further away than the old one's).
+  const after = read(await request.get('/terms'));
+  if (after.reset <= before.reset) expect(after.remaining, `${before.remaining} then ${after.remaining}`).toBeLessThan(before.remaining);
 });
