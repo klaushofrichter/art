@@ -230,7 +230,7 @@ export async function audit(page: Page, opts: { within?: string } = {}): Promise
   try {
     for (const t of texts) {
       if (!t || !t.visible) continue;
-      const shot = await page.screenshot({ clip: { x: t.x, y: t.y, width: t.w, height: t.h }, animations: 'disabled' });
+      const shot = await page.screenshot({ clip: { x: t.x, y: t.y, width: t.w, height: t.h }, animations: 'disabled', scale: 'css' });
       const m = await page.evaluate(async ({ b64, color, alpha }) => {
         const img = new Image();
         img.src = `data:image/png;base64,${b64}`;
@@ -242,9 +242,13 @@ export async function audit(page: Page, opts: { within?: string } = {}): Promise
         const d = ctx.getImageData(0, 0, c.width, c.height).data;
         const lin = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
         const L = (r: number, g: number, b: number) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+        // At most about 20,000 pixels, evenly spread: a phone's screenshot of
+        // a caption runs to hundreds of thousands, and sorting them all in
+        // WebKit took longer than a test is given.
+        const stride = Math.max(1, Math.floor(d.length / 4 / 20000));
         const idx: number[] = [];
         const lum: number[] = [];
-        for (let i = 0; i < d.length; i += 4) { idx.push(i); lum.push(L(d[i], d[i + 1], d[i + 2])); }
+        for (let i = 0; i < d.length; i += 4 * stride) { idx.push(i); lum.push(L(d[i], d[i + 1], d[i + 2])); }
         const order = idx.map((_, k) => k).sort((a, b) => lum[a] - lum[b]);
         const at = (q: number) => order[Math.min(order.length - 1, Math.floor(order.length * q))];
         // The colour the text is actually drawn in: its own, faded over the

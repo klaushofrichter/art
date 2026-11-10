@@ -49,6 +49,8 @@ test('@live the Rooms menu meets WCAG 2.2 AA', async ({ page }) => {
 });
 
 test('@live every room, its label and its Content menu meet WCAG 2.2 AA', async ({ page, isMobile, request }) => {
+  // Three audits per room, each with its on-screen contrast pass.
+  test.setTimeout(120_000);
   const rooms = (await site(request)).filter((r) => r.type !== 'about' && r.works.length);
   for (const room of rooms) {
     await open(page, `/#${room.id}/${room.works[0].slug}`);
