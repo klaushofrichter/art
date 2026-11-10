@@ -26,12 +26,7 @@ is where notes are written *before* a release, not an archive of them.
      Last released: v2026.11.10.1 (its notes cleared here). -->
 ## [Unreleased]
 
-- **Readable over every picture on the live site.** The first live check
-  measured the room label and the full-screen title against the real
-  pictures, and over eleven of the 25 the label's Medium/Size lines or the
-  full-screen title were still short of 4.5:1. Measured again over every
-  picture: on a phone the label is one tall column, so its title and byline
-  reach over the foot of the picture itself (down to 1:1 on an iPhone-sized
-  screen). Now the shade at the foot of a room is darker where the
-  Medium/Size lines sit and, on a phone, reaches up behind the whole label;
-  the pool of shade behind the full-screen title is a little darker and wider.
+- **The daily live check no longer fails on its own rate-limit test.** It read
+  the remaining budget twice while the other browser in the same run loaded a
+  page in between; it now checks that a page carries the RateLimit headers and
+  the files it loads do not. Test only; the site is unchanged.
