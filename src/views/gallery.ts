@@ -84,7 +84,8 @@ function fallback(rooms: Room[]): string {
       // Without JavaScript this is a plain grid of thumbnails, so the
       // smallest copy is the right one to offer first.
       return `<li><a href="${buyPath(r.id, w.slug)}">` +
-        pictureTag(r.id, w, '(max-width: 700px) 45vw, 300px', w.title, 'loading="lazy"') +
+        pictureTag(r.id, w, '(max-width: 700px) 45vw, 300px', w.title,
+          'loading="lazy"' + (w.width && w.height ? ` width="${w.width}" height="${w.height}"` : '')) +
         `<span class="t">${escapeHtml(w.title)}</span></a></li>`;
     }).join('');
     return `<section><h2>${escapeHtml(r.title)}</h2><ul>${items}</ul></section>`;

@@ -109,23 +109,29 @@ describe('/health is not rate limited', () => {
   });
 });
 
-describe('sizing', () => {
-  it('counts a whole visit exactly once and stays inside the budget', async () => {
+describe('only pages are counted', () => {
+  it('serves static files without spending the budget, and counts each page once', async () => {
     const a = app();
     const visitor = chain('198.51.100.9');
     const home = await request(a).get('/').set('X-Forwarded-For', visitor);
     expect(home.status).toBe(200);
+    expect(home.headers['ratelimit-remaining']).toBe(String(LIMIT - 1));
 
-    // Every asset URL the page names, plus a /buy page per work. This is
-    // heavier than a visit: the widths are a srcset, so a browser picks one
-    // per picture rather than fetching all of them.
-    const assets = [...new Set(
-      [...home.text.matchAll(/\/assets\/[^"'\\ )]+/g)].map((m) => m[0]),
-    )];
-    let last = home;
-    for (const url of assets) {
-      last = await request(a).get(url).set('X-Forwarded-For', visitor);
+    // Every picture URL the page names, and the bundle, stylesheet and
+    // favicon it links: none of them counts, none carries the headers.
+    const files = [...new Set([
+      ...[...home.text.matchAll(/\/assets\/[^"'\\ )]+/g)].map((m) => m[0]),
+      ...[...home.text.matchAll(/(?:src|href)="(\/[^"/]+\.(?:css|js|png)\?v=[^"]+)"/g)].map((m) => m[1]),
+    ])];
+    expect(files.length).toBeGreaterThan(3);
+    for (const url of files) {
+      const res = await request(a).get(url).set('X-Forwarded-For', visitor);
+      expect(res.status, url).toBe(200);
+      expect(res.headers['ratelimit-remaining'], url).toBeUndefined();
     }
+
+    // Then a purchase page per work, each counted once.
+    let last = home;
     for (const room of rooms) {
       for (const work of room.works) {
         last = await request(a)
@@ -134,14 +140,28 @@ describe('sizing', () => {
       }
     }
     expect(last.status).toBe(200);
-
     const works = rooms.reduce((n, r) => n + r.works.length, 0);
-    const spent = LIMIT - Number(last.headers['ratelimit-remaining']);
-    // Every browsing request counted exactly once — the page, each asset and
-    // each buy page — with nothing slipping past and nothing double-counted.
-    expect(spent).toBe(1 + assets.length + works);
-    // And it still fits. Against the real gallery this worst case is about
-    // 170 of the 300; an actual browse is nearer 30.
-    expect(spent).toBeLessThan(LIMIT);
+    expect(LIMIT - Number(last.headers['ratelimit-remaining'])).toBe(1 + works);
+  });
+
+  it('counts a missing file, which gets the 404 page', async () => {
+    const a = app();
+    const visitor = chain('198.51.100.10');
+    for (const [url, n] of [['/assets/shapes/nothing.jpg', 1], ['/nothing.js', 2], ['/fonts/nothing.woff2', 3]] as const) {
+      const res = await request(a).get(url).set('X-Forwarded-For', visitor);
+      expect(res.status, url).toBe(404);
+      expect(res.text, url).toContain('Nothing hangs here');
+      expect(res.headers['ratelimit-remaining'], url).toBe(String(LIMIT - n));
+    }
+  });
+
+  it('refuses a missing file past the limit like any page', async () => {
+    const a = app();
+    const visitor = chain('198.51.100.11');
+    let last;
+    for (let i = 0; i <= LIMIT; i++) {
+      last = await request(a).get(`/assets/shapes/missing-${i}.jpg`).set('X-Forwarded-For', visitor);
+    }
+    expect(last!.status).toBe(429);
   });
 });

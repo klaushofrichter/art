@@ -17,15 +17,17 @@ export function isInternalAddress(ip: string | undefined): boolean {
   return !ip || INTERNAL.test(ip);
 }
 
-/** One full cold browse of the site is about 60 requests — the page, 43
- *  distinct asset URLs and 15 `/buy/` links — and a returning visitor costs
- *  far less, because the fingerprinted assets are immutable for a year. So
- *  300 per five minutes is five whole browses, which no person does, while
- *  still leaving room for several tabs, a hard reload that bypasses the
- *  cache, an office behind one NAT, and carrier-grade NAT on mobile.
+/** Counts pages only: the gallery, the purchase and legal pages, and the 404
+ *  page (src/app.ts mounts the limiter after the static files, so pictures,
+ *  the bundle, the fonts and the favicon cost nothing). A visit is the
+ *  gallery plus however many purchase pages a person opens, a handful at
+ *  most, so 300 per five minutes is far more than any person uses, while
+ *  still leaving room for several tabs, an office behind one NAT, and
+ *  carrier-grade NAT on mobile. It used to count every picture too, and one
+ *  visit to the lobby cost about 28 of the 300.
  *
  *  The window is per key, not global: a hundred visitors on a hundred
- *  addresses each spend about a fifth of their own budget and never meet.
+ *  addresses each spend a sliver of their own budget and never meet.
  *  It is a fixed window, so a client straddling the reset can burst to twice
  *  the limit; for cached static art that is harmless, and the five-minute
  *  window already halves that burst against the equivalent 600-per-ten. */

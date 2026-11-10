@@ -28,6 +28,9 @@ export interface PageOptions {
   path?: string;
   /** The picture a link preview should show. */
   image?: ShareImage | null;
+  /** For the 404 page: no canonical URL and no og:url, and search engines
+   *  are asked not to index it. */
+  noindex?: boolean;
 }
 
 /** og:image and the Twitter equivalents. Twitter falls back to the Open Graph
@@ -61,7 +64,7 @@ export function page(o: PageOptions): string {
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Klaus Hofrichter">
 <meta property="og:locale" content="en_US">
-${o.path ? `<meta property="og:url" content="${escapeHtml(absolute(o.path))}">
+${o.noindex ? '<meta name="robots" content="noindex">' : o.path ? `<meta property="og:url" content="${escapeHtml(absolute(o.path))}">
 <link rel="canonical" href="${escapeHtml(absolute(o.path))}">` : `<meta property="og:url" content="${SITE_URL}">`}
 ${shareTags(o.image)}
 <link rel="icon" type="image/png" href="${assetUrl('palette.png')}">

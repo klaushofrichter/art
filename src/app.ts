@@ -8,6 +8,7 @@ import { healthRouter } from './routes/health';
 import { indexRouter } from './routes/index';
 import { buyRouter } from './routes/buy';
 import { legalRouter } from './routes/legal';
+import { renderNotFound } from './views/notFound';
 import { TRUSTED_PROXIES, galleryLimiter } from './ratelimit';
 
 export type GalleryApp = Express & {
@@ -77,10 +78,6 @@ export function createApp(
   // with anything. Being mounted first, it never reaches the limiter at all.
   app.use(healthRouter(() => current));
 
-  // Everything a visitor actually fetches — pages, pictures, the bundle —
-  // is counted, which is what the sizing in ratelimit.ts is measured against.
-  app.use(galleryLimiter());
-
   const production = process.env.NODE_ENV === 'production';
 
   // A room directory holds more than pictures. `index.json` sits in it — the
@@ -119,6 +116,16 @@ export function createApp(
   app.use('/assets', express.static(assetsDir, forever));
   app.use(express.static(PUBLIC_DIR, forever));
 
+  // Pages are counted; the files above are not. Every picture, the bundle and
+  // the fonts used to count too, so one visit to the lobby cost about 28 of
+  // the 300, and a household sharing one address could be refused after ten
+  // page views. A static file is a read from disk with nothing to amplify,
+  // and the pictures are the bulk of every visit. Everything below this line
+  // is counted: the pages, the purchase pages, and the 404 page, which is
+  // also what a static file that does not exist falls through to, so asking
+  // for missing files is not a way round the limit.
+  app.use(galleryLimiter());
+
   // A page carries the fingerprinted URLs of the assets it needs, so it must
   // never be served from cache without checking first. A stale page points at
   // stale assets, and those are immutable for a year — a visitor would be
@@ -132,5 +139,12 @@ export function createApp(
   app.use(legalRouter());
   app.use(buyRouter(() => current));
   app.use(indexRouter((uid) => (uid && shares.get(uid)) || html));
+  // Last: anything no route above answered gets the site's own 404 page
+  // rather than Express's bare "Cannot GET". A missing picture under /assets
+  // lands here too; a non-picture there was already refused above.
+  const notFound = renderNotFound();
+  app.use((_req, res) => {
+    res.status(404).type('html').send(notFound);
+  });
   return app;
 }

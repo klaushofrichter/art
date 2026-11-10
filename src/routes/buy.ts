@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Room, findWork } from '../content';
 import { buyPath } from '../urls';
 import { renderBuy } from '../views/buy';
+import { renderNotFound } from '../views/notFound';
 
 export function buyRouter(rooms: () => Room[]): Router {
   const router = Router();
@@ -11,12 +12,10 @@ export function buyRouter(rooms: () => Room[]): Router {
     const one = (v: unknown): string => (typeof v === 'string' ? v : '');
     const found = findWork(rooms(), one(req.params.room), one(req.params.slug));
     if (!found) {
-      res.status(404).type('html').send(
-        '<!DOCTYPE html><meta charset="utf-8"><title>Not found</title>' +
-        '<body style="background:#0B1017;color:#EDE7DA;font-family:system-ui;padding:12vh 8vw">' +
-        '<h1 style="font-weight:400">That picture is not here.</h1>' +
-        '<p><a style="color:#C9A227" href="/">Back to the gallery</a></p>'
-      );
+      res.status(404).type('html').send(renderNotFound(
+        'That picture is not here.',
+        'It may have been taken down or moved to another room. Every picture on show is in the gallery.',
+      ));
       return;
     }
     // index.json may point a work at somewhere else entirely. The gallery

@@ -1,0 +1,108 @@
+name: Live check
+
+# The release, checked from outside after it has gone live: the read-only
+# part of the e2e suite (tests tagged @live) in four browsers, and
+# Lighthouse, pointed at https://art.klaushofrichter.net, with the real
+# pictures. /health and the About room must name the release just cut.
+#
+# deploy-production.yml already smoke-tests with curl from the in-cluster
+# runner; this adds what curl cannot see (real browsers on a phone and a
+# desktop, every room and picture, every link followed, accessibility,
+# Lighthouse). A browser cannot run on the in-cluster runner (512Mi), so it
+# runs here, on GitHub's runners, after each successful deploy and once a
+# day, so a site that breaks between releases is noticed too.
+#
+# Read-only: @live tests only GET, never POST, and the site has no sign-in.
+#
+# The site limits each address to 300 page requests per five minutes
+# (src/ratelimit.ts; pictures, fonts and the bundle are not counted), and this
+# runner is one address. The whole run loads about 230 pages (desktop Chrome
+# walks every purchase page; each browser opens the gallery some twenty
+# times), which would fit one window but not comfortably. So it is in two
+# halves, about 115 pages each, and the second starts in a fresh window
+# (scripts/rate-window.sh waits for one if the first half left less than 250).
+# Each half stays under 40% of the limit, so a visitor sharing the window, or
+# a retry, cannot push the run into a 429.
+#
+# kube-setup's "public web pages" baseline, adapted from
+# klaushofrichter/christina.art and www-skylar-technology.
+on:
+  workflow_run:
+    workflows: [Deploy production]
+    types: [completed]
+  schedule:
+    - cron: '41 10 * * *'   # 04:41 Chicago (CST), outside the busy hours
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-check
+  cancel-in-progress: false
+
+jobs:
+  live:
+    # After a deploy only if it succeeded; a failed deploy cut no release.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BASE_URL: https://art.klaushofrichter.net
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+
+      - run: npm ci
+
+      # The newest release is what must be live: after a deploy it is the one
+      # that deploy cut (the release step runs last, after the rollout).
+      - name: Which release should be live
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "expecting ${tag}"
+
+      - name: Install the browsers
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list \
+                     /etc/apt/sources.list.d/google-chrome.sources
+          npx playwright install --with-deps chromium webkit firefox
+
+      - name: Walk the live site in desktop Chrome and desktop Firefox
+        env:
+          EXPECT_VERSION: ${{ steps.rel.outputs.version }}
+        run: npx playwright test --grep @live --project=desktop-chromium --project=desktop-firefox
+
+      - name: Walk it on an Android phone and an iPhone
+        env:
+          EXPECT_VERSION: ${{ steps.rel.outputs.version }}
+        run: |
+          scripts/rate-window.sh "$BASE_URL" 250
+          npx playwright test --grep @live --project=phone-chromium --project=phone-webkit
+
+      - name: Lighthouse (Google PageSpeed) on the live site
+        run: scripts/lighthouse-gate.sh "$BASE_URL/"
+
+      - name: What the run spent of the rate limit
+        if: always()
+        run: scripts/rate-window.sh "$BASE_URL" 0
+
+      - name: Keep the reports when something failed
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: live-check-reports
+          path: |
+            playwright-report/
+            test-results/
+            lighthouse-report*.report.html
+          retention-days: 30
