@@ -202,7 +202,10 @@ body {
 /* full label, shown by default in a room; click-through so it never blocks a drag */
 .info { position:absolute; inset:0; z-index:6; display:flex; align-items:flex-end; pointer-events:none; transition:opacity .38s; }
 .info::before { content:''; position:absolute; inset:0;
-  background:linear-gradient(to top, rgba(6,9,14,.94) 4%, rgba(6,9,14,.76) 22%, rgba(6,9,14,0) 40%); }
+  /* Dark enough where the Medium/Size lines sit (about a quarter of the way
+     up) that they read over every picture in the gallery: at .76 there, the
+     live check measured 3.3:1 over the paneer and 3.9:1 over the bagel. */
+  background:linear-gradient(to top, rgba(6,9,14,.94) 4%, rgba(6,9,14,.84) 24%, rgba(6,9,14,.5) 34%, rgba(6,9,14,0) 44%); }
 .info .sheet { position:relative; z-index:2; width:100%; padding:0 5vw 5.5vh;
   display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:3vw; align-items:end; }
 .info h2 { font-family:var(--display); font-weight:400; font-size:clamp(24px,5vh,44px); margin:0 0 .16em; line-height:1.05; }
@@ -241,10 +244,12 @@ body {
   font-family:var(--mono); font-size:12px; letter-spacing:.15em; text-transform:uppercase;
   color:rgba(237,231,218,.94); text-shadow:0 1px 10px rgba(0,0,0,.8);
   /* padding carries the shade, the negative margin keeps the text where it
-     was, so the pool grows around the caption instead of moving it */
+     was, so the pool grows around the caption instead of moving it. The pool
+     was .74 a quarter of the way out, which left the title at 3.4:1 over a
+     pale wall (dogs, "Made in Texas"). */
   padding:6em 16em 5vh 4vw; margin:0;
   background:radial-gradient(78% 108% at 18% 78%,
-    rgba(6,9,14,.92) 0%, rgba(6,9,14,.74) 26%, rgba(6,9,14,.34) 48%, rgba(6,9,14,.08) 68%, rgba(6,9,14,0) 84%);
+    rgba(6,9,14,.94) 0%, rgba(6,9,14,.84) 30%, rgba(6,9,14,.5) 52%, rgba(6,9,14,.14) 70%, rgba(6,9,14,0) 86%);
   opacity:0; transform:translateY(6px); transition:opacity .3s, transform .3s; }
 .mini.on { opacity:1; transform:translateY(0); }
 .mini b { font-family:var(--display); font-weight:400; font-size:clamp(18px,3vh,28px); letter-spacing:.005em;
@@ -460,6 +465,11 @@ body {
       rgba(18,14,8,.07), rgba(9,10,13,.50) 52%, rgba(6,9,14,.70) 100%),
     linear-gradient(to right, rgba(6,9,14,.84), rgba(6,9,14,.62) 72%, rgba(6,9,14,.36)); }
   .abody { padding:0 7vw; max-width:none; }
+  /* One column on a phone, so the label stands about half the screen high
+     and its title meets the foot of the picture: the shade has to reach it
+     (the title measured 1.8:1 over the gilt frame of "Undertow"). */
+  .info::before { background:linear-gradient(to top, rgba(6,9,14,.94) 4%, rgba(6,9,14,.86) 44%,
+    rgba(6,9,14,.5) 56%, rgba(6,9,14,0) 66%); }
   .info .sheet { grid-template-columns:1fr; gap:1.6vh; padding:0 7vw 5vh; }
   .info .desc { max-width:none; }
   .count { display:none; }
