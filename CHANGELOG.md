@@ -26,7 +26,7 @@ is where notes are written *before* a release, not an archive of them.
      Last released: v2026.11.10.1 (its notes cleared here). -->
 ## [Unreleased]
 
-- **The daily live check no longer fails on its own rate-limit test.** It read
-  the remaining budget twice while the other browser in the same run loaded a
-  page in between; it now checks that a page carries the RateLimit headers and
-  the files it loads do not. Test only; the site is unchanged.
+- **The About room reads on a phone.** Its text fills a phone screen from
+  near the top, so the name and the line under it sat over the light part of
+  the portrait (2.7:1 and 3.1:1). On a phone the shade behind it now starts
+  darker and reaches full strength higher up.

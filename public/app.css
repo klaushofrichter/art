@@ -465,6 +465,12 @@ body {
       rgba(18,14,8,.07), rgba(9,10,13,.50) 52%, rgba(6,9,14,.70) 100%),
     linear-gradient(to right, rgba(6,9,14,.84), rgba(6,9,14,.62) 72%, rgba(6,9,14,.36)); }
   .abody { padding:0 7vw; max-width:none; }
+  /* On a phone the About text fills the screen from near the top, so its
+     name and role sit over the picture where the band above is still thin
+     (2.7:1 and 3.1:1 over the wall behind the portrait). The band starts
+     darker and reaches full strength sooner. */
+  .aboutroom .scrim { background:linear-gradient(to bottom,
+    rgba(6,9,14,.45) 0%, rgba(6,9,14,.66) 12%, rgba(6,9,14,.86) 24%, rgba(6,9,14,.95) 50%); }
   /* One column on a phone, so the label stands about half the screen high
      and its title meets the foot of the picture: the shade has to reach it
      (the title measured 1.8:1 over the gilt frame of "Undertow"). */
