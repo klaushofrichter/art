@@ -1533,8 +1533,16 @@
   /* The cover you land on downloads by itself; the others queue behind it. */
   (function loadCovers() {
     var start = lobbyRail.index();
-    showCover(start, function () {
-      loadOneByOne(byDistance(ROOMS.length, start), showCover);
-    });
+    function go() {
+      showCover(start, function () {
+        loadOneByOne(byDistance(ROOMS.length, start), showCover);
+      });
+    }
+    /* Arriving straight into a room (a permalink or a deep link), the room's
+       picture is what is on screen and the covers are behind it, so they wait
+       for the page to finish loading instead of sharing the connection with
+       that picture. They were costing a phone about a second of it. */
+    if (liveRoom && document.readyState !== 'complete') window.addEventListener('load', go, { once: true });
+    else go();
   })();
 })();
