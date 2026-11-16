@@ -12,18 +12,24 @@ is where notes are written *before* a release, not an archive of them.
 <!-- Anything written under Unreleased is prepended to the next release's
      notes. Keep prose out of it unless you mean it to be published.
 
-     CLEAR THIS AFTER A RELEASE. Nothing does it automatically: the release
-     step reads this file and does not write to it, so entries left here go
-     out again with the following release. That has happened three times —
-     the WebP notes shipped twice, and the spotlight and rate-limit notes
-     were each caught on their way to a second appearance. Emptying it is
-     part of promoting to production, not an afterthought.
+     The release clears it: after each release, deploy-production.yml takes
+     the lines it published out of this section on main, in a commit "Clear
+     the changelog after vX [skip ci]" (scripts/clear-unreleased.sh). If that
+     push ever fails the deploy warns, and the next promotion's
+     scripts/check-changelog.sh names the leftovers; then clear them by hand.
+     Before this was automatic, notes were published twice or blocked a
+     release PR five times.
 
      Leave the section genuinely empty when there is nothing to say. Do not
      write a placeholder under the heading: the awk prints every non-blank
      line it finds there, so "nothing yet" would be published as the notes.
 
-     Last released: v2026.11.10.1 (its notes cleared here). -->
+     -->
 ## [Unreleased]
 
 - Dependency updates: `express-rate-limit` 8.7.4 and `supertest` 7.3.2 (Dependabot).
+- **The release now clears this changelog's Unreleased section itself.**
+  After each release the deploy takes the notes it just published out of
+  `CHANGELOG.md` on main ("Clear the changelog after vX [skip ci]"), so a
+  release PR no longer fails `check-changelog` on last release's notes. Only
+  published lines go; a note merged after the promotion stays for the next.

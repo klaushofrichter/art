@@ -2,13 +2,11 @@
 # Refuse to release notes that have already been published.
 #
 # Release notes are whatever sits under `## [Unreleased]` in CHANGELOG.md,
-# followed by the commits since the last release. deploy-production.yml reads
-# that section and never writes to it, so nothing empties it: unless a person
-# does, the next release republishes the last one's notes word for word.
-#
-# That has now happened five times. It was written into CHANGELOG.md and into
-# CLAUDE.md both, and it kept happening, which is the argument for checking it
-# here instead of asking people to remember.
+# followed by the commits since the last release. deploy-production.yml now
+# takes the published lines out of that section on main after each release
+# (scripts/clear-unreleased.sh), but that push may fail, and before it existed
+# the section was left full five times. This is the backstop: anything still
+# there that the last release already said would be published twice.
 #
 #     scripts/check-changelog.sh            # against the newest release
 #     scripts/check-changelog.sh v2026.09.09.1

@@ -174,13 +174,16 @@ the deploy's smoke test checks — a deploy that shipped a broken `index.json`
 would show the wrong counts rather than passing quietly.
 
 Release notes come from the commits since the previous release, preceded by
-anything under `## [Unreleased]` in `CHANGELOG.md`. **Empty that section as
-part of promoting** — `scripts/check-changelog.sh` now fails the `test` check
-on a PR into `production` if it still holds lines the last release already
-published, because writing this down twice did not stop it happening five
-times. The deploy reads the file and never writes to it, so
-anything left behind is published again with the next release — that has
-happened three times now. Leave the heading with nothing under it rather
+anything under `## [Unreleased]` in `CHANGELOG.md`. **The deploy clears that
+section after each release**: the step after the release takes the lines it
+published out of `CHANGELOG.md` on `main` (`scripts/clear-unreleased.sh`,
+tested in `test/clear-unreleased.test.ts`) and pushes "Clear the changelog
+after vX [skip ci]" with the workflow's `GITHUB_TOKEN`. Only published lines
+go, so a note merged to `main` after the promotion survives. That push can
+fail (main moved under it); the deploy then warns rather than going red, and
+`scripts/check-changelog.sh` fails the next PR into `production` on any line
+the last release already published, so the leftover is caught either way.
+Before this was automatic, the section was left full five times. Leave the heading with nothing under it rather
 than a placeholder line: `scripts/unreleased-notes.sh`, which both the
 deploy and the check read the block through, prints every
 non-blank line it finds, so "nothing yet" becomes the release notes. The release step runs last
