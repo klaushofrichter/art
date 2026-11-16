@@ -27,7 +27,6 @@ is where notes are written *before* a release, not an archive of them.
      -->
 ## [Unreleased]
 
-- Dependency updates: `express-rate-limit` 8.7.4 and `supertest` 7.3.2 (Dependabot).
 - **The release now clears this changelog's Unreleased section itself.**
   After each release the deploy takes the notes it just published out of
   `CHANGELOG.md` on main ("Clear the changelog after vX [skip ci]"), so a
