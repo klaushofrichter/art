@@ -26,7 +26,4 @@ is where notes are written *before* a release, not an archive of them.
      Last released: v2026.11.10.1 (its notes cleared here). -->
 ## [Unreleased]
 
-- **The About room reads on a phone.** Its text fills a phone screen from
-  near the top, so the name and the line under it sat over the light part of
-  the portrait (2.7:1 and 3.1:1). On a phone the shade behind it now starts
-  darker and reaches full strength higher up.
+- Dependency updates: `express-rate-limit` 8.7.4 and `supertest` 7.3.2 (Dependabot).
