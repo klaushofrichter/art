@@ -27,8 +27,3 @@ is where notes are written *before* a release, not an archive of them.
      -->
 ## [Unreleased]
 
-- **The release now clears this changelog's Unreleased section itself.**
-  After each release the deploy takes the notes it just published out of
-  `CHANGELOG.md` on main ("Clear the changelog after vX [skip ci]"), so a
-  release PR no longer fails `check-changelog` on last release's notes. Only
-  published lines go; a note merged after the promotion stays for the next.
