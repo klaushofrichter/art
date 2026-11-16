@@ -227,3 +227,59 @@ jobs:
             --title "$TAG" \
             --notes-file /tmp/notes.md
           echo "Released $TAG"
+
+      # Take the notes this release published out of CHANGELOG.md's
+      # [Unreleased] on main, so the next promotion does not try to publish
+      # them again (scripts/check-changelog.sh refuses that, and it kept
+      # blocking release PRs: #111, #117). Copied from steps-service's
+      # "Clear the changelog ... [skip ci]" step, with one difference: only
+      # the lines this release published are removed, so a note merged into
+      # main after the promotion stays for the next release.
+      #
+      # After the release and unable to fail the job: the release is already
+      # out and correct whether or not this works. A failure is a warning, and
+      # the next promotion's check-changelog then names what is left.
+      #
+      # Authorised by this workflow's GITHUB_TOKEN (contents: write, above);
+      # main is not protected. A push made with GITHUB_TOKEN starts no other
+      # workflow, and [skip ci] says so for anything else that reads it.
+      - name: Clear the published notes from CHANGELOG.md on main
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -uo pipefail
+          # What was published: the same script, run on what was released.
+          scripts/unreleased-notes.sh > /tmp/published.md
+          if [ ! -s /tmp/published.md ]; then
+            echo "Nothing curated in this release - nothing to clear."
+            exit 0
+          fi
+          WORK=/tmp/changelog-clear
+          rm -rf "$WORK"
+          if ! git clone --quiet --depth 1 --branch main \
+              "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$WORK"; then
+            echo "::warning::could not clone main to clear CHANGELOG.md [Unreleased]; clear it by hand (the release itself is fine)"
+            exit 0
+          fi
+          # The script from the release, applied to main's file.
+          scripts/clear-unreleased.sh "$WORK/CHANGELOG.md" /tmp/published.md || {
+            echo "::warning::could not clear CHANGELOG.md [Unreleased]; clear it by hand (the release itself is fine)"
+            exit 0
+          }
+          cd "$WORK"
+          if git diff --quiet; then
+            echo "CHANGELOG.md on main already holds none of these notes - nothing to commit."
+            exit 0
+          fi
+          git config user.name "art-deploy-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit --quiet -m "Clear the changelog after v${VERSION} [skip ci]"
+          if git push --quiet origin HEAD:main; then
+            echo "Cleared the notes published in v${VERSION} from CHANGELOG.md on main."
+          else
+            echo "::warning::could not push the cleared CHANGELOG.md (main likely moved); clear it by hand. The release itself is fine."
+          fi
