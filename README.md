@@ -577,10 +577,11 @@ pictures), so a simple queue is enough.
   in-cluster self-hosted runner and cuts a release.
 
 Release notes are whatever sits under `## [Unreleased]` in `CHANGELOG.md`,
-then the commits since the last release. The deploy reads that section and
-never writes to it, so emptying it is part of promoting;
-`scripts/check-changelog.sh` fails a PR into `production` that would republish
-the previous release's notes.
+then the commits since the last release. After the release, the deploy takes
+the lines it published out of that section on `main` ("Clear the changelog
+after vX [skip ci]"); `scripts/check-changelog.sh` still fails a PR into
+`production` that would republish the previous release's notes, in case that
+push ever fails.
 
 Versions are generated at deploy time as `vYYYY.MM.DD.N` and baked in as
 `APP_VERSION`; `package.json` carries no version. The running build is shown at
