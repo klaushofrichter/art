@@ -27,8 +27,8 @@ is where notes are written *before* a release, not an archive of them.
      -->
 ## [Unreleased]
 
-- **The release now clears this changelog's Unreleased section itself.**
-  After each release the deploy takes the notes it just published out of
-  `CHANGELOG.md` on main ("Clear the changelog after vX [skip ci]"), so a
-  release PR no longer fails `check-changelog` on last release's notes. Only
-  published lines go; a note merged after the promotion stays for the next.
+- CI: the dependency audit lets one advisory through until 2026-12-17:
+  picomatch's ReDoS (GHSA-fc5q-39xc-vjpf), which has no fixed version yet and
+  reaches only the test and build tools, not the running service.
+  `scripts/npm-audit-allow.json` holds the entry; after that date it blocks again.
+
