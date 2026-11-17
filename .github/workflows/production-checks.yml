@@ -26,7 +26,7 @@ jobs:
       # In the `test` job on purpose: `test` is a required status check on
       # production, so a vulnerable dependency blocks the merge. As its own
       # job it would be advisory and gate nothing.
-      - run: npm audit --audit-level=high
+      - run: node scripts/npm-audit.mjs
 
       # Only on the way to production, because that is the merge that cuts a
       # release and so the moment the notes are read. Five releases running,
