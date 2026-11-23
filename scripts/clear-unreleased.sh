@@ -23,8 +23,10 @@ tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 
 awk '
-  # The published lines, blank ones aside.
-  FNR == NR { if ($0 !~ /^[[:space:]]*$/) published[$0] = 1; next }
+  # The published lines, blank ones aside. By file name, not the usual
+  # FNR == NR: with an EMPTY notes file that test stays true for CHANGELOG.md
+  # too, every line counted as published, and the whole file was emptied.
+  FILENAME == ARGV[1] { if ($0 !~ /^[[:space:]]*$/) published[$0] = 1; next }
 
   # Up to the heading: as it is.
   !seen && /^## \[Unreleased\]/ { print; seen = 1; inside = 1; next }
