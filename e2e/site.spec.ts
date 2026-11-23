@@ -82,10 +82,15 @@ async function expectShowing(page: Page, title: string, file: string) {
 }
 
 test('@live every room, every picture and every photograph of it', async ({ page, isMobile, request }) => {
-  test.setTimeout(LIVE ? 240_000 : 90_000);
   const problems = watchProblems(page);
   await reportCspViolations(page);
   const rooms = (await site(request)).filter((r) => r.type !== 'about' && r.works.length);
+  // The walk grows with the gallery: one step per work and per further
+  // photograph. A fixed 240 s ran out on the live phone-webkit run on
+  // 2026-11-23 at 33 steps (25 works, 8 photographs), about 7 s each; give
+  // each step 10 s live (4 s locally) on top of a base for the lobby.
+  const steps = rooms.reduce((n, r) => n + r.works.reduce((m, w) => m + 1 + (w.views?.length ?? 0), 0), 0);
+  test.setTimeout(LIVE ? 60_000 + steps * 10_000 : 30_000 + steps * 4_000);
   for (const room of rooms) {
     await enter(page, isMobile, await site(request), room);
     await expect(page.locator('.room')).toBeVisible();
