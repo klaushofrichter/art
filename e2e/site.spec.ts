@@ -88,9 +88,12 @@ test('@live every room, every picture and every photograph of it', async ({ page
   // The walk grows with the gallery: one step per work and per further
   // photograph. A fixed 240 s ran out on the live phone-webkit run on
   // 2026-11-23 at 33 steps (25 works, 8 photographs), about 7 s each; give
-  // each step 10 s live (4 s locally) on top of a base for the lobby.
+  // each step 10 s live (8 s locally) on top of a base for the lobby, and
+  // never less than the fixed limits that held before (240 s live, 90 s
+  // locally): the local fixture has only 9 steps, and 30 s + 4 s each ran
+  // out on phone-webkit in the release PR's checks (art#131).
   const steps = rooms.reduce((n, r) => n + r.works.reduce((m, w) => m + 1 + (w.views?.length ?? 0), 0), 0);
-  test.setTimeout(LIVE ? 60_000 + steps * 10_000 : 30_000 + steps * 4_000);
+  test.setTimeout(LIVE ? Math.max(240_000, 60_000 + steps * 10_000) : Math.max(90_000, 30_000 + steps * 8_000));
   for (const room of rooms) {
     await enter(page, isMobile, await site(request), room);
     await expect(page.locator('.room')).toBeVisible();
