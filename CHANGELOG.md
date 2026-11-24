@@ -27,3 +27,8 @@ is where notes are written *before* a release, not an archive of them.
      -->
 ## [Unreleased]
 
+- Privacy: the downloadable originals no longer carry the camera's GPS position.
+  `scripts/sync-assets.sh` removes it before every upload (losslessly: same pixels,
+  colour profile and other camera data), and the content check refuses a picture
+  that still has one. The originals already online are cleaned the same way.
+

@@ -24,6 +24,12 @@ if [ -z "${NO_DERIVATIVES:-}" ]; then
   scripts/make-derivatives.sh "$SRC"
 fi
 
+# 1b. Remove camera GPS positions from the originals, which are downloadable.
+#     In place and lossless (src/exifgps.ts); the smaller copies have no
+#     metadata anyway (ffmpeg drops it). The check below refuses any left.
+echo "==> removing GPS positions"
+npx tsx scripts/strip-gps.ts "$SRC"
+
 # 2. Refuse to push content the server could not serve. This is the only gate
 #    content gets, so it runs before anything in the cluster is touched.
 echo "==> checking $SRC"
