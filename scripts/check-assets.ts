@@ -4,6 +4,7 @@
 import fs from 'fs';
 import path from 'path';
 import { loadRooms } from '../src/content';
+import { hasGps } from '../src/exifgps';
 
 /** Link previews are the one place a picture's own file matters beyond being
  *  readable: a crawler refuses one that is too big, and renders one that is
@@ -22,6 +23,7 @@ if (!rooms.length) {
 
 let works = 0;
 let broken = 0;
+let located = 0;   // originals that still carry a camera GPS position
 for (const room of rooms) {
   works += room.works.length;
   const label = room.type === 'about' ? 'about' : `${room.works.length} works`;
@@ -52,6 +54,18 @@ for (const room of rooms) {
       console.warn(`    ! ${w.file} vanished while checking — skipped`);
       continue;
     }
+    // Originals are downloadable, so a camera position in one is published.
+    // scripts/strip-gps.ts removes them; this refuses any it missed.
+    for (const f of [w.file, ...(w.views ?? []).map((v) => v.file)]) {
+      try {
+        if (hasGps(fs.readFileSync(path.join(dir, room.dir, f)))) {
+          console.error(`    ✗ ${room.dir}/${f} still has a GPS position — run scripts/strip-gps.ts`);
+          located++;
+        }
+      } catch {
+        // a missing view is reported by the loader, not here
+      }
+    }
     if (mb > MAX_PREVIEW_MB) {
       console.warn(
         `    ! ${w.file} is ${mb.toFixed(1)}MB — over ${MAX_PREVIEW_MB}MB, ` +
@@ -80,6 +94,10 @@ for (const room of rooms) {
 }
 if (broken) {
   console.error(`check-assets: ${broken} room(s) misnamed — refusing`);
+  process.exit(1);
+}
+if (located) {
+  console.error(`check-assets: ${located} picture(s) with a GPS position — refusing`);
   process.exit(1);
 }
 console.log(`check-assets: ${rooms.length} rooms, ${works} works — ok`);
